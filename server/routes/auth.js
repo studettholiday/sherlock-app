@@ -9,7 +9,38 @@ const JWT_SECRET = process.env.JWT_SECRET || 'sherlock-secret-change-in-producti
 
 // School signup
 router.post('/signup', async (req, res) => {
-  const { schoolName, email, password, apiKey } = req.body;
+  const { schoolName, email, password, apiKey, invite_code } = req.body;
+
+  // Invite-based signup
+  if (invite_code) {
+    try {
+      const inviteRes = await pool.query(
+        'SELECT i.*, s.name as school_name FROM invites i JOIN schools s ON i.school_id = s.id WHERE i.code = $1',
+        [invite_code]
+      );
+      if (inviteRes.rows.length === 0) return res.status(400).json({ error: 'Invalid invite code' });
+      const invite = inviteRes.rows[0];
+      if (invite.used_at) return res.status(400).json({ error: 'Invite already used' });
+      if (new Date(invite.expires_at) < new Date()) return res.status(400).json({ error: 'Invite expired' });
+      if (!email || !password) return res.status(400).json({ error: 'Missing fields' });
+      const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+      if (existing.rows.length > 0) return res.status(409).json({ error: 'Email already registered' });
+      const hash = await bcrypt.hash(password, 12);
+      const userResult = await pool.query(
+        'INSERT INTO users (school_id, email, password_hash, role, name) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, role, name',
+        [invite.school_id, email, hash, invite.target_role, req.body.name || email.split('@')[0]]
+      );
+      const user = userResult.rows[0];
+      await pool.query('UPDATE invites SET used_by = $1, used_at = NOW() WHERE code = $2', [user.id, invite_code]);
+      const token = jwt.sign({ userId: user.id, schoolId: invite.school_id, role: invite.target_role }, JWT_SECRET, { expiresIn: '7d' });
+      return res.json({ token, user: { ...user, schoolId: invite.school_id, schoolName: invite.school_name } });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  }
+
+  // Standard school registration
   if (!schoolName || !email || !password) return res.status(400).json({ error: 'Missing fields' });
   try {
     const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);

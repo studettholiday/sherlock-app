@@ -9,6 +9,7 @@ const searchRoutes = require('./routes/search');
 const authRouter = require('./routes/auth');
 const libraryRouter = require('./routes/library');
 const schoolRouter = require('./routes/school');
+const invitesRouter = require('./routes/invites');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -22,6 +23,7 @@ app.use('/api', dbRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/library', libraryRouter);
 app.use('/api/school', schoolRouter);
+app.use('/api/invites', invitesRouter);
 app.use('/api/youtube', youtubeRoutes);
 app.use('/api/search', searchRoutes);
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));

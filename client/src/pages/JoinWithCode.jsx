@@ -1,23 +1,43 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { t, languages } from '../i18n';
 
 export default function JoinWithCode() {
   const [lang, setLang] = useState(localStorage.getItem('sherlock_lang') || 'en');
   const params = new URLSearchParams(window.location.search);
-  const [code, setCode] = useState(params.get('code') || '');
+  const urlCode = params.get('code') || '';
+  const [code, setCode] = useState(urlCode);
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [inviteInfo, setInviteInfo] = useState(null); // { valid, target_role, school_name, reason }
+  const [validating, setValidating] = useState(!!urlCode);
+
+  // Validate invite code from URL on load
+  useEffect(() => {
+    if (!urlCode) return;
+    fetch(`/api/invites/validate/${urlCode}`)
+      .then(r => r.json())
+      .then(data => setInviteInfo(data))
+      .catch(() => setInviteInfo({ valid: false, reason: 'Could not validate invite' }))
+      .finally(() => setValidating(false));
+  }, [urlCode]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/join', {
+      // Use new invite-based signup if we have a UUID invite code
+      const isUUID = /^[0-9a-f-]{36}$/.test(code);
+      const endpoint = isUUID ? '/api/auth/signup' : '/api/auth/join';
+      const body = isUUID
+        ? { invite_code: code, ...form }
+        : { code, ...form };
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, ...form })
+        body: JSON.stringify(body)
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to join');
@@ -32,18 +52,15 @@ export default function JoinWithCode() {
 
   const cardFont = (lang === 'ka' || lang === 'ja') ? 'sans-serif' : undefined;
 
+  if (validating) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #1a0533 0%, #0d0d1a 100%)' }}>
+      <div style={{ color: 'white', fontSize: '16px' }}>Validating invite...</div>
+    </div>
+  );
+
   return (
-    <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', background: 'linear-gradient(135deg, #1a0533 0%, #0d0d1a 100%)'
-    }}>
-      <div style={{
-        position: 'relative',
-        background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px',
-        padding: '40px', width: '100%', maxWidth: '400px',
-        fontFamily: cardFont,
-      }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #1a0533 0%, #0d0d1a 100%)' }}>
+      <div style={{ position: 'relative', background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '40px', width: '100%', maxWidth: '400px', fontFamily: cardFont }}>
         <select
           value={lang}
           onChange={e => { setLang(e.target.value); localStorage.setItem('sherlock_lang', e.target.value); }}
@@ -52,16 +69,23 @@ export default function JoinWithCode() {
           {languages.map(l => <option key={l.code} value={l.code} style={{ background: '#1a0533' }}>{l.label}</option>)}
         </select>
 
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{
-            width: '48px', height: '48px', borderRadius: '12px',
-            background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 16px', fontSize: '24px', fontWeight: 'bold', color: 'white'
-          }}>S</div>
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '24px', fontWeight: 'bold', color: 'white' }}>S</div>
           <h1 style={{ color: 'white', fontSize: '24px', margin: 0 }}>{t(lang, 'invited')}</h1>
           <p style={{ color: 'rgba(255,255,255,0.5)', marginTop: '8px', fontSize: '14px' }}>{t(lang, 'invitedSubtitle')}</p>
         </div>
+
+        {/* Invite banner */}
+        {inviteInfo?.valid && (
+          <div style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.35)', borderRadius: '8px', padding: '12px 16px', marginBottom: '20px', fontSize: '14px', color: '#a5b4fc', textAlign: 'center' }}>
+            You've been invited to join <strong>{inviteInfo.school_name}</strong> as a <strong>{inviteInfo.target_role}</strong>.
+          </div>
+        )}
+        {inviteInfo && !inviteInfo.valid && (
+          <div style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '12px', marginBottom: '20px', color: '#f87171', fontSize: '14px', textAlign: 'center' }}>
+            This invite link is invalid or has expired.
+          </div>
+        )}
 
         {error && (
           <div style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '12px', marginBottom: '20px', color: '#f87171', fontSize: '14px' }}>
@@ -70,13 +94,16 @@ export default function JoinWithCode() {
         )}
 
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', display: 'block', marginBottom: '6px' }}>Access Code</label>
-            <input
-              type="text" value={code} onChange={e => setCode(e.target.value.toUpperCase())} required
-              style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', color: 'white', fontSize: '16px', fontFamily: 'monospace', letterSpacing: '2px', boxSizing: 'border-box', outline: 'none' }}
-            />
-          </div>
+          {/* Only show code input if no URL code was provided */}
+          {!urlCode && (
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', display: 'block', marginBottom: '6px' }}>Access Code</label>
+              <input
+                type="text" value={code} onChange={e => setCode(e.target.value.toUpperCase())} required
+                style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', color: 'white', fontSize: '16px', fontFamily: 'monospace', letterSpacing: '2px', boxSizing: 'border-box', outline: 'none' }}
+              />
+            </div>
+          )}
           {[
             { key: 'name',     labelKey: 'yourName', type: 'text' },
             { key: 'email',    labelKey: 'email',    type: 'email' },
@@ -91,11 +118,7 @@ export default function JoinWithCode() {
               />
             </div>
           ))}
-          <button type="submit" disabled={loading} style={{
-            width: '100%', padding: '12px', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-            border: 'none', borderRadius: '8px', color: 'white', fontSize: '16px',
-            fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, marginTop: '8px'
-          }}>
+          <button type="submit" disabled={loading || (inviteInfo && !inviteInfo.valid)} style={{ width: '100%', padding: '12px', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', border: 'none', borderRadius: '8px', color: 'white', fontSize: '16px', fontWeight: '600', cursor: (loading || (inviteInfo && !inviteInfo.valid)) ? 'not-allowed' : 'pointer', opacity: (loading || (inviteInfo && !inviteInfo.valid)) ? 0.5 : 1, marginTop: '8px' }}>
             {loading ? t(lang, 'creatingAccount') : t(lang, 'createAccount')}
           </button>
         </form>
