@@ -14,7 +14,7 @@ const BASE_URL = 'https://sherlock-app-production.up.railway.app';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
-  const [codes, setCodes] = useState({ teacher_code: null, student_code: null, assistant_code: null });
+  const [codes, setCodes] = useState({});
   const [members, setMembers] = useState([]);
   const [invites, setInvites] = useState([]);
   const [inviteRole, setInviteRole] = useState('teacher');
@@ -47,13 +47,6 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const generateCode = async (role) => {
-    const res = await fetch('/api/school/codes/generate', { method: 'POST', headers, body: JSON.stringify({ role }) });
-    const data = await res.json();
-    if (data.error) return alert(data.error);
-    setCodes(prev => ({ ...prev, [`${role}_code`]: data.code }));
   };
 
   const generateInvite = async () => {
@@ -103,9 +96,6 @@ export default function Dashboard() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button onClick={() => window.location.href = '/chat'} style={{ padding: '8px 16px', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', border: 'none', borderRadius: '8px', color: 'white', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
-            Open Chat
-          </button>
           <button onClick={logout} style={{ padding: '8px 16px', background: 'transparent', border: `1px solid ${COLORS.border}`, borderRadius: '8px', color: COLORS.muted, cursor: 'pointer', fontSize: '14px' }}>
             Sign out
           </button>
@@ -113,51 +103,6 @@ export default function Dashboard() {
       </div>
 
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '32px 24px' }}>
-
-        {/* Access Codes */}
-        {canManage && (
-          <div style={{ marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: '600', margin: '0 0 8px 0' }}>Access Codes</h2>
-            <p style={{ color: COLORS.muted, fontSize: '14px', marginBottom: '20px', marginTop: 0 }}>Share these codes with your staff and students.</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
-              {[
-                { role: 'teacher', label: 'Teacher Code', color: '#3b82f6' },
-                { role: 'student', label: 'Student Code', color: '#10b981' },
-                ...(user?.role === 'admin' ? [{ role: 'assistant', label: 'Assistant Code', color: '#f59e0b' }] : [])
-              ].map(({ role, label, color }) => {
-                const code = codes[`${role}_code`];
-                const joinUrl = `${BASE_URL}/join?code=${code}&role=${role}`;
-                return (
-                  <div key={role} style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: '12px', padding: '20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: color }} />
-                      <span style={{ fontSize: '14px', fontWeight: '600' }}>{label}</span>
-                    </div>
-                    {code ? (
-                      <>
-                        <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: '8px', padding: '12px', fontFamily: 'monospace', fontSize: '20px', fontWeight: '700', letterSpacing: '4px', textAlign: 'center', marginBottom: '12px', color }}>
-                          {code}
-                        </div>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button onClick={() => copyToClipboard(code, `code-${role}`)} style={{ flex: 1, padding: '8px', background: 'rgba(255,255,255,0.07)', border: `1px solid ${COLORS.border}`, borderRadius: '6px', color: 'white', cursor: 'pointer', fontSize: '13px' }}>
-                            {copied === `code-${role}` ? '✓ Copied' : 'Copy Code'}
-                          </button>
-                          <button onClick={() => copyToClipboard(joinUrl, `url-${role}`)} style={{ flex: 1, padding: '8px', background: 'rgba(255,255,255,0.07)', border: `1px solid ${COLORS.border}`, borderRadius: '6px', color: 'white', cursor: 'pointer', fontSize: '13px' }}>
-                            {copied === `url-${role}` ? '✓ Copied' : 'Copy Link'}
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <button onClick={() => generateCode(role)} style={{ width: '100%', padding: '10px', background: `rgba(${color === '#3b82f6' ? '59,130,246' : color === '#10b981' ? '16,185,129' : '245,158,11'},0.15)`, border: `1px dashed ${color}`, borderRadius: '8px', color, cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
-                        Generate Code
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* Invite Links */}
         {canManage && (
