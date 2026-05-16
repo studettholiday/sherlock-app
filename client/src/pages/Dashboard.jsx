@@ -143,9 +143,15 @@ export default function Dashboard() {
                       <span style={{ fontSize: '12px', padding: '3px 8px', borderRadius: '12px', background: roleBg[inv.target_role], color: roleColor[inv.target_role], display: 'inline-block', textAlign: 'center' }}>
                         {inv.target_role}
                       </span>
-                      <button onClick={() => copyToClipboard(url, `inv-${inv.id}`)} style={{ background: 'none', border: 'none', color: copied === `inv-${inv.id}` ? '#34d399' : '#818cf8', cursor: 'pointer', fontSize: '13px', textAlign: 'left', padding: '0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {copied === `inv-${inv.id}` ? '✓ Copied!' : url}
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 8px', overflow: 'hidden' }}>
+                        <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                          {`/join?code=${inv.code.slice(0,8)}...`}
+                        </span>
+                        <button onClick={() => copyToClipboard(url, `inv-${inv.id}`)}
+                          style={{ flexShrink: 0, background: copied === `inv-${inv.id}` ? 'rgba(52,211,153,0.15)' : 'rgba(99,102,241,0.15)', border: `1px solid ${copied === `inv-${inv.id}` ? 'rgba(52,211,153,0.4)' : 'rgba(99,102,241,0.4)'}`, borderRadius: '6px', color: copied === `inv-${inv.id}` ? '#34d399' : '#818cf8', cursor: 'pointer', fontSize: '11px', padding: '3px 10px', whiteSpace: 'nowrap' }}>
+                          {copied === `inv-${inv.id}` ? '✓ Copied' : '📋 Copy'}
+                        </button>
+                      </div>
                       <span style={{ fontSize: '12px', color: COLORS.muted }}>{new Date(inv.expires_at).toLocaleDateString()}</span>
                       <span style={{ fontSize: '12px', color: used ? '#34d399' : expired ? '#f87171' : '#fbbf24' }}>
                         {used ? 'Used' : expired ? 'Expired' : 'Active'}
