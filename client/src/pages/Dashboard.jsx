@@ -96,6 +96,7 @@ export default function Dashboard() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
+          <button onClick={() => window.location.href="/chat"} style={{ padding: "8px 16px", background: "linear-gradient(135deg, #7c3aed, #4f46e5)", border: "none", borderRadius: "8px", color: "white", cursor: "pointer", fontSize: "14px", fontWeight: "600" }}>Open Chat</button>
           <button onClick={logout} style={{ padding: '8px 16px', background: 'transparent', border: `1px solid ${COLORS.border}`, borderRadius: '8px', color: COLORS.muted, cursor: 'pointer', fontSize: '14px' }}>
             Sign out
           </button>
