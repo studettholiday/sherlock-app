@@ -287,7 +287,7 @@ export default function Dashboard() {
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name || f.filename || 'Unknown'}</div>
                       <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 3 }}>
-                        {formatFileSize(f.size)} · {new Date(f.created_at || f.uploaded_at || f.createdAt).toLocaleDateString()}
+                        {formatFileSize(f.file_size)} · {new Date(f.created_at || f.uploaded_at || f.createdAt).toLocaleDateString()}
                       </div>
                     </div>
                     {canManage && (
