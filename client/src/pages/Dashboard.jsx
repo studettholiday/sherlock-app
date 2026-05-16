@@ -36,7 +36,7 @@ export default function Dashboard() {
   const canLibrary = ['admin', 'assistant', 'teacher'].includes(user?.role);
 
   useEffect(() => { fetchData(); }, []);
-  useEffect(() => { if (canLibrary) fetchLibrary(); }, []);
+  useEffect(() => { fetchLibrary(); }, []);
 
   const fetchData = async () => {
     try {
@@ -99,7 +99,7 @@ export default function Dashboard() {
       const res = await fetch('/api/library/upload', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Upload failed');
-      fetchLibrary();
+      await fetchLibrary();
     } catch (err) {
       setLibError(err.message);
     } finally {
@@ -255,8 +255,7 @@ export default function Dashboard() {
         )}
 
         {/* Knowledge Library */}
-        {canLibrary && (
-          <div style={{ marginBottom: '44px' }}>
+        <div style={{ marginBottom: '44px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
               <h2 style={{ fontSize: '18px', fontWeight: '700', margin: 0, letterSpacing: '-0.01em' }}>📚 Knowledge Library</h2>
               <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)' }}>
@@ -265,14 +264,16 @@ export default function Dashboard() {
             </div>
             <p style={{ color: COLORS.muted, fontSize: '13px', marginBottom: 20, marginTop: 4 }}>Documents, schedules, rules — anything Sherlock should know about your school.</p>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20, flexWrap: 'wrap' }}>
-              <input ref={fileInputRef} type="file" accept=".pdf,.txt,.md" onChange={uploadFile} style={{ display: 'none' }} />
-              <button onClick={() => fileInputRef.current?.click()} disabled={libUploading} className="dash-lib-upload"
-                style={{ padding: '10px 22px', background: libUploading ? 'rgba(99,102,241,0.25)' : 'linear-gradient(135deg, #4f46e5, #7c3aed)', border: 'none', borderRadius: 10, color: 'white', fontSize: 14, fontWeight: 700, cursor: libUploading ? 'not-allowed' : 'pointer', boxShadow: libUploading ? 'none' : '0 4px 16px rgba(79,70,229,0.32)', opacity: libUploading ? 0.7 : 1 }}>
-                {libUploading ? 'Uploading…' : '↑ Upload File'}
-              </button>
-              {libError && <span style={{ fontSize: 13, color: '#f87171' }}>{libError}</span>}
-            </div>
+            {canLibrary && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20, flexWrap: 'wrap' }}>
+                <input ref={fileInputRef} type="file" accept=".pdf,.txt,.md" onChange={uploadFile} style={{ display: 'none' }} />
+                <button onClick={() => fileInputRef.current?.click()} disabled={libUploading} className="dash-lib-upload"
+                  style={{ padding: '10px 22px', background: libUploading ? 'rgba(99,102,241,0.25)' : 'linear-gradient(135deg, #4f46e5, #7c3aed)', border: 'none', borderRadius: 10, color: 'white', fontSize: 14, fontWeight: 700, cursor: libUploading ? 'not-allowed' : 'pointer', boxShadow: libUploading ? 'none' : '0 4px 16px rgba(79,70,229,0.32)', opacity: libUploading ? 0.7 : 1 }}>
+                  {libUploading ? 'Uploading…' : '↑ Upload File'}
+                </button>
+                {libError && <span style={{ fontSize: 13, color: '#f87171' }}>{libError}</span>}
+              </div>
+            )}
 
             {libLoading ? (
               <div style={{ color: COLORS.muted, fontSize: 13, padding: '16px 0' }}>Loading…</div>
@@ -301,7 +302,6 @@ export default function Dashboard() {
               </div>
             )}
           </div>
-        )}
 
         {/* Members */}
         <div>
