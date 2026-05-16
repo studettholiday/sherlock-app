@@ -76,12 +76,17 @@ export default function Dashboard() {
 
   const fetchLibrary = async () => {
     setLibLoading(true);
+    setLibError('');
     try {
+      console.log('[library] fetching file list');
       const res = await fetch('/api/library/', { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
+      console.log('[library] response ok=%s data=%o', res.ok, data);
+      if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
       setLibFiles(data.files || []);
     } catch (err) {
-      console.error(err);
+      console.error('[library] fetchLibrary error:', err);
+      setLibError(err.message);
     } finally {
       setLibLoading(false);
     }
@@ -110,10 +115,15 @@ export default function Dashboard() {
 
   const deleteFile = async (id) => {
     try {
-      await fetch(`/api/library/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`/api/library/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Delete failed (${res.status})`);
+      }
       setLibFiles(prev => prev.filter(f => f.id !== id));
     } catch (err) {
-      console.error(err);
+      console.error('[library] deleteFile error:', err);
+      setLibError(err.message);
     }
   };
 
@@ -265,15 +275,15 @@ export default function Dashboard() {
             <p style={{ color: COLORS.muted, fontSize: '13px', marginBottom: 20, marginTop: 4 }}>Documents, schedules, rules — anything Sherlock should know about your school.</p>
 
             {canLibrary && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: libError ? 10 : 20, flexWrap: 'wrap' }}>
                 <input ref={fileInputRef} type="file" accept=".pdf,.txt,.md" onChange={uploadFile} style={{ display: 'none' }} />
                 <button onClick={() => fileInputRef.current?.click()} disabled={libUploading} className="dash-lib-upload"
                   style={{ padding: '10px 22px', background: libUploading ? 'rgba(99,102,241,0.25)' : 'linear-gradient(135deg, #4f46e5, #7c3aed)', border: 'none', borderRadius: 10, color: 'white', fontSize: 14, fontWeight: 700, cursor: libUploading ? 'not-allowed' : 'pointer', boxShadow: libUploading ? 'none' : '0 4px 16px rgba(79,70,229,0.32)', opacity: libUploading ? 0.7 : 1 }}>
                   {libUploading ? 'Uploading…' : '↑ Upload File'}
                 </button>
-                {libError && <span style={{ fontSize: 13, color: '#f87171' }}>{libError}</span>}
               </div>
             )}
+            {libError && <div style={{ fontSize: 13, color: '#f87171', marginBottom: 16, padding: '8px 12px', background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 8 }}>{libError}</div>}
 
             {libLoading ? (
               <div style={{ color: COLORS.muted, fontSize: 13, padding: '16px 0' }}>Loading…</div>

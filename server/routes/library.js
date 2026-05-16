@@ -11,8 +11,13 @@ const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
 const UPLOAD_DIR = process.env.UPLOAD_DIR || '/data/library';
 
 // Ensure upload directory exists
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+try {
+  if (!fs.existsSync(UPLOAD_DIR)) {
+    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+    console.log('[library] Created upload dir:', UPLOAD_DIR);
+  }
+} catch (e) {
+  console.error('[library] Could not create upload dir:', UPLOAD_DIR, e.message);
 }
 
 const storage = multer.diskStorage({
@@ -46,13 +51,15 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
     return res.status(403).json({ error: 'Forbidden' });
   }
   try {
+    console.log('[library] POST /upload file=%s size=%d schoolId=%s', req.file.originalname, req.file.size, req.user.schoolId);
     const result = await pool.query(
       'INSERT INTO library_files (school_id, filename, file_path, file_size, mime_type, uploaded_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
       [req.user.schoolId, req.file.originalname, req.file.path, req.file.size, req.file.mimetype, req.user.userId]
     );
+    console.log('[library] POST /upload inserted id=%s', result.rows[0].id);
     res.json({ file: result.rows[0] });
   } catch (err) {
-    console.error(err);
+    console.error('[library] POST /upload DB error:', err.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -60,12 +67,15 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
 // Get all library files for school
 router.get('/', authMiddleware, async (req, res) => {
   try {
+    console.log('[library] GET / schoolId=%s role=%s', req.user.schoolId, req.user.role);
     const result = await pool.query(
       'SELECT id, filename, file_size, mime_type, created_at FROM library_files WHERE school_id = $1 ORDER BY created_at DESC',
       [req.user.schoolId]
     );
+    console.log('[library] GET / returned %d rows', result.rows.length);
     res.json({ files: result.rows });
   } catch (err) {
+    console.error('[library] GET / error:', err.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
