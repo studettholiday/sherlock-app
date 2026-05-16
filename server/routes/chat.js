@@ -1,109 +1,176 @@
 const express = require('express');
 const router = express.Router();
-const { routeToProvider } = require('../services/ai');
-const pool = require('../services/db');
+const fs = require('fs');
+const { Pool } = require('pg');
+const authMiddleware = require('../middleware/auth');
 
-const MAX_MESSAGES_PER_HOUR = 10;
-const MAX_MESSAGE_LENGTH = 500;
+const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
+
+// Per-user rate limit: 60 messages per hour
+const rateLimitStore = new Map();
+const MAX_PER_HOUR = 60;
 const WINDOW_MS = 60 * 60 * 1000;
 
-// { ip -> { count, resetAt } }
-const rateLimitStore = new Map();
-
-// Prune expired entries every hour so the map doesn't grow unboundedly
 setInterval(() => {
   const now = Date.now();
-  for (const [ip, entry] of rateLimitStore) {
-    if (now >= entry.resetAt) rateLimitStore.delete(ip);
+  for (const [k, e] of rateLimitStore) {
+    if (now >= e.resetAt) rateLimitStore.delete(k);
   }
 }, WINDOW_MS);
 
-function checkRateLimit(ip) {
+function checkRateLimit(userId) {
   const now = Date.now();
-  const entry = rateLimitStore.get(ip);
-
+  const entry = rateLimitStore.get(userId);
   if (!entry || now >= entry.resetAt) {
-    rateLimitStore.set(ip, { count: 1, resetAt: now + WINDOW_MS });
+    rateLimitStore.set(userId, { count: 1, resetAt: now + WINDOW_MS });
     return true;
   }
-
-  if (entry.count >= MAX_MESSAGES_PER_HOUR) return false;
-
+  if (entry.count >= MAX_PER_HOUR) return false;
   entry.count += 1;
   return true;
 }
 
-router.post('/', async (req, res) => {
-  const ip = req.ip;
-  if (!checkRateLimit(ip)) {
-    return res.status(429).json({ error: 'Too many requests. Please try again later.' });
+async function getLibraryContext(schoolId) {
+  try {
+    const result = await pool.query(
+      'SELECT filename, file_path, mime_type FROM library_files WHERE school_id = $1',
+      [schoolId]
+    );
+    const contents = [];
+    for (const file of result.rows) {
+      try {
+        if (file.mime_type === 'application/pdf') {
+          const pdfParse = require('pdf-parse');
+          const buffer = fs.readFileSync(file.file_path);
+          const data = await pdfParse(buffer);
+          contents.push({ filename: file.filename, content: data.text });
+        } else {
+          const text = fs.readFileSync(file.file_path, 'utf8');
+          contents.push({ filename: file.filename, content: text });
+        }
+      } catch (e) {
+        console.error('Error reading library file:', file.filename, e.message);
+      }
+    }
+    return contents;
+  } catch (err) {
+    console.error('Library fetch error:', err.message);
+    return [];
+  }
+}
+
+function buildSystemPrompt(user, mode, libraryFiles, language) {
+  const role = user.role;
+  const schoolName = user.schoolName;
+
+  const roleContext = {
+    admin:     `You are assisting ${schoolName}'s admin. You have full access to help manage the school.`,
+    assistant: `You are assisting ${schoolName}'s office assistant.`,
+    teacher:   `You are assisting a teacher at ${schoolName}.`,
+    student:   `You are assisting a student at ${schoolName}.`,
+  }[role] || `You are assisting a member of ${schoolName}.`;
+
+  let prompt = `You are Sherlock, an AI assistant for ${schoolName}. ${roleContext} Be concise, helpful, and professional.`;
+
+  if (language === 'ka') {
+    prompt += ' Always respond in Georgian (ქართული) regardless of the language of the documents.';
   }
 
-  const { messages, provider = 'anthropic', context, language = 'en' } = req.body;
+  if (mode === 'focus') {
+    prompt += '\n\nIMPORTANT: Answer ONLY using the school library documents provided below. If the answer is not in the library, say you do not have that information in the school library.';
+  } else if (mode === 'smart') {
+    prompt += '\n\nUse the school library documents as your primary source. You may also use your general knowledge to supplement answers.';
+  } else {
+    prompt += '\n\nYou may use both the school library and your full general knowledge to help.';
+  }
+
+  if (libraryFiles.length > 0) {
+    const combined = libraryFiles
+      .map(f => `=== ${f.filename} ===\n${f.content}`)
+      .join('\n\n')
+      .slice(0, 20000);
+    prompt += `\n\nSCHOOL LIBRARY:\n\n${combined}`;
+  }
+
+  return prompt;
+}
+
+router.post('/', authMiddleware, async (req, res) => {
+  const user = req.user;
+
+  if (!checkRateLimit(user.userId)) {
+    return res.status(429).json({ error: 'Too many messages. Please wait before sending more.' });
+  }
+
+  const { messages, mode = 'smart', language = 'en' } = req.body;
 
   if (!Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'messages array is required' });
   }
 
-  const lastUser = messages.findLast((m) => m.role === 'user');
-  if (lastUser && typeof lastUser.content === 'string' && lastUser.content.length > MAX_MESSAGE_LENGTH) {
-    return res.status(400).json({ error: `Message too long. Maximum ${MAX_MESSAGE_LENGTH} characters allowed.` });
-  }
-
-  // Anthropic requires the conversation to start with a user message.
-  // Strip any leading assistant turns (e.g. the client's greeting bubble).
-  const trimmed = messages.slice(
-    messages.findIndex((m) => m.role === 'user')
-  );
-
-  if (trimmed.length === 0) {
-    return res.status(400).json({ error: 'At least one user message is required' });
-  }
-
-  // Build context prefix: library first, then any uploaded document
-  let contextPrefix = '';
-
   try {
-    const libResult = await pool.query(
-      'SELECT filename, content FROM knowledge_library ORDER BY uploaded_at DESC'
+    const schoolResult = await pool.query(
+      'SELECT api_key_encrypted, chat_mode_ceiling, name FROM schools WHERE id = $1',
+      [user.schoolId]
     );
-    if (libResult.rows.length > 0) {
-      let combined = libResult.rows
-        .map(r => `=== ${r.filename} ===\n${r.content}`)
-        .join('\n\n');
-      if (combined.length > 12000) combined = combined.slice(0, 12000);
-      if (language === 'ka') {
-        contextPrefix += `შემდეგი არის სკოლის ბიბლიოთეკის შინაარსი. შესაძლოა ინგლისურ ენაზე იყოს. შენ ᲐᲣᲪᲘᲚᲔᲑᲚᲐᲓ უნდა წაიკითხო, გაიგო და კითხვებზე პასუხი გასცე მხოლოდ ქართულ ენაზე. არ დაუბრუნო მომხმარებელს ინგლისური ტექსტი — ყველაფერი თარგმნე ქართულად პასუხის გაცემამდე.\n\nბიბლიოთეკის შინაარსი:\n\n${combined}\n\n---\n\n`;
-      } else {
-        contextPrefix += `SCHOOL KNOWLEDGE LIBRARY (always use this to answer questions):\n\n${combined}\n\n---\n\n`;
-      }
+    if (schoolResult.rows.length === 0) {
+      return res.status(403).json({ error: 'School not found' });
     }
-  } catch (err) {
-    console.error('Library fetch error:', err.message);
-  }
+    const school = schoolResult.rows[0];
+    const apiKey = school.api_key_encrypted;
 
-  if (context && typeof context === 'string' && context.trim()) {
-    const docContent = context.slice(0, 8000);
-    if (language === 'ka') {
-      contextPrefix += `მომხმარებელმა ატვირთა დოკუმენტი. შესაძლოა ინგლისურ ენაზე იყოს. შენ ᲐᲣᲪᲘᲚᲔᲑᲚᲐᲓ უნდა წაიკითხო, გაიგო და კითხვებზე პასუხი გასცე მხოლოდ ქართულ ენაზე. არ დაუბრუნო მომხმარებელს ინგლისური ტექსტი — ყველაფერი თარგმნე ქართულად პასუხის გაცემამდე.\n\nდოკუმენტის შინაარსი:\n\n${docContent}\n\nუპასუხე კითხვებს ამ დოკუმენტის საფუძველზე. თუ კითხვა არ ეხება დოკუმენტს, ნათლად აცნობე ამის შესახებ.\n\n---\n\n`;
-    } else {
-      contextPrefix += `The user has uploaded a document. Use this as your knowledge base to answer questions:\n\n${docContent}\n\nAnswer questions based on this document. If the question is not covered in the document, say so clearly.\n\n---\n\n`;
+    // Enforce mode ceiling set by admin
+    const modeRank = { focus: 0, smart: 1, full: 2 };
+    const ceiling = school.chat_mode_ceiling || 'full';
+    const effectiveMode = (modeRank[mode] ?? 1) <= (modeRank[ceiling] ?? 2) ? mode : ceiling;
+
+    if (!apiKey) {
+      return res.status(402).json({ error: 'No API key configured for this school. Please add your Anthropic API key in settings.' });
     }
-  }
 
-  let processedMessages = trimmed;
-  if (contextPrefix) {
-    processedMessages = trimmed.map((msg, i) =>
-      i === 0 ? { ...msg, content: contextPrefix + msg.content } : msg
+    const libraryFiles = await getLibraryContext(user.schoolId);
+
+    const systemPrompt = buildSystemPrompt(
+      { ...user, schoolName: school.name || user.schoolName },
+      effectiveMode,
+      libraryFiles,
+      language
     );
-  }
 
-  try {
-    const reply = await routeToProvider(provider, processedMessages, language);
+    // Strip leading assistant messages — Anthropic requires conversation to start with user
+    const trimmed = messages.slice(messages.findIndex(m => m.role === 'user'));
+    if (trimmed.length === 0) {
+      return res.status(400).json({ error: 'At least one user message is required' });
+    }
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: trimmed,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('Anthropic error:', data);
+      return res.status(500).json({ error: data.error?.message || 'AI error' });
+    }
+
+    const reply = data.content?.[0]?.text || 'No response.';
     res.json({ message: reply });
+
   } catch (err) {
-    console.error('AI error:', err.message);
-    res.status(500).json({ error: err.message });
+    console.error('Chat error:', err.message);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 

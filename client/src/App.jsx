@@ -6,6 +6,7 @@ import Signup from './pages/Signup';
 import InviteAccept from './pages/InviteAccept';
 import Dashboard from './pages/Dashboard';
 import JoinWithCode from './pages/JoinWithCode';
+import Chat from './pages/Chat';
 
 const T = {
   EN: {
@@ -430,6 +431,11 @@ function AppInner() {
   );
 
   if (window.location.pathname === '/join') return <JoinWithCode />;
+
+  if (window.location.pathname === '/chat') {
+    if (!user) return <Login onSwitch={() => setAuthPage('signup')} onSuccess={() => window.location.href = '/chat'} />;
+    return <Chat />;
+  }
 
   if (window.location.pathname === '/dashboard' || window.location.pathname === '/app') {
     if (!user) return null;
