@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import ChatWindow from './components/ChatWindow';
+import { AuthProvider, useAuth } from './AuthContext';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import InviteAccept from './pages/InviteAccept';
 
 const T = {
   EN: {
@@ -335,7 +339,9 @@ function SignupModal({ lang, onClose }) {
 }
 
 
-export default function App() {
+function AppInner() {
+  const { user, loading } = useAuth();
+  const [authPage, setAuthPage] = useState('login');
   const [lang, setLang] = useState(() => localStorage.getItem('sherlock_lang') || 'EN');
   const [modalOpen, setModalOpen] = useState(false);
   const [chatExpanded, setChatExpanded] = useState(false);
@@ -406,6 +412,26 @@ export default function App() {
       document.body.style.overflow = '';
     };
   }, [modalOpen, chatExpanded]);
+
+  const inviteToken = window.location.pathname.startsWith('/invite/')
+    ? window.location.pathname.split('/invite/')[1]
+    : null;
+
+  if (loading) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d0d1a' }}>
+      <div style={{ color: 'white', fontSize: '18px' }}>Loading...</div>
+    </div>
+  );
+
+  if (inviteToken) return (
+    <InviteAccept token={inviteToken} onSuccess={() => window.location.href = '/app'} />
+  );
+
+  if (!user) return (
+    authPage === 'login'
+      ? <Login onSwitch={() => setAuthPage('signup')} onSuccess={() => window.location.href = '/app'} />
+      : <Signup onSwitch={() => setAuthPage('login')} onSuccess={() => window.location.href = '/app'} />
+  );
 
   return (
     <div
@@ -640,5 +666,13 @@ export default function App() {
 
       </div>{/* end relative z-index:1 wrapper */}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
   );
 }
