@@ -1,0 +1,36 @@
+CREATE TABLE IF NOT EXISTS schools (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  api_key_encrypted TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  role VARCHAR(50) DEFAULT 'student',
+  name VARCHAR(255),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS invites (
+  id SERIAL PRIMARY KEY,
+  school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE,
+  role VARCHAR(50) NOT NULL,
+  token VARCHAR(255) UNIQUE NOT NULL,
+  used BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS library_files (
+  id SERIAL PRIMARY KEY,
+  school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE,
+  filename VARCHAR(255) NOT NULL,
+  file_path TEXT NOT NULL,
+  file_size INTEGER,
+  mime_type VARCHAR(100),
+  uploaded_by INTEGER REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT NOW()
+);
