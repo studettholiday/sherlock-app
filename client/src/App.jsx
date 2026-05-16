@@ -4,6 +4,8 @@ import { AuthProvider, useAuth } from './AuthContext';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import InviteAccept from './pages/InviteAccept';
+import Dashboard from './pages/Dashboard';
+import JoinWithCode from './pages/JoinWithCode';
 
 const T = {
   EN: {
@@ -424,13 +426,20 @@ function AppInner() {
   );
 
   if (inviteToken) return (
-    <InviteAccept token={inviteToken} onSuccess={() => window.location.href = '/app'} />
+    <InviteAccept token={inviteToken} onSuccess={() => window.location.href = '/dashboard'} />
   );
+
+  if (window.location.pathname === '/join') return <JoinWithCode />;
+
+  if (window.location.pathname === '/dashboard' || window.location.pathname === '/app') {
+    if (!user) return null;
+    return <Dashboard />;
+  }
 
   if (!user) return (
     authPage === 'login'
-      ? <Login onSwitch={() => setAuthPage('signup')} onSuccess={() => window.location.href = '/app'} />
-      : <Signup onSwitch={() => setAuthPage('login')} onSuccess={() => window.location.href = '/app'} />
+      ? <Login onSwitch={() => setAuthPage('signup')} onSuccess={() => window.location.href = '/dashboard'} />
+      : <Signup onSwitch={() => setAuthPage('login')} onSuccess={() => window.location.href = '/dashboard'} />
   );
 
   return (

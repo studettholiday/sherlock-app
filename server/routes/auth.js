@@ -117,4 +117,36 @@ router.get('/me', async (req, res) => {
   }
 });
 
+router.post('/join', async (req, res) => {
+  const { code, name, email, password } = req.body;
+  if (!code || !email || !password) return res.status(400).json({ error: 'Missing fields' });
+  try {
+    const result = await pool.query(
+      'SELECT id, name, teacher_code, student_code, assistant_code FROM schools WHERE teacher_code = $1 OR student_code = $1 OR assistant_code = $1',
+      [code.toUpperCase()]
+    );
+    if (result.rows.length === 0) return res.status(400).json({ error: 'Invalid access code' });
+    const school = result.rows[0];
+    let role = 'student';
+    if (code.toUpperCase() === school.teacher_code) role = 'teacher';
+    else if (code.toUpperCase() === school.assistant_code) role = 'assistant';
+    const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (existing.rows.length > 0) return res.status(409).json({ error: 'Email already registered' });
+    const bcrypt = require('bcryptjs');
+    const hash = await bcrypt.hash(password, 12);
+    const userResult = await pool.query(
+      'INSERT INTO users (school_id, email, password_hash, role, name) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, role, name',
+      [school.id, email, hash, role, name || email.split('@')[0]]
+    );
+    const user = userResult.rows[0];
+    const jwt = require('jsonwebtoken');
+    const JWT_SECRET = process.env.JWT_SECRET || 'sherlock-secret-change-in-production';
+    const token = jwt.sign({ userId: user.id, schoolId: school.id, role }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, user: { ...user, schoolId: school.id, schoolName: school.name } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;
