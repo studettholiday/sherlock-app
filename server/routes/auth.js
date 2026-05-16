@@ -9,7 +9,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'sherlock-secret-change-in-producti
 
 // School signup (standard) or invite-based signup
 router.post('/signup', async (req, res) => {
-  const { schoolName, email, password, apiKey, invite_code, name } = req.body;
+  const { schoolName, email, password, apiKey, invite_code, name, directorName, phone, website } = req.body;
 
   if (invite_code) {
     try {
@@ -45,8 +45,8 @@ router.post('/signup', async (req, res) => {
     const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
     if (existing.rows.length > 0) return res.status(409).json({ error: 'Email already registered' });
     const schoolResult = await pool.query(
-      'INSERT INTO schools (name, api_key_encrypted) VALUES ($1, $2) RETURNING id',
-      [schoolName, apiKey || null]
+      'INSERT INTO schools (name, api_key_encrypted, director_name, phone, website) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [schoolName, apiKey || null, directorName || null, phone || null, website || null]
     );
     const schoolId = schoolResult.rows[0].id;
     const hash = await bcrypt.hash(password, 12);
