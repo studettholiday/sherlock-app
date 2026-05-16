@@ -129,7 +129,7 @@ export default function Dashboard() {
             {/* Invite table */}
             {invites.length > 0 && (
               <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: '12px', overflow: 'hidden' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 140px 80px 80px', gap: '0', borderBottom: `1px solid ${COLORS.border}`, padding: '10px 16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 100px 80px 80px', gap: '0', borderBottom: `1px solid ${COLORS.border}`, padding: '10px 16px' }}>
                   {['Role', 'Link', 'Expires', 'Status', ''].map(h => (
                     <span key={h} style={{ fontSize: '12px', color: COLORS.muted, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</span>
                   ))}
@@ -139,19 +139,14 @@ export default function Dashboard() {
                   const expired = new Date(inv.expires_at) < new Date();
                   const used = !!inv.used_at;
                   return (
-                    <div key={inv.id} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 140px 80px 80px', gap: '0', padding: '12px 16px', borderBottom: `1px solid ${COLORS.border}`, alignItems: 'center' }}>
+                    <div key={inv.id} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 100px 80px 80px', gap: '0', padding: '12px 16px', borderBottom: `1px solid ${COLORS.border}`, alignItems: 'center' }}>
                       <span style={{ fontSize: '12px', padding: '3px 8px', borderRadius: '12px', background: roleBg[inv.target_role], color: roleColor[inv.target_role], display: 'inline-block', textAlign: 'center' }}>
                         {inv.target_role}
                       </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 8px', overflow: 'hidden' }}>
-                        <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                          {`/join?code=${inv.code.slice(0,8)}...`}
-                        </span>
-                        <button onClick={() => copyToClipboard(url, `inv-${inv.id}`)}
-                          style={{ flexShrink: 0, background: copied === `inv-${inv.id}` ? 'rgba(52,211,153,0.15)' : 'rgba(99,102,241,0.15)', border: `1px solid ${copied === `inv-${inv.id}` ? 'rgba(52,211,153,0.4)' : 'rgba(99,102,241,0.4)'}`, borderRadius: '6px', color: copied === `inv-${inv.id}` ? '#34d399' : '#818cf8', cursor: 'pointer', fontSize: '11px', padding: '3px 10px', whiteSpace: 'nowrap' }}>
-                          {copied === `inv-${inv.id}` ? '✓ Copied' : '📋 Copy'}
-                        </button>
-                      </div>
+                      <button onClick={() => copyToClipboard(url, `inv-${inv.id}`)}
+                        style={{ padding: '4px 14px', borderRadius: '6px', border: `1px solid ${copied === `inv-${inv.id}` ? 'rgba(52,211,153,0.4)' : 'rgba(99,102,241,0.4)'}`, background: copied === `inv-${inv.id}` ? 'rgba(52,211,153,0.15)' : 'rgba(99,102,241,0.15)', color: copied === `inv-${inv.id}` ? '#34d399' : '#818cf8', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                        {copied === `inv-${inv.id}` ? '✓ Copied' : '📋 Copy Link'}
+                      </button>
                       <span style={{ fontSize: '12px', color: COLORS.muted }}>{new Date(inv.expires_at).toLocaleDateString()}</span>
                       <span style={{ fontSize: '12px', color: used ? '#34d399' : expired ? '#f87171' : '#fbbf24' }}>
                         {used ? 'Used' : expired ? 'Expired' : 'Active'}
