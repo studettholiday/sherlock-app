@@ -79,7 +79,7 @@ export default function Dashboard() {
     setLibError('');
     try {
       console.log('[library] fetching file list');
-      const res = await fetch('/api/library/', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch('/api/library/?t=' + Date.now(), { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       console.log('[library] response ok=%s data=%o', res.ok, data);
       if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
