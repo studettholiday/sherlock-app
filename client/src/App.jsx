@@ -442,6 +442,8 @@ function AppInner() {
     return <Dashboard />;
   }
 
+  if (user && (window.location.pathname === "/" || window.location.pathname === "")) { window.location.href = "/dashboard"; return null; }
+
   if (!user) return (
     authPage === 'login'
       ? <Login onSwitch={() => setAuthPage('signup')} onSuccess={() => window.location.href = '/dashboard'} />
