@@ -6,6 +6,7 @@ const chatRouter = require('./routes/chat');
 const dbRouter = require('./routes/db');
 const youtubeRoutes = require('./routes/youtube');
 const searchRoutes = require('./routes/search');
+const authRouter = require('./routes/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -15,6 +16,7 @@ app.use(express.json({ limit: '10mb' }));
 
 app.use('/api/chat', chatRouter);
 app.use('/api', dbRouter);
+app.use('/api/auth', authRouter);
 app.use('/api/youtube', youtubeRoutes);
 app.use('/api/search', searchRoutes);
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
