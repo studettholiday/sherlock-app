@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../AuthContext';
 
 const BASE_URL = 'https://sherlock-app-production.up.railway.app';
@@ -24,12 +24,19 @@ export default function Dashboard() {
   const [inviteRole, setInviteRole] = useState('teacher');
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState('');
+  const [libFiles, setLibFiles] = useState([]);
+  const [libLoading, setLibLoading] = useState(false);
+  const [libUploading, setLibUploading] = useState(false);
+  const [libError, setLibError] = useState('');
+  const fileInputRef = useRef(null);
 
   const token = localStorage.getItem('sherlock_token');
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
   const canManage = user?.role === 'admin' || user?.role === 'assistant';
+  const canLibrary = ['admin', 'assistant', 'teacher'].includes(user?.role);
 
   useEffect(() => { fetchData(); }, []);
+  useEffect(() => { if (canLibrary) fetchLibrary(); }, []);
 
   const fetchData = async () => {
     try {
@@ -59,6 +66,55 @@ export default function Dashboard() {
   const revokeInvite = async (id) => {
     await fetch(`/api/invites/${id}`, { method: 'DELETE', headers });
     setInvites(prev => prev.filter(i => i.id !== id));
+  };
+
+  const formatFileSize = (bytes) => {
+    if (!bytes) return '—';
+    if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    return (bytes / 1024).toFixed(1) + ' KB';
+  };
+
+  const fetchLibrary = async () => {
+    setLibLoading(true);
+    try {
+      const res = await fetch('/api/library/', { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      setLibFiles(data.files || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLibLoading(false);
+    }
+  };
+
+  const uploadFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) { setLibError('File must be under 25MB.'); return; }
+    setLibError('');
+    setLibUploading(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/library/upload', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      fetchLibrary();
+    } catch (err) {
+      setLibError(err.message);
+    } finally {
+      setLibUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const deleteFile = async (id) => {
+    try {
+      await fetch(`/api/library/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      setLibFiles(prev => prev.filter(f => f.id !== id));
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const copyToClipboard = (text, key) => {
@@ -103,6 +159,11 @@ export default function Dashboard() {
         .dash-copy:hover { filter: brightness(1.15); }
         .dash-revoke { transition: all 0.15s; }
         .dash-revoke:hover { background: rgba(239,68,68,0.25) !important; }
+        .dash-lib-upload { transition: all 0.15s; }
+        .dash-lib-upload:hover:not(:disabled) { filter: brightness(1.1); transform: scale(1.01); }
+        .dash-lib-upload:active:not(:disabled) { transform: scale(0.97); }
+        .dash-lib-delete { transition: all 0.15s; }
+        .dash-lib-delete:hover { background: rgba(239,68,68,0.25) !important; }
       `}</style>
 
       {/* Rainbow bar */}
@@ -188,6 +249,55 @@ export default function Dashboard() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Knowledge Library */}
+        {canLibrary && (
+          <div style={{ marginBottom: '44px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '700', margin: 0, letterSpacing: '-0.01em' }}>📚 Knowledge Library</h2>
+              <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)' }}>
+                {libFiles.length} {libFiles.length === 1 ? 'file' : 'files'}
+              </span>
+            </div>
+            <p style={{ color: COLORS.muted, fontSize: '13px', marginBottom: 20, marginTop: 4 }}>Documents, schedules, rules — anything Sherlock should know about your school.</p>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20, flexWrap: 'wrap' }}>
+              <input ref={fileInputRef} type="file" accept=".pdf,.txt,.md" onChange={uploadFile} style={{ display: 'none' }} />
+              <button onClick={() => fileInputRef.current?.click()} disabled={libUploading} className="dash-lib-upload"
+                style={{ padding: '10px 22px', background: libUploading ? 'rgba(99,102,241,0.25)' : 'linear-gradient(135deg, #4f46e5, #7c3aed)', border: 'none', borderRadius: 10, color: 'white', fontSize: 14, fontWeight: 700, cursor: libUploading ? 'not-allowed' : 'pointer', boxShadow: libUploading ? 'none' : '0 4px 16px rgba(79,70,229,0.32)', opacity: libUploading ? 0.7 : 1 }}>
+                {libUploading ? 'Uploading…' : '↑ Upload File'}
+              </button>
+              {libError && <span style={{ fontSize: 13, color: '#f87171' }}>{libError}</span>}
+            </div>
+
+            {libLoading ? (
+              <div style={{ color: COLORS.muted, fontSize: 13, padding: '16px 0' }}>Loading…</div>
+            ) : libFiles.length === 0 ? (
+              <div style={{ background: COLORS.card, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '28px 24px', textAlign: 'center', color: COLORS.muted, fontSize: 13, lineHeight: 1.7, backdropFilter: 'blur(20px)' }}>
+                No files uploaded yet. Upload documents, schedules, rules — anything Sherlock should know about your school.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {libFiles.map(f => (
+                  <div key={f.id} style={{ background: COLORS.card, border: '1px solid rgba(255,255,255,0.08)', borderLeft: '3px solid #4f46e5', borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, backdropFilter: 'blur(20px)' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name || f.filename || 'Unknown'}</div>
+                      <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 3 }}>
+                        {formatFileSize(f.size)} · {new Date(f.created_at || f.uploaded_at || f.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                    {canManage && (
+                      <button onClick={() => deleteFile(f.id)} className="dash-lib-delete"
+                        style={{ padding: '7px 14px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, color: '#f87171', cursor: 'pointer', fontSize: 13, fontWeight: 600, flexShrink: 0 }}>
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>
