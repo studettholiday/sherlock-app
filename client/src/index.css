@@ -19,11 +19,6 @@ html, body, #root {
 }
 
 body, #root {
-  background-image: url('/sherlock-bg.jpg');
-  background-size: cover;
-  background-position: center center;
-  background-repeat: no-repeat;
-  background-attachment: scroll;
   min-height: 100vh;
 }
 
