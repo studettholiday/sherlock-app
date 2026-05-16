@@ -415,16 +415,8 @@ function AppInner() {
       document.body.style.overflow = '';
     };
   }, [modalOpen, chatExpanded]);
-
-  const inviteToken = window.location.pathname.startsWith('/invite/')
-    ? window.location.pathname.split('/invite/')[1]
-    : null;
-
-  if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d0d1a' }}>
-      <div style={{ color: 'white', fontSize: '18px' }}>Loading...</div>
-    </div>
-  );
+  const inviteToken = window.location.pathname.startsWith("/invite/") ? window.location.pathname.split("/invite/")[1] : null;
+  if (loading) return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />;
 
   if (inviteToken) return (
     <InviteAccept token={inviteToken} onSuccess={() => window.location.href = '/dashboard'} />
