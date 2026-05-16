@@ -16,7 +16,7 @@ function generateCode(prefix) {
 router.get('/codes', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT teacher_code, student_code, assistant_code FROM schools WHERE id = $1',
+      'SELECT teacher_code, student_code, assistant_code, status FROM schools WHERE id = $1',
       [req.user.schoolId]
     );
     res.json(result.rows[0] || {});
@@ -30,6 +30,10 @@ router.post('/codes/generate', authMiddleware, async (req, res) => {
   if (!['admin', 'assistant'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
   const { role } = req.body;
   if (!['teacher', 'student', 'assistant'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
+  const schoolResult = await pool.query('SELECT status FROM schools WHERE id = $1', [req.user.schoolId]);
+  if (schoolResult.rows[0]?.status !== 'approved') {
+    return res.status(403).json({ error: 'School not yet approved. Please wait for admin approval.' });
+  }
   const prefixes = { teacher: 'TCH', student: 'STD', assistant: 'AST' };
   const code = generateCode(prefixes[role]);
   try {

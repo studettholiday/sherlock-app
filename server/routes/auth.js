@@ -26,7 +26,17 @@ router.post('/signup', async (req, res) => {
     );
     const user = userResult.rows[0];
     const token = jwt.sign({ userId: user.id, schoolId, role: 'admin' }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { ...user, schoolId, schoolName } });
+    const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
+    const adminId = process.env.TELEGRAM_ADMIN_ID;
+    if (telegramToken && adminId) {
+      const message = `🏫 New school registration!\n\nSchool: ${schoolName}\nEmail: ${email}\nID: ${schoolId}\n\nApprove: /approve_school_${schoolId}\nReject: /reject_school_${schoolId}`;
+      fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: adminId, text: message })
+      }).catch(console.error);
+    }
+    res.json({ token, user: { ...user, schoolId, schoolName, status: 'pending' }, pending: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

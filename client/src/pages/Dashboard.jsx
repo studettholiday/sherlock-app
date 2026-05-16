@@ -67,6 +67,11 @@ export default function Dashboard() {
 
   return (
     <div style={{ minHeight: '100vh', background: COLORS.bg, color: COLORS.text, fontFamily: 'sans-serif' }}>
+      {codes.status === 'pending' && (
+        <div style={{ background: 'rgba(245,158,11,0.15)', borderBottom: '1px solid rgba(245,158,11,0.3)', padding: '14px 24px', textAlign: 'center', color: '#fbbf24', fontSize: '14px' }}>
+          ⏳ Your school is pending approval. You will receive an email once approved. Contact us at support@sherlock.school if you have questions.
+        </div>
+      )}
       {/* Header */}
       <div style={{ borderBottom: `1px solid ${COLORS.border}`, padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
