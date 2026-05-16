@@ -53,7 +53,7 @@ export default function Dashboard() {
     const res = await fetch('/api/invites/generate', { method: 'POST', headers, body: JSON.stringify({ target_role: inviteRole }) });
     const data = await res.json();
     if (data.error) return alert(data.error);
-    setInvites(prev => [{ id: Date.now(), code: data.code, target_role: data.target_role, expires_at: data.expires_at, used_at: null, created_at: new Date().toISOString() }, ...prev]);
+    fetchData();
   };
 
   const revokeInvite = async (id) => {
