@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, * {
+  -webkit-font-smoothing: antialiased;
+}
+
+:lang(ka),
+:lang(ka) *,
+html[lang="ka"],
+html[lang="ka"] * {
+  font-family: 'Noto Sans Georgian', sans-serif !important;
+}
+
+html, body, #root {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+body, #root {
+  background-image: url('/sherlock-bg.jpg');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-attachment: scroll;
+  min-height: 100vh;
+}
+
