@@ -47,6 +47,37 @@ router.post('/codes/generate', authMiddleware, async (req, res) => {
   }
 });
 
+// Get school settings
+router.get('/settings', authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT chat_mode_ceiling FROM schools WHERE id = $1',
+      [req.user.schoolId]
+    );
+    res.json(result.rows[0] || { chat_mode_ceiling: 'full' });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Update school settings
+router.patch('/settings', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  const { chat_mode_ceiling } = req.body;
+  if (!['focus', 'smart', 'full'].includes(chat_mode_ceiling)) {
+    return res.status(400).json({ error: 'Invalid chat_mode_ceiling value' });
+  }
+  try {
+    await pool.query(
+      'UPDATE schools SET chat_mode_ceiling = $1 WHERE id = $2',
+      [chat_mode_ceiling, req.user.schoolId]
+    );
+    res.json({ chat_mode_ceiling });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Get school members
 router.get('/members', authMiddleware, async (req, res) => {
   try {

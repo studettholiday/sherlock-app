@@ -28,6 +28,8 @@ export default function Dashboard() {
   const [libLoading, setLibLoading] = useState(false);
   const [libUploading, setLibUploading] = useState(false);
   const [libError, setLibError] = useState('');
+  const [chatMode, setChatMode] = useState(null);
+  const [chatModeSaving, setChatModeSaving] = useState(false);
   const fileInputRef = useRef(null);
 
   const token = localStorage.getItem('sherlock_token');
@@ -42,6 +44,7 @@ export default function Dashboard() {
     try {
       const requests = [fetch('/api/school/members', { headers })];
       if (canManage) requests.push(fetch('/api/invites', { headers }));
+      if (user?.role === 'admin') requests.push(fetch('/api/school/settings', { headers }));
       const results = await Promise.all(requests);
       const membersData = await results[0].json();
       setMembers(membersData.members || []);
@@ -49,10 +52,30 @@ export default function Dashboard() {
         const invData = await results[1].json();
         setInvites(invData.invites || []);
       }
+      if (user?.role === 'admin' && results[results.length - 1]) {
+        const settings = await results[results.length - 1].json();
+        setChatMode(settings.chat_mode_ceiling ?? 'full');
+      }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveChatMode = async (mode) => {
+    setChatModeSaving(true);
+    try {
+      const res = await fetch('/api/school/settings', {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ chat_mode_ceiling: mode }),
+      });
+      if (res.ok) setChatMode(mode);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setChatModeSaving(false);
     }
   };
 
@@ -274,6 +297,50 @@ export default function Dashboard() {
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* AI Power Settings */}
+        {user?.role === 'admin' && (
+          <div style={{ marginBottom: '44px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: '700', margin: '0 0 4px 0', letterSpacing: '-0.01em' }}>⚡ AI Power Settings</h2>
+            <p style={{ color: COLORS.muted, fontSize: '13px', marginBottom: '20px', marginTop: 4 }}>Control how much AI power your school uses. This directly affects your API costs.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {[
+                { id: 'focus', label: 'FOCUS', desc: 'Library only. Sherlock answers only from documents you upload. Zero hallucination, maximum control. Cheapest.' },
+                { id: 'smart', label: 'SMART', desc: 'Library + general knowledge. Balanced cost.' },
+                { id: 'full',  label: 'FULL',  desc: 'Unrestricted. Web search, anything. Most powerful, highest cost.' },
+              ].map(mode => {
+                const active = chatMode === mode.id;
+                return (
+                  <div
+                    key={mode.id}
+                    onClick={() => !chatModeSaving && saveChatMode(mode.id)}
+                    style={{
+                      background: active ? 'rgba(124,58,237,0.12)' : COLORS.card,
+                      border: active ? '1px solid #7c3aed' : `1px solid ${COLORS.border}`,
+                      boxShadow: active ? '0 0 18px rgba(124,58,237,0.25)' : 'none',
+                      borderRadius: '14px',
+                      padding: '16px 20px',
+                      cursor: chatModeSaving ? 'wait' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '16px',
+                      backdropFilter: 'blur(20px)',
+                      transition: 'border 0.15s, box-shadow 0.15s, background 0.15s',
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: 700, color: active ? '#a78bfa' : 'white', letterSpacing: '0.04em' }}>{mode.label}</p>
+                      <p style={{ margin: 0, fontSize: '13px', color: COLORS.muted, lineHeight: 1.5 }}>{mode.desc}</p>
+                    </div>
+                    {active && (
+                      <span style={{ fontSize: '12px', fontWeight: 700, padding: '4px 12px', borderRadius: '20px', background: 'rgba(124,58,237,0.25)', color: '#a78bfa', border: '1px solid rgba(124,58,237,0.5)', flexShrink: 0 }}>Active</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
