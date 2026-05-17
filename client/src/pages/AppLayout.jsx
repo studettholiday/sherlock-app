@@ -611,8 +611,8 @@ function RightColumn() {
         {user?.schoolName && <span className="text-xs text-white/35 ml-1">{user.schoolName}</span>}
 
         <div className="ml-auto flex items-center gap-2">
-          {/* Edit button — visible to non-student users only */}
-          {user?.role !== 'student' && (
+          {/* Edit button — visible when not on student tab */}
+          {role !== 'student' && (
             <div className="relative flex-shrink-0" ref={editBtnRef}>
               <button
                 onClick={() => setEditSubmenuOpen(o => !o)}
@@ -621,11 +621,11 @@ function RightColumn() {
               </button>
               {editSubmenuOpen && (
                 <div className="absolute right-0 mt-1 w-52 rounded-xl border border-white/15 bg-[#0f0f1a] shadow-2xl z-50 overflow-hidden">
-                  <button onClick={() => openEditor(user.role)}
+                  <button onClick={() => openEditor(role)}
                     className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-white/[0.05] hover:text-white transition-colors">
                     {lang === 'GEO' ? 'ჩემი პროფილი' : 'My Profile'}
                   </button>
-                  {(user?.role === 'admin' || user?.role === 'assistant') && (
+                  {(role === 'admin' || role === 'assistant') && (
                     <button onClick={() => openEditor('student')}
                       className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-white/[0.05] hover:text-white transition-colors border-t border-white/[0.06]">
                       {lang === 'GEO' ? 'სტუდენტის პროფილი' : 'Student Profile'}
