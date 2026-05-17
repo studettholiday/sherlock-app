@@ -74,6 +74,10 @@ router.get('/', authMiddleware, async (req, res) => {
   if (!req.user.schoolId) return res.status(400).json({ error: "No school context" });
   try {
     console.log('[library] GET / schoolId=%s role=%s', req.user.schoolId, req.user.role);
+    const debugResult = await getPool().query('SELECT COUNT(*) as cnt FROM library_files');
+    console.log('[library] TOTAL rows in table:', debugResult.rows[0].cnt);
+    const debugResult2 = await getPool().query('SELECT COUNT(*) as cnt FROM library_files WHERE school_id = $1', [req.user.schoolId]);
+    console.log('[library] rows for schoolId', req.user.schoolId, ':', debugResult2.rows[0].cnt);
     const result = await getPool().query(
       'SELECT id, filename, file_size, mime_type, created_at FROM library_files WHERE school_id = $1 ORDER BY created_at DESC',
       [req.user.schoolId]
