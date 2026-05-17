@@ -53,6 +53,7 @@ export function AuthProvider({ children }) {
   const logout = () => {
     localStorage.removeItem('sherlock_token');
     setUser(null);
+    window.location.href = '/';
   };
 
   return (
