@@ -566,6 +566,8 @@ function RightColumn() {
 
   async function sendMessage(e) {
     e.preventDefault();
+    setActivePanel(null);
+    setOpenGroup(null);
     const text = input.trim();
     if (!text || loading) return;
 
