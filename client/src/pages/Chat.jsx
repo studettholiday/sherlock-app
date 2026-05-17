@@ -224,6 +224,21 @@ export default function Chat() {
   const [libraryFiles, setLibraryFiles]   = useState([]);
   const s = CHAT_STYLES['glass'];
 
+  // Track visual viewport height so the layout never extends behind mobile keyboard/chrome
+  const [vph, setVph] = useState(
+    () => window.visualViewport?.height ?? window.innerHeight
+  );
+  useEffect(() => {
+    const onResize = () => {
+      setVph(window.visualViewport?.height ?? window.innerHeight);
+      setTimeout(() => {
+        messagesRef.current?.scrollTo({ top: messagesRef.current.scrollHeight, behavior: 'smooth' });
+      }, 150);
+    };
+    window.visualViewport?.addEventListener('resize', onResize);
+    return () => window.visualViewport?.removeEventListener('resize', onResize);
+  }, []);
+
   useEffect(() => {
     setAccentColor(ACCENT_COLORS[role] || '#7c3aed');
   }, [role]);
@@ -350,8 +365,8 @@ export default function Chat() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col text-white font-sans"
-      style={{ background: 'linear-gradient(135deg, #0a0015 0%, #0d0d1a 50%, #050510 100%)' }}>
+    <div className="flex flex-col text-white font-sans overflow-hidden"
+      style={{ background: 'linear-gradient(135deg, #0a0015 0%, #0d0d1a 50%, #050510 100%)', height: `${vph}px` }}>
 
       <style>{`
         @keyframes rainbowBar {
@@ -379,25 +394,25 @@ export default function Chat() {
         />
 
         {/* Header */}
-        <header className={`flex items-center gap-2 px-4 py-3 border-b ${s.headerBorder} flex-shrink-0`}>
-          <div className={`w-8 h-8 rounded-full ${theme.avatar} flex items-center justify-center text-white font-bold shadow-md flex-shrink-0`}>
+        <header className={`flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 border-b ${s.headerBorder} flex-shrink-0`}>
+          <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full ${theme.avatar} flex items-center justify-center text-white font-bold shadow-md flex-shrink-0 text-sm`}>
             S
           </div>
-          <h1 className={`text-base font-semibold ${s.titleColor}`}>Sherlock</h1>
+          <h1 className={`text-sm sm:text-base font-semibold ${s.titleColor}`}>Sherlock</h1>
           {user?.schoolName && (
-            <span className="text-xs text-white/35 ml-0.5">{user.schoolName}</span>
+            <span className="hidden sm:inline text-xs text-white/35 ml-0.5">{user.schoolName}</span>
           )}
 
           <div className="ml-auto flex items-center gap-2">
             <a href="/dashboard"
-              className="text-xs text-white/40 no-underline px-3.5 py-1.5 rounded-xl border border-white/10 transition-colors hover:bg-white/[0.08] hover:text-white/70">
+              className="text-xs text-white/40 no-underline px-2.5 py-1.5 sm:px-3.5 rounded-xl border border-white/10 transition-colors hover:bg-white/[0.08] hover:text-white/70 whitespace-nowrap">
               {lang === 'GEO' ? '← დაფა' : '← Dashboard'}
             </a>
           </div>
         </header>
 
         {/* Role switcher */}
-        <div className={`flex items-center gap-1 px-4 py-2 border-b ${s.headerBorder} flex-shrink-0`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        <div className={`flex items-center gap-1 px-2 py-1.5 sm:px-4 sm:py-2 border-b ${s.headerBorder} flex-shrink-0 overflow-x-auto`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {ROLE_SWITCHER.map((r) => (
             <button
               key={r.id}
@@ -427,7 +442,7 @@ export default function Chat() {
           const openGroupDef = openGroup ? getButtonGroups(lang)[role].find(g => g.id === openGroup) : null;
           return (
             <div className={`flex flex-col border-b ${s.headerBorder} flex-shrink-0`}>
-              <div className={`flex items-center gap-1.5 px-4 py-2 overflow-x-auto`}
+              <div className={`flex items-center gap-1.5 px-2 py-1.5 sm:px-4 sm:py-2 overflow-x-auto`}
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {getButtonGroups(lang)[role].map(item => {
                   const isMulti = item.children && item.children.length >= 2;
@@ -512,7 +527,7 @@ export default function Chat() {
         {/* Input */}
         <form
           onSubmit={sendMessage}
-          className={`flex items-end gap-2 px-4 py-3 border-t ${s.footerBorder} flex-shrink-0`}
+          className={`flex items-end gap-2 px-2 py-2 sm:px-4 sm:py-3 border-t ${s.footerBorder} flex-shrink-0`}
         >
           <input
             ref={fileInputRef}
