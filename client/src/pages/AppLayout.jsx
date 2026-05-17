@@ -76,7 +76,7 @@ function buildContext(libraryFiles, attachedFiles) {
   return parts.length > 0 ? parts.join('\n\n---\n\n') : null;
 }
 
-function MessageBubble({ message, theme }) {
+function MessageBubble({ message, theme, accentColor }) {
   const s = CHAT_STYLES.glass;
   const isUser = message.role === 'user';
   if (message.type === 'searching') {
@@ -84,7 +84,10 @@ function MessageBubble({ message, theme }) {
   }
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-3`}>
-      <div className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm leading-relaxed break-words ${isUser ? `${theme.userBubble} rounded-br-sm` : `${s.assistantBubble} rounded-bl-sm`}`}>
+      <div
+        className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm leading-relaxed break-words ${isUser ? 'text-white rounded-br-sm' : `${s.assistantBubble} rounded-bl-sm`}`}
+        style={isUser ? { background: accentColor, boxShadow: `0 2px 12px ${accentColor}55` } : undefined}
+      >
         {isUser ? message.content : <ReactMarkdown>{message.content}</ReactMarkdown>}
       </div>
     </div>
@@ -749,7 +752,7 @@ function RightColumn() {
               lang={lang} />
           </div>
         )}
-        {messages.map((msg, i) => <MessageBubble key={i} message={msg} theme={theme} />)}
+        {messages.map((msg, i) => <MessageBubble key={i} message={msg} theme={theme} accentColor={accentColor} />)}
       </div>
 
       {/* Thinking indicator */}
@@ -801,8 +804,8 @@ function RightColumn() {
           </button>
         )}
         <button type="submit" disabled={loading || !input.trim()}
-          style={{ minHeight: 40, minWidth: 40 }}
-          className={`px-4 py-2 rounded-xl text-white text-sm font-medium disabled:opacity-40 active:scale-95 transition-all duration-150 ${theme.sendBtn}`}>
+          style={{ minHeight: 40, minWidth: 40, background: accentColor, boxShadow: `0 4px 14px ${accentColor}55` }}
+          className="px-4 py-2 rounded-xl text-white text-sm font-medium disabled:opacity-40 active:scale-95 transition-all duration-150">
           {lang === 'GEO' ? 'გაგზავნა' : 'Send'}
         </button>
       </form>
