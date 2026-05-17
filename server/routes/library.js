@@ -6,7 +6,7 @@ const fs = require('fs');
 const { Pool } = require('pg');
 const authMiddleware = require('../middleware/auth');
 
-const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
+const getPool = () => new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || '/data/library';
 
@@ -52,7 +52,7 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
   }
   try {
     console.log('[library] POST /upload file=%s size=%d schoolId=%s', req.file.originalname, req.file.size, req.user.schoolId);
-    const result = await pool.query(
+    const result = await getPool().query(
       'INSERT INTO library_files (school_id, filename, file_path, file_size, mime_type, uploaded_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
       [req.user.schoolId, req.file.originalname, req.file.path, req.file.size, req.file.mimetype, req.user.userId]
     );
@@ -74,7 +74,7 @@ router.get('/', authMiddleware, async (req, res) => {
   if (!req.user.schoolId) return res.status(400).json({ error: "No school context" });
   try {
     console.log('[library] GET / schoolId=%s role=%s', req.user.schoolId, req.user.role);
-    const result = await pool.query(
+    const result = await getPool().query(
       'SELECT id, filename, file_size, mime_type, created_at FROM library_files WHERE school_id = $1 ORDER BY created_at DESC',
       [req.user.schoolId]
     );
@@ -90,14 +90,14 @@ router.get('/', authMiddleware, async (req, res) => {
 router.delete('/:id', authMiddleware, async (req, res) => {
   if (!['admin', 'assistant'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
   try {
-    const result = await pool.query(
+    const result = await getPool().query(
       'SELECT * FROM library_files WHERE id = $1 AND school_id = $2',
       [req.params.id, req.user.schoolId]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'File not found' });
     const file = result.rows[0];
     if (fs.existsSync(file.file_path)) fs.unlinkSync(file.file_path);
-    await pool.query('DELETE FROM library_files WHERE id = $1', [req.params.id]);
+    await getPool().query('DELETE FROM library_files WHERE id = $1', [req.params.id]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
@@ -107,7 +107,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 // Get library content for AI context (internal use)
 router.get('/context', authMiddleware, async (req, res) => {
   try {
-    const result = await pool.query(
+    const result = await getPool().query(
       'SELECT filename, file_path, mime_type FROM library_files WHERE school_id = $1',
       [req.user.schoolId]
     );
