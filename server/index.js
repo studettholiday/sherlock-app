@@ -47,17 +47,6 @@ app.get('/api/debug/library-auth', async (req, res) => {
   finally { await pool.end(); }
 });
 
-app.get('/api/debug/db', async (req, res) => {
-  const { Pool } = require('pg');
-  const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
-  try {
-    const r1 = await pool.query('SELECT COUNT(*) FROM library_files');
-    const r2 = await pool.query('SELECT current_database(), current_user, inet_server_addr()');
-    const r3 = await pool.query('SELECT LEFT(current_setting(\'data_directory\'), 50) as datadir');
-    res.json({ count: r1.rows[0], db: r2.rows[0], env_url_prefix: (process.env.DATABASE_PUBLIC_URL || '').slice(0, 40) });
-  } catch(e) { res.json({ error: e.message }); }
-  finally { await pool.end(); }
-});
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('*', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public/index.html'));
@@ -66,5 +55,3 @@ app.get('*', (_req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
-// TEMP DEBUG - remove after fix
