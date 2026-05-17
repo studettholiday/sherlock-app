@@ -63,17 +63,65 @@ const CHAT_STYLES = {
   },
 };
 
-function buildContext(libraryFiles, attachedFiles) {
-  const parts = [];
-  if (libraryFiles.length > 0) {
-    const libText = libraryFiles.map(f => `=== ${f.filename} ===\n${f.content}`).join('\n\n');
-    parts.push(`SCHOOL KNOWLEDGE LIBRARY:\n\n${libText.slice(0, 10000)}`);
+function buildContext(attachedFiles) {
+  if (!attachedFiles || attachedFiles.length === 0) return null;
+  const attachText = attachedFiles.map(f => `=== ${f.name} ===\n${f.content}`).join('\n\n');
+  return `ATTACHED FILES (use as context):\n\n${attachText.slice(0, 12000)}`;
+}
+
+function RealLibraryPanel({ onClose }) {
+  const [files, setFiles]     = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState('');
+
+  useEffect(() => {
+    const token = localStorage.getItem('sherlock_token');
+    if (!token) { setLoading(false); return; }
+    fetch('/api/library/?t=' + Date.now(), { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => { setFiles(d.files || []); setLoading(false); })
+      .catch(e => { setError(e.message); setLoading(false); });
+  }, []);
+
+  function formatFileSize(bytes) {
+    if (!bytes) return '—';
+    if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    return (bytes / 1024).toFixed(1) + ' KB';
   }
-  if (attachedFiles.length > 0) {
-    const attachText = attachedFiles.map(f => `=== ${f.name} ===\n${f.content}`).join('\n\n');
-    parts.push(`ATTACHED FILES (use as context):\n\n${attachText.slice(0, 12000)}`);
-  }
-  return parts.length > 0 ? parts.join('\n\n---\n\n') : null;
+
+  return (
+    <div style={{ background: 'rgba(13,13,26,0.97)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: '#a78bfa' }}>📚 Knowledge Library</span>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: 14, lineHeight: 1 }}>✕</button>
+      </div>
+      <div style={{ padding: '12px 16px', maxHeight: 280, overflowY: 'auto' }}>
+        {loading && <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', margin: 0 }}>Loading…</p>}
+        {error && <p style={{ fontSize: 12, color: '#f87171', margin: 0 }}>{error}</p>}
+        {!loading && !error && files.length === 0 && (
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', textAlign: 'center', padding: '12px 0', margin: 0 }}>
+            No library files yet. Upload from the dashboard.
+          </p>
+        )}
+        {files.map(f => (
+          <div key={f.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name || f.filename || 'Unknown'}</div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>{formatFileSize(f.file_size)}</div>
+            </div>
+            <span style={{ fontSize: 11, color: '#818cf8', padding: '2px 8px', background: 'rgba(99,102,241,0.15)', borderRadius: 20, border: '1px solid rgba(99,102,241,0.3)', flexShrink: 0, marginLeft: 10 }}>
+              📄
+            </span>
+          </div>
+        ))}
+        {!loading && files.length > 0 && (
+          <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginTop: 10, textAlign: 'center' }}>
+            Sherlock reads these automatically when you chat.
+          </p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function MessageBubble({ message, theme, accentColor }) {
@@ -441,7 +489,6 @@ function RightColumn() {
   const [loading, setLoading] = useState(false);
   const [accentColor, setAccentColor] = useState(ACCENT_COLORS[defaultRole] || '#7c3aed');
   const [attachedFiles, setAttachedFiles] = useState([]);
-  const [libraryFiles, setLibraryFiles]   = useState([]);
   const [provider, setProvider] = useState(lang === 'GEO' ? 'gemini' : 'anthropic');
   const [styleOpen, setStyleOpen]         = useState(false);
   const [customLabels, setCustomLabels]   = useState({ admin: {}, assistant: {}, teacher: {}, student: {} });
@@ -510,11 +557,8 @@ function RightColumn() {
   function clearChat() {
     setMessages([{ role: 'assistant', content: getGreeting(role, lang, user?.schoolName || '') }]);
     setInput(''); setLoading(false); setActivePanel(null); setOpenGroup(null);
-    setAttachedFiles([]); setLibraryFiles([]);
+    setAttachedFiles([]);
   }
-
-  function addLibraryFile(filename, content) { setLibraryFiles(prev => [...prev, { id: Date.now(), filename, content }]); }
-  function removeLibraryFile(id) { setLibraryFiles(prev => prev.filter(f => f.id !== id)); }
 
   async function loadPdfJs() {
     if (window.pdfjsLib) return window.pdfjsLib;
@@ -590,7 +634,7 @@ function RightColumn() {
       const res  = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ messages: apiMessages, provider, context: buildContext(libraryFiles, attachedFiles), language: lang === 'GEO' ? 'ka' : 'en' }),
+        body: JSON.stringify({ messages: apiMessages, provider, context: buildContext(attachedFiles), language: lang === 'GEO' ? 'ka' : 'en' }),
       });
       const data = await res.json();
       setMessages(prev => [...prev, { role: 'assistant', content: data.message ?? 'No response.' }]);
@@ -749,9 +793,13 @@ function RightColumn() {
       <div ref={messagesRef} className="flex-1 overflow-y-auto px-4 py-4" style={{ fontSize: 'clamp(13px, 1.5vw, 15px)' }}>
         {activePanel && (
           <div className="mb-4">
-            <RolePanel role={role} panel={activePanel} onClose={() => setActivePanel(null)}
-              libraryProps={{ libraryFiles, onAddFile: addLibraryFile, onRemoveFile: removeLibraryFile, orgName: user?.schoolName || '', orgNameGenitive: '' }}
-              lang={lang} />
+            {activePanel === 'real-library' ? (
+              <RealLibraryPanel onClose={() => setActivePanel(null)} />
+            ) : (
+              <RolePanel role={role} panel={activePanel} onClose={() => setActivePanel(null)}
+                libraryProps={{ orgName: user?.schoolName || '', orgNameGenitive: '' }}
+                lang={lang} />
+            )}
           </div>
         )}
         {messages.map((msg, i) => <MessageBubble key={i} message={msg} theme={theme} accentColor={accentColor} />)}
@@ -798,13 +846,11 @@ function RightColumn() {
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) sendMessage(e); }}
           className={`flex-1 resize-none rounded-xl px-3 py-2 text-sm focus:outline-none ${theme.ring} max-h-32 ${s.inputCls}`}
         />
-        {role !== 'student' && (
-          <button type="button" onClick={() => setActivePanel(activePanel === 'knowledge-library' ? null : 'knowledge-library')}
-            style={{ minHeight: 40, minWidth: 40 }}
-            className={`px-3 py-2 rounded-xl text-sm flex-shrink-0 transition-all duration-150 active:scale-95 ${activePanel === 'knowledge-library' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
-            📚
-          </button>
-        )}
+        <button type="button" onClick={() => setActivePanel(activePanel === 'real-library' ? null : 'real-library')}
+          style={{ minHeight: 40, minWidth: 40 }}
+          className={`px-3 py-2 rounded-xl text-sm flex-shrink-0 transition-all duration-150 active:scale-95 ${activePanel === 'real-library' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
+          📚
+        </button>
         <button type="submit" disabled={loading || !input.trim()}
           style={{ minHeight: 40, minWidth: 40, background: accentColor, boxShadow: `0 4px 14px ${accentColor}55` }}
           className="px-4 py-2 rounded-xl text-white text-sm font-medium disabled:opacity-40 active:scale-95 transition-all duration-150">
