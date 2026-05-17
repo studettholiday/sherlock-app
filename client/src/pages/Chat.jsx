@@ -319,10 +319,8 @@ export default function Chat() {
           0%, 100% { box-shadow: 0 0 0 0 ${theme.glow}, 0 0 14px ${theme.glowSoft}; }
           50%       { box-shadow: 0 0 0 9px transparent, 0 0 22px ${theme.glowSoft}; }
         }
-        @keyframes dotBounce {
-          0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
-          40%           { transform: translateY(-5px); opacity: 1; }
-        }
+        @keyframes dotBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+        .dot-bounce { animation: dotBounce 0.6s ease-in-out infinite; }
         @keyframes msgAppear {
           from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -450,22 +448,22 @@ export default function Chat() {
           <MessageBubble key={i} message={msg} theme={theme} />
         ))}
 
-        {loading && (
-          <div className="flex items-end gap-2.5 mb-3">
-            <div className={`w-7 h-7 rounded-full ${theme.avatar} flex items-center justify-center text-white font-bold text-xs flex-shrink-0`}>S</div>
-            <div className="px-4 py-3 rounded-2xl rounded-bl-sm bg-white/[0.06] border border-white/10 backdrop-blur-xl flex items-center gap-1.5">
-              {[0, 1, 2].map(d => (
-                <div key={d} style={{ width: 7, height: 7, borderRadius: '50%', background: 'rgba(255,255,255,0.6)', animation: `dotBounce 1.2s ease-in-out ${d * 0.2}s infinite` }} />
-              ))}
-            </div>
-          </div>
-        )}
-
         {error && (
           <div className="text-center text-red-400 text-[13px] px-4 py-2 bg-red-400/[0.08] rounded-xl border border-red-400/20 my-1">
             {error}
           </div>
         )}
+      </div>
+
+      {/* ── Thinking indicator — outside scroll, always visible above input ── */}
+      <div style={{ display: loading ? 'flex' : 'none', alignItems: 'flex-end', gap: '10px', flexShrink: 0, padding: '8px 24px', borderTop: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(20px)', background: 'rgba(8,8,20,0.60)' }}>
+        <div className={`w-7 h-7 rounded-full ${theme.avatar} flex items-center justify-center text-white font-bold text-xs flex-shrink-0`}>S</div>
+        <div className="px-4 py-2.5 rounded-2xl rounded-bl-sm bg-white/[0.06] border border-white/10 backdrop-blur-xl flex items-center gap-1.5">
+          {[0, 1, 2].map(d => (
+            <div key={d} className="dot-bounce w-2 h-2 rounded-full"
+              style={{ background: theme.send, animationDelay: `${d * 0.15}s` }} />
+          ))}
+        </div>
       </div>
 
       {/* ── Attached file pills ───────────────────────────────────────────────── */}

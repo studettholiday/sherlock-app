@@ -186,11 +186,14 @@ export default function Dashboard() {
         .dash-lib-delete:hover { background: rgba(239,68,68,0.25) !important; }
       `}</style>
 
+      {/* Ambient glow */}
+      <div style={{ position: 'fixed', inset: 0, background: 'radial-gradient(ellipse 80% 35% at 50% 0%, rgba(124,58,237,0.14), transparent)', pointerEvents: 'none', zIndex: 0 }} />
+
       {/* Rainbow bar */}
-      <div style={{ height: 2, width: '100%', background: 'linear-gradient(90deg, #7c3aed, #4f46e5, #0891b2, #06b6d4, #7c3aed)', backgroundSize: '200% 100%', animation: 'rainbowBar 4s linear infinite' }} />
+      <div style={{ position: 'relative', zIndex: 1, height: 2, width: '100%', background: 'linear-gradient(90deg, #7c3aed, #4f46e5, #0891b2, #06b6d4, #7c3aed)', backgroundSize: '200% 100%', animation: 'rainbowBar 4s linear infinite' }} />
 
       {/* Header */}
-      <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', backdropFilter: 'blur(20px)', background: 'rgba(8,8,20,0.78)' }}>
+      <div style={{ position: 'relative', zIndex: 1, borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', backdropFilter: 'blur(20px)', background: 'rgba(8,8,20,0.78)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: 0 }}>
           <div style={{ width: 44, height: 44, borderRadius: '12px', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 20, flexShrink: 0, animation: 'sLogoGlow 3s ease-in-out infinite' }}>S</div>
           <div style={{ minWidth: 0 }}>
@@ -212,7 +215,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div style={{ maxWidth: '860px', margin: '0 auto', padding: '32px 24px' }}>
+      <div style={{ position: 'relative', zIndex: 1, maxWidth: '860px', margin: '0 auto', padding: '32px 24px' }}>
 
         {/* Invite Links */}
         {canManage && (
