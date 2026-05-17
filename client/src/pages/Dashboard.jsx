@@ -36,7 +36,7 @@ export default function Dashboard() {
   const canLibrary = ['admin', 'assistant', 'teacher'].includes(user?.role);
 
   useEffect(() => { fetchData(); }, []);
-  useEffect(() => { fetchLibrary(); }, []);
+  useEffect(() => { if (user?.schoolId) fetchLibrary(); }, [user?.schoolId]);
 
   const fetchData = async () => {
     try {
@@ -75,13 +75,23 @@ export default function Dashboard() {
   };
 
   const fetchLibrary = async () => {
+    const currentToken = localStorage.getItem('sherlock_token');
+    if (!currentToken) {
+      console.warn('[library] fetchLibrary called with no token — skipping');
+      return;
+    }
     setLibLoading(true);
     setLibError('');
     try {
-      console.log('[library] fetching file list');
-      const res = await fetch('/api/library/?t=' + Date.now(), { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      console.log('[library] response ok=%s data=%o', res.ok, data);
+      console.log('[library] fetching file list, schoolId=%s token=%s…', user?.schoolId, currentToken.slice(0, 20));
+      const res = await fetch('/api/library/?t=' + Date.now(), { headers: { Authorization: `Bearer ${currentToken}` } });
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error(`Non-JSON response (${res.status} ${res.statusText})`);
+      }
+      console.log('[library] response ok=%s status=%s data=%s', res.ok, res.status, JSON.stringify(data));
       if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
       setLibFiles(data.files || []);
     } catch (err) {
