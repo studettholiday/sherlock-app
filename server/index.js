@@ -28,6 +28,25 @@ app.use('/api/youtube', youtubeRoutes);
 app.use('/api/search', searchRoutes);
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
+app.get('/api/debug/library-auth', async (req, res) => {
+  const jwt = require('jsonwebtoken');
+  const { Pool } = require('pg');
+  const JWT_SECRET = process.env.JWT_SECRET || 'sherlock-secret-change-in-production';
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'No token' });
+  let decoded;
+  try { decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET); }
+  catch (e) { return res.status(401).json({ error: 'Invalid token', detail: e.message }); }
+  const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
+  try {
+    const r1 = await pool.query('SELECT COUNT(*) as cnt FROM library_files');
+    const r2 = await pool.query('SELECT COUNT(*) as cnt FROM library_files WHERE school_id = $1', [decoded.schoolId]);
+    const r3 = await pool.query('SELECT DISTINCT school_id, COUNT(*) as cnt FROM library_files GROUP BY school_id');
+    res.json({ token_school_id: decoded.schoolId, token_user_id: decoded.userId, token_role: decoded.role, total_rows: r1.rows[0].cnt, rows_for_my_school: r2.rows[0].cnt, school_id_distribution: r3.rows });
+  } catch (e) { res.json({ error: e.message }); }
+  finally { await pool.end(); }
+});
+
 app.get('/api/debug/db', async (req, res) => {
   const { Pool } = require('pg');
   const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
