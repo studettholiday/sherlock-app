@@ -96,15 +96,15 @@ const DEMO_NOTES = [
 // ─── Theme tokens ─────────────────────────────────────────────────────────────
 
 const TH = {
-  admin:     { border: 'border-purple-500/20', hdr: 'bg-purple-500/10', accent: 'text-purple-400',  btn: 'bg-purple-600 hover:bg-purple-500',   ring: 'focus:ring-purple-500/40',  conf: 'text-purple-400'  },
-  assistant: { border: 'border-orange-500/20', hdr: 'bg-orange-500/10', accent: 'text-orange-400',  btn: 'bg-orange-600 hover:bg-orange-500',   ring: 'focus:ring-orange-500/40',  conf: 'text-orange-400'  },
-  teacher:   { border: 'border-blue-500/20',   hdr: 'bg-blue-500/10',   accent: 'text-blue-400',    btn: 'bg-blue-600 hover:bg-blue-500',       ring: 'focus:ring-blue-500/40',    conf: 'text-blue-400'    },
-  student:   { border: 'border-emerald-500/20',hdr: 'bg-emerald-500/10',accent: 'text-emerald-400', btn: 'bg-emerald-600 hover:bg-emerald-500', ring: 'focus:ring-emerald-500/40', conf: 'text-emerald-400' },
+  admin:     { border: 'border-white/[0.08]', hdr: 'bg-transparent', accent: 'text-white/80', btn: 'bg-violet-600 hover:bg-violet-500', ring: 'focus:ring-violet-500/30', conf: 'text-emerald-400' },
+  assistant: { border: 'border-white/[0.08]', hdr: 'bg-transparent', accent: 'text-white/80', btn: 'bg-violet-600 hover:bg-violet-500', ring: 'focus:ring-violet-500/30', conf: 'text-emerald-400' },
+  teacher:   { border: 'border-white/[0.08]', hdr: 'bg-transparent', accent: 'text-white/80', btn: 'bg-violet-600 hover:bg-violet-500', ring: 'focus:ring-violet-500/30', conf: 'text-emerald-400' },
+  student:   { border: 'border-white/[0.08]', hdr: 'bg-transparent', accent: 'text-white/80', btn: 'bg-violet-600 hover:bg-violet-500', ring: 'focus:ring-violet-500/30', conf: 'text-emerald-400' },
 };
 
 // ─── Shared field styles ──────────────────────────────────────────────────────
 
-const FIELD = 'w-full rounded-xl border border-white/15 bg-white/[0.05] px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none resize-none';
+const FIELD = 'w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-white/80 placeholder-white/20 focus:outline-none focus:border-white/25 resize-none';
 const CELL  = 'w-full bg-transparent text-white text-xs outline-none border-b border-transparent focus:border-white/30 py-0.5';
 
 // ─── Panel titles ─────────────────────────────────────────────────────────────
@@ -366,7 +366,7 @@ function BroadcastPanel({ lang }) {
       {sent
         ? <p className="text-emerald-400 text-sm">{lang === 'GEO' ? '✅ შეტყობინება გაიგზავნა!' : '✅ Notification sent to everyone!'}</p>
         : <button onClick={send} disabled={!msg.trim()}
-            className="rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
+            className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
             {lang === 'GEO' ? 'ყველასთვის გაგზავნა' : 'Send to Everyone'}
           </button>
       }
@@ -649,7 +649,7 @@ function MyGroupsPanel({ lang }) {
   return (
     <div className="grid grid-cols-2 gap-2">
       {TEACHER_GROUPS.map(g => (
-        <div key={g.name} className="rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-3">
+        <div key={g.name} className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
           <p className="text-xs text-white font-medium">{g.name}</p>
           <p className="text-xs text-gray-500 mt-0.5">{g.count} {lang === 'GEO' ? 'სტუდენტი' : 'students'}</p>
         </div>
@@ -697,7 +697,7 @@ function TeacherShareFilesPanel({ lang }) {
       {sent
         ? <p className="text-blue-400 text-sm">{lang === 'GEO' ? `✅ ფაილები გაიზიარა: ${sent}!` : `✅ Files shared with ${sent}!`}</p>
         : <button onClick={send} disabled={!fileName}
-            className="rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
+            className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
             {lang === 'GEO' ? 'ფაილების გაზიარება' : 'Share Files'}
           </button>
       }
@@ -966,7 +966,7 @@ function StudentLibraryPanel() {
   return (
     <div className="grid grid-cols-2 gap-2">
       {LIBRARY_CATS.map(c => (
-        <div key={c.label} className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-3">
+        <div key={c.label} className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
           <p className="text-lg mb-1">{c.icon}</p>
           <p className="text-xs text-white font-medium">{c.label}</p>
           <p className="text-xs text-gray-500 mt-0.5">{c.desc}</p>
@@ -1003,7 +1003,7 @@ function StudentNotesPanel({ lang }) {
           placeholder={lang === 'GEO' ? 'ჩანაწერის დამატება...' : 'Add a note…'}
           className={`${FIELD} py-1.5`}
         />
-        <button onClick={add} className="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 text-sm text-white transition-colors">+</button>
+        <button onClick={add} className="rounded-xl bg-violet-600 hover:bg-violet-500 px-3 py-1.5 text-sm text-white transition-colors">+</button>
       </div>
     </div>
   );
@@ -1038,7 +1038,7 @@ function StudentPracticeDiaryPanel({ lang }) {
       {saved
         ? <p className="text-emerald-400 text-sm">{lang === 'GEO' ? '✅ ჩანაწერი შენახულია!' : '✅ Entry saved!'}</p>
         : <button onClick={save} disabled={!what.trim()}
-            className="rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
+            className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
             {lang === 'GEO' ? 'ჩანაწერის შენახვა' : 'Save Entry'}
           </button>
       }
@@ -1064,7 +1064,7 @@ function StudentReportAbsencePanel({ lang }) {
       {submitted
         ? <p className="text-emerald-400 text-sm">{lang === 'GEO' ? '✅ მასწავლებელს გაეგზავნა' : '✅ Sent to your teacher'}</p>
         : <button onClick={submit} disabled={!reason.trim()}
-            className="rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
+            className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
             {lang === 'GEO' ? 'გაცდენის შეტყობინება' : 'Report Absence'}
           </button>
       }
@@ -1090,7 +1090,7 @@ function StudentReportEventAbsencePanel({ lang }) {
       {submitted
         ? <p className="text-emerald-400 text-sm">{lang === 'GEO' ? '✅ ასისტენტს გაეგზავნა' : '✅ Sent to assistant'}</p>
         : <button onClick={submit} disabled={!reason.trim()}
-            className="rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
+            className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
             {lang === 'GEO' ? 'მოხსენების გაგზავნა' : 'Submit Report'}
           </button>
       }
@@ -1116,7 +1116,7 @@ function StudentReportExamAbsencePanel({ lang }) {
       {submitted
         ? <p className="text-emerald-400 text-sm">{lang === 'GEO' ? '✅ ასისტენტს გაეგზავნა' : '✅ Sent to assistant'}</p>
         : <button onClick={submit} disabled={!reason.trim()}
-            className="rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
+            className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
             {lang === 'GEO' ? 'მოხსენების გაგზავნა' : 'Submit Report'}
           </button>
       }
@@ -1150,7 +1150,7 @@ function StudentChangeGroupPanel({ lang }) {
       {sent
         ? <p className="text-emerald-400 text-sm">{lang === 'GEO' ? '✅ მოთხოვნა გაიგზავნა' : '✅ Request sent to assistant'}</p>
         : <button onClick={submit}
-            className="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-sm text-white font-medium transition-colors">
+            className="rounded-xl bg-violet-600 hover:bg-violet-500 px-4 py-2 text-sm text-white font-medium transition-colors">
             {lang === 'GEO' ? 'მოთხოვნის გაგზავნა' : 'Submit Request'}
           </button>
       }
@@ -1185,7 +1185,7 @@ function StudentAddSubjectPanel({ lang }) {
       {sent
         ? <p className="text-emerald-400 text-sm">{lang === 'GEO' ? '✅ მოთხოვნა გაიგზავნა' : '✅ Request sent to assistant'}</p>
         : <button onClick={submit} disabled={!subject}
-            className="rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
+            className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
             {lang === 'GEO' ? 'მოთხოვნის გაგზავნა' : 'Submit Request'}
           </button>
       }
@@ -1219,7 +1219,7 @@ function StudentRemoveSubjectPanel({ lang }) {
       {sent
         ? <p className="text-emerald-400 text-sm">{lang === 'GEO' ? '✅ მოთხოვნა გაიგზავნა' : '✅ Request sent to assistant'}</p>
         : <button onClick={submit} disabled={!checked.length}
-            className="rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
+            className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
             {lang === 'GEO' ? 'მოთხოვნის გაგზავნა' : 'Submit Request'}
           </button>
       }
@@ -1282,19 +1282,8 @@ const AI_MODES = [
   { id: 'full',  label: 'FULL',  desc: 'Unrestricted. Sherlock can search the web, generate content, answer anything. Most powerful, highest cost.',          descGeo: 'შეუზღუდავი. შერლოკს შეუძლია ინტერნეტ-ძიება, კონტენტის გენერირება, ნებისმიერ კითხვაზე პასუხი. ყველაზე მძლავრი, ყველაზე მაღალი ხარჯი.' },
 ];
 
-const BORDER_SEL = {
-  admin:     'border-purple-500',
-  assistant: 'border-orange-500',
-  teacher:   'border-blue-500',
-  student:   'border-emerald-500',
-};
-
-const GLOW = {
-  admin:     'rgba(168,85,247,0.25)',
-  assistant: 'rgba(249,115,22,0.25)',
-  teacher:   'rgba(59,130,246,0.25)',
-  student:   'rgba(52,211,153,0.25)',
-};
+const BORDER_SEL = 'border-violet-500';
+const GLOW_COLOR = 'rgba(124,58,237,0.20)';
 
 function AiUsePanel({ role, lang }) {
   const th = TH[role];
@@ -1339,18 +1328,18 @@ function AiUsePanel({ role, lang }) {
             onClick={() => !saving && choose(mode.id)}
             className={`rounded-xl border p-3 transition-all duration-150 cursor-pointer ${
               selected === mode.id
-                ? `${BORDER_SEL[role]} bg-white/[0.06]`
+                ? `${BORDER_SEL} bg-white/[0.06]`
                 : `${th.border} bg-white/[0.02] hover:bg-white/[0.04]`
             }`}
-            style={selected === mode.id ? { boxShadow: `0 0 18px ${GLOW[role]}` } : undefined}
+            style={selected === mode.id ? { boxShadow: `0 0 18px ${GLOW_COLOR}` } : undefined}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
-                <p className={`text-xs font-bold mb-1 ${selected === mode.id ? th.accent : 'text-white'}`}>{mode.label}</p>
+                <p className={`text-xs font-bold mb-1 ${selected === mode.id ? 'text-violet-300' : 'text-white/80'}`}>{mode.label}</p>
                 <p className="text-xs text-gray-400 leading-relaxed">{geo ? mode.descGeo : mode.desc}</p>
               </div>
               {selected === mode.id && (
-                <span className={`flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full border ${BORDER_SEL[role]} ${th.hdr} ${th.accent}`}>
+                <span className="flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full border border-violet-500 bg-violet-500/10 text-violet-300">
                   {geo ? 'აქტიური' : 'Active'}
                 </span>
               )}
@@ -1359,7 +1348,7 @@ function AiUsePanel({ role, lang }) {
         ))}
       </div>
       {confirmed && (
-        <p className={`text-xs font-medium ${th.conf}`}>
+        <p className="text-xs font-medium text-emerald-400">
           ✓ {geo ? `დაყენებულია: ${confirmed.toUpperCase()}` : `Set to ${confirmed.toUpperCase()}`}
         </p>
       )}
@@ -1445,10 +1434,10 @@ export const ROLE_BUTTONS = {
 };
 
 export const PANEL_ACTIVE_CLS = {
-  admin:     'bg-purple-600 text-white shadow-sm shadow-purple-900/60',
-  assistant: 'bg-orange-600 text-white shadow-sm shadow-orange-900/60',
-  teacher:   'bg-blue-600 text-white shadow-sm shadow-blue-900/60',
-  student:   'bg-emerald-600 text-white shadow-sm shadow-emerald-900/60',
+  admin:     'bg-white/[0.08] text-white border border-white/20',
+  assistant: 'bg-white/[0.08] text-white border border-white/20',
+  teacher:   'bg-white/[0.08] text-white border border-white/20',
+  student:   'bg-white/[0.08] text-white border border-white/20',
 };
 
 export function RolePanel({ role, panel, onClose, libraryProps, lang = 'EN' }) {
@@ -1458,10 +1447,10 @@ export function RolePanel({ role, panel, onClose, libraryProps, lang = 'EN' }) {
     ? `${orgName} ბიბლიოთეკა`
     : getPanelTitle(panel, lang);
   return (
-    <div className={`rounded-2xl border ${th.border} bg-[#0d0d18] overflow-hidden flex flex-col max-h-[350px]`}>
-      <div className={`flex items-center justify-between px-4 py-2.5 border-b ${th.border} ${th.hdr} flex-shrink-0`}>
-        <span className={`text-sm font-semibold ${th.accent}`}>{panelTitle}</span>
-        <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors text-sm leading-none">✕</button>
+    <div className="rounded-2xl border border-white/[0.08] bg-[#0a0a14] overflow-hidden flex flex-col">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06] flex-shrink-0">
+        <span className="text-sm font-medium text-white/80">{panelTitle}</span>
+        <button onClick={onClose} className="text-white/30 hover:text-white/60 transition-colors text-sm leading-none">✕</button>
       </div>
       <div className="p-4 overflow-y-auto flex-1">
         {panelContent(role, panel, libraryProps, lang)}

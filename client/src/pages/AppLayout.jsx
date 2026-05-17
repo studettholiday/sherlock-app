@@ -12,11 +12,9 @@ const roleBg     = { admin: 'rgba(124,58,237,0.2)', teacher: 'rgba(59,130,246,0.
 const roleBorder = { admin: '#7c3aed', teacher: '#3b82f6', assistant: '#f59e0b', student: '#10b981' };
 
 /* ── Chat constants ────────────────────────────────────────────────────────── */
-const THEMES = {
-  admin:     { avatar: 'bg-gradient-to-br from-purple-500 to-purple-700', userBubble: 'bg-gradient-to-br from-purple-600 to-purple-800 text-white', sendBtn: 'bg-purple-600 hover:bg-purple-500 shadow-lg shadow-purple-900/40', ring: 'focus:ring-2 focus:ring-purple-500/40' },
-  assistant: { avatar: 'bg-gradient-to-br from-orange-500 to-orange-700',  userBubble: 'bg-gradient-to-br from-orange-600 to-orange-800 text-white',  sendBtn: 'bg-orange-600 hover:bg-orange-500 shadow-lg shadow-orange-900/40',  ring: 'focus:ring-2 focus:ring-orange-500/40'  },
-  teacher:   { avatar: 'bg-gradient-to-br from-blue-500 to-blue-700',      userBubble: 'bg-gradient-to-br from-blue-600 to-blue-800 text-white',      sendBtn: 'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-900/40',        ring: 'focus:ring-2 focus:ring-blue-500/40'    },
-  student:   { avatar: 'bg-gradient-to-br from-emerald-500 to-emerald-700',userBubble: 'bg-gradient-to-br from-emerald-600 to-emerald-800 text-white', sendBtn: 'bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-900/40',ring: 'focus:ring-2 focus:ring-emerald-500/40' },
+const THEME = {
+  avatar:  'bg-gradient-to-br from-violet-600 to-indigo-600',
+  ring:    'focus:ring-1 focus:ring-white/20',
 };
 
 const BASE_IDENTITY = 'You are Sherlock Is Smart, an AI assistant for school management. You help staff and students with schedules, events, notes, and any information uploaded to the school library. You do not assume what type of school you are — that is defined by the admin through uploaded documents and context. Be concise, helpful, and professional. You have the wit and dry humor of Sherlock Holmes from Arthur Conan Doyle\'s stories. Use occasional clever quips, deadpan observations, and self-aware humor — especially when you cannot find information, when asked something obvious, or when completing a task successfully. In Georgian, use the same wit naturally. Use this quote when it fits naturally: \'ელემენტარულია, ვატსონ.\' — use this when answering something logical or complex that you solved easily. Use it exactly as written, do not modify or translate it. In Georgian keep the same Holmesian personality but sound natural, not translated. You are never rude or dismissive — the humor is always warm and helpful. Never overdo it — use humor sparingly, only when it fits naturally. Be direct and precise. Never ask the user to clarify whether you have access to documents — you either have context or you don\'t, and you know which. If no library documents are provided in context, simply say you don\'t have that information, with Holmesian wit. Never say things like \'do you have access to...\' or \'please upload documents\' — that is not your concern. Your Georgian must be grammatically perfect — never use awkward phrasing or overly formal bureaucratic language. Speak naturally, like an intelligent Georgian speaker would. When uncertain, admit it directly and briefly, with dry humor if appropriate.';
@@ -124,18 +122,19 @@ function RealLibraryPanel({ onClose }) {
   );
 }
 
-function MessageBubble({ message, theme, accentColor }) {
+function MessageBubble({ message, accentColor }) {
   const s = CHAT_STYLES.glass;
   const isUser = message.role === 'user';
   if (message.type === 'searching') {
     return <div className="flex justify-start mb-3"><div className="px-4 py-2 text-sm text-gray-500 animate-pulse">{message.text}</div></div>;
   }
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-3`}>
-      <div
-        className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm leading-relaxed break-words ${isUser ? 'text-white rounded-br-sm' : `${s.assistantBubble} rounded-bl-sm`}`}
-        style={isUser ? { background: accentColor, boxShadow: `0 2px 12px ${accentColor}55` } : undefined}
-      >
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
+      <div className={`max-w-[70%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words ${
+        isUser
+          ? 'bg-white/[0.08] text-white border border-white/10 rounded-br-sm'
+          : 'text-white/90 rounded-bl-sm'
+      }`}>
         {isUser ? message.content : <ReactMarkdown>{message.content}</ReactMarkdown>}
       </div>
     </div>
@@ -207,14 +206,9 @@ const GEO_BUTTON_GROUPS = {
 
 function getButtonGroups(lang) { return lang === 'GEO' ? GEO_BUTTON_GROUPS : BUTTON_GROUPS; }
 
-const GROUP_OPEN_CLS = {
-  admin:     'bg-purple-600/20 text-purple-300 border border-purple-500/40',
-  assistant: 'bg-orange-600/20 text-orange-300 border border-orange-500/40',
-  teacher:   'bg-blue-600/20 text-blue-300 border border-blue-500/40',
-  student:   'bg-emerald-600/20 text-emerald-300 border border-emerald-500/40',
-};
+const GROUP_OPEN_CLS = 'text-white border border-white/30 bg-white/[0.05]';
 
-const ACCENT_COLORS = { admin: '#7c3aed', assistant: '#ea580c', teacher: '#2563eb', student: '#059669' };
+const ACCENT_COLORS = { admin: '#7c3aed', assistant: '#7c3aed', teacher: '#7c3aed', student: '#7c3aed' };
 
 /* ── Left Column ─────────────────────────────────────────────────────────────── */
 function LeftColumn() {
@@ -315,9 +309,9 @@ function LeftColumn() {
   }
 
   return (
-    <div style={{ width: 320, flexShrink: 0, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: 'rgba(255,255,255,0.02)', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
       {/* Sticky header */}
-      <div style={{ flexShrink: 0, padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(20px)', background: 'rgba(8,8,20,0.88)', display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ flexShrink: 0, padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16, flexShrink: 0 }}>S</div>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.schoolName}</div>
@@ -341,8 +335,7 @@ function LeftColumn() {
             {/* Invite Links */}
             {canManage && (
               <div style={{ marginBottom: 36 }}>
-                <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px', letterSpacing: '-0.01em' }}>Invite Links</h2>
-                <p style={{ color: COLORS.muted, fontSize: 12, marginBottom: 16, marginTop: 3 }}>Generate one-time invite links. Expire in 7 days.</p>
+                <h2 style={{ fontSize: 11, fontWeight: 600, margin: '0 0 12px', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)' }}>Invite Links</h2>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
                   <select value={inviteRole} onChange={e => setInviteRole(e.target.value)}
                     style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: 'white', fontSize: 13, cursor: 'pointer', outline: 'none', colorScheme: 'dark', flex: 1 }}>
@@ -351,7 +344,7 @@ function LeftColumn() {
                     <option value="student" style={{ background: '#0d0d1a' }}>Student</option>
                   </select>
                   <button onClick={generateInvite}
-                    style={{ padding: '8px 16px', background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', border: 'none', borderRadius: 8, color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                    style={{ padding: '8px 16px', background: '#7c3aed', border: 'none', borderRadius: 8, color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
                     Generate
                   </button>
                 </div>
@@ -396,17 +389,14 @@ function LeftColumn() {
             {/* Knowledge Library */}
             <div style={{ marginBottom: 36 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0, letterSpacing: '-0.01em' }}>📚 Knowledge Library</h2>
-                <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)' }}>
-                  {libFiles.length}
-                </span>
+                <h2 style={{ fontSize: 11, fontWeight: 600, margin: 0, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)' }}>Knowledge Library</h2>
               </div>
-              <p style={{ color: COLORS.muted, fontSize: 12, marginBottom: 14, marginTop: 3 }}>Documents Sherlock should know about.</p>
+              <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: 11, marginBottom: 14, marginTop: 3 }}>Documents Sherlock reads when answering.</p>
               {canLibrary && (
                 <div style={{ marginBottom: libError ? 8 : 14 }}>
                   <input ref={fileInputRef} type="file" accept=".pdf,.txt,.md" onChange={uploadFile} style={{ display: 'none' }} />
                   <button onClick={() => fileInputRef.current?.click()} disabled={libUploading}
-                    style={{ padding: '8px 16px', background: libUploading ? 'rgba(99,102,241,0.25)' : 'linear-gradient(135deg,#4f46e5,#7c3aed)', border: 'none', borderRadius: 8, color: 'white', fontSize: 13, fontWeight: 700, cursor: libUploading ? 'not-allowed' : 'pointer', opacity: libUploading ? 0.7 : 1 }}>
+                    style={{ padding: '8px 16px', background: libUploading ? 'rgba(124,58,237,0.25)' : '#7c3aed', border: 'none', borderRadius: 8, color: 'white', fontSize: 13, fontWeight: 700, cursor: libUploading ? 'not-allowed' : 'pointer', opacity: libUploading ? 0.7 : 1 }}>
                     {libUploading ? 'Uploading…' : '↑ Upload File'}
                   </button>
                 </div>
@@ -421,10 +411,10 @@ function LeftColumn() {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {libFiles.map(f => (
-                    <div key={f.id} style={{ background: COLORS.card, border: '1px solid rgba(255,255,255,0.08)', borderLeft: '3px solid #4f46e5', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                    <div key={f.id} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name || f.filename || 'Unknown'}</div>
-                        <div style={{ fontSize: 11, color: COLORS.muted, marginTop: 2 }}>{formatFileSize(f.file_size)}</div>
+                        <div style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'rgba(255,255,255,0.80)' }}>{f.name || f.filename || 'Unknown'}</div>
+                        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.30)', marginTop: 2 }}>{formatFileSize(f.file_size)}</div>
                       </div>
                       {canManage && (
                         <button onClick={() => deleteFile(f.id)}
@@ -440,8 +430,8 @@ function LeftColumn() {
 
             {/* Members */}
             <div>
-              <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 12px', letterSpacing: '-0.01em' }}>
-                Members <span style={{ fontSize: 13, fontWeight: 500, color: COLORS.muted }}>({members.length})</span>
+              <h2 style={{ fontSize: 11, fontWeight: 600, margin: '0 0 12px', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)' }}>
+                Members · {members.length}
               </h2>
               <div style={{ background: COLORS.card, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, overflow: 'hidden' }}>
                 {members.length === 0 ? (
@@ -457,7 +447,7 @@ function LeftColumn() {
                         <div style={{ fontSize: 11, color: COLORS.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.email}</div>
                       </div>
                     </div>
-                    <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: roleBg[m.role] || 'rgba(255,255,255,0.08)', color: roleColor[m.role] || 'white', border: `1px solid ${roleBorder[m.role] || 'rgba(255,255,255,0.1)'}44`, flexShrink: 0 }}>
+                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.40)', flexShrink: 0 }}>
                       {m.role}
                     </span>
                   </div>
@@ -480,7 +470,6 @@ function RightColumn() {
   const [role, setRole]         = useState(defaultRole);
   const [activePanel, setActivePanel] = useState(null);
   const [openGroup, setOpenGroup]     = useState(null);
-  const theme = THEMES[role] || THEMES.student;
 
   const [messages, setMessages] = useState([
     { role: 'assistant', content: getGreeting(role, lang, user?.schoolName || '') },
@@ -491,6 +480,7 @@ function RightColumn() {
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [provider, setProvider] = useState(lang === 'GEO' ? 'gemini' : 'anthropic');
   const [styleOpen, setStyleOpen]         = useState(false);
+  const [chatStyle, setChatStyle] = useState(() => localStorage.getItem('sherlock_style') || 'glass');
   const [customLabels, setCustomLabels]   = useState({ admin: {}, assistant: {}, teacher: {}, student: {} });
   const [customRoleNames, setCustomRoleNames] = useState({ admin: '', assistant: '', teacher: '', student: '' });
   const [editSubmenuOpen, setEditSubmenuOpen] = useState(false);
@@ -644,20 +634,22 @@ function RightColumn() {
     } finally { setLoading(false); }
   }
 
-  const inactiveCls  = 'border border-white/15 text-gray-400 hover:text-white hover:border-white/30';
+  const inactiveCls = 'border border-white/10 text-white/60 hover:text-white hover:border-white/25 transition-colors';
   const openGroupDef = openGroup ? getButtonGroups(lang)[role]?.find(g => g.id === openGroup) : null;
 
   return (
     <div className={`flex flex-col flex-1 overflow-hidden ${s.wrap}`} style={{ position: 'relative' }}>
       {/* Ambient glow */}
-      <div className="pointer-events-none absolute inset-0 -z-10"
-        style={{ background: `radial-gradient(ellipse 80% 35% at 50% 0%, ${accentColor}22, transparent)` }} />
+      {chatStyle !== 'minimal' && (
+        <div className="pointer-events-none absolute inset-0 -z-10"
+          style={{ background: `radial-gradient(ellipse 80% 35% at 50% 0%, ${accentColor}${chatStyle === 'vibrant' ? '33' : '18'}, transparent)` }} />
+      )}
 
       {/* Chat header */}
       <header className={`flex items-center gap-2 px-4 py-3 border-b ${s.headerBorder} flex-shrink-0`}>
-        <div className={`w-8 h-8 rounded-full ${theme.avatar} flex items-center justify-center text-white font-bold shadow-md flex-shrink-0`}>S</div>
+        <div className={`w-8 h-8 rounded-full ${THEME.avatar} flex items-center justify-center text-white font-bold flex-shrink-0`}>S</div>
         <h1 className={`text-base font-semibold ${s.titleColor}`}>Sherlock</h1>
-        {user?.schoolName && <span className="text-xs text-white/35 ml-1">{user.schoolName}</span>}
+        {user?.schoolName && <span className="text-xs ml-1" style={{ color: 'rgba(255,255,255,0.5)' }}>{user.schoolName}</span>}
 
         <div className="ml-auto flex items-center gap-2">
           {/* Edit button — visible when not on student tab */}
@@ -665,7 +657,7 @@ function RightColumn() {
             <div className="relative flex-shrink-0" ref={editBtnRef}>
               <button
                 onClick={() => setEditSubmenuOpen(o => !o)}
-                className={`text-xs px-3 py-1.5 rounded-lg border transition-colors duration-150 ${editSubmenuOpen ? 'border-white/30 text-white bg-white/10' : 'border-white/15 text-gray-400 hover:text-white hover:border-white/30'}`}>
+                className={`text-xs px-2.5 py-1 rounded-lg border transition-colors duration-150 ${editSubmenuOpen ? 'border-white/20 text-white/80 bg-white/[0.06]' : 'border-white/10 text-white/50 hover:text-white/80 hover:border-white/20'}`}>
                 {lang === 'GEO' ? '✏️ რედაქტირება' : '✏️ Edit'}
               </button>
               {editSubmenuOpen && (
@@ -691,7 +683,7 @@ function RightColumn() {
             onChange={e => setProvider(e.target.value)}
             disabled={loading}
             style={{ colorScheme: 'dark' }}
-            className={`text-sm rounded-lg px-2 py-1 focus:outline-none ${theme.ring} disabled:opacity-40 ${s.selectCls}`}>
+            className={`text-xs rounded-lg px-2.5 py-1 focus:outline-none border border-white/10 bg-white/[0.04] text-white/50 disabled:opacity-40 focus:border-white/20`}>
             <option value="anthropic">Claude</option>
             <option value="openai">GPT-4</option>
             <option value="gemini">Gemini</option>
@@ -701,7 +693,7 @@ function RightColumn() {
           <div className="relative flex-shrink-0" ref={stylePanelRef}>
             <button
               onClick={() => setStyleOpen(o => !o)}
-              className={`text-xs px-3 py-1.5 rounded-lg border transition-colors duration-150 ${styleOpen ? 'border-white/30 text-white bg-white/10' : 'border-white/15 text-gray-400 hover:text-white hover:border-white/30'}`}
+              className={`text-xs px-2.5 py-1 rounded-lg border transition-colors duration-150 ${styleOpen ? 'border-white/20 text-white/80 bg-white/[0.06]' : 'border-white/10 text-white/50 hover:text-white/80 hover:border-white/20'}`}
               style={{ borderColor: accentColor + '60' }}>
               <span className="flex items-center gap-2">
                 <span style={{ background: accentColor, width: 10, height: 10, borderRadius: '50%', display: 'inline-block' }} />
@@ -709,30 +701,55 @@ function RightColumn() {
               </span>
             </button>
             {styleOpen && (
-              <div className="absolute right-0 top-full mt-2 rounded-2xl border border-white/15 bg-[#0f0f1a]/95 backdrop-blur-xl shadow-2xl z-50 p-4 flex flex-col gap-3" style={{ width: 220 }}>
-                <p className="text-xs text-gray-400 font-medium">{lang === 'GEO' ? 'ფერი' : 'Color'}</p>
-                <input
-                  type="range" min="0" max="359"
-                  value={(() => {
-                    const hex = accentColor.replace('#', '');
-                    const r = parseInt(hex.slice(0,2),16)/255, g = parseInt(hex.slice(2,4),16)/255, b = parseInt(hex.slice(4,6),16)/255;
-                    const max = Math.max(r,g,b), min = Math.min(r,g,b);
-                    if (max === min) return 0;
-                    let h = max === r ? (g-b)/(max-min) : max === g ? 2+(b-r)/(max-min) : 4+(r-g)/(max-min);
-                    return Math.round(((h*60)+360)%360);
-                  })()}
-                  onChange={e => {
-                    const h = Math.min(359, parseInt(e.target.value));
-                    const f = n => { const k=(n+h/60)%6; return Math.round((1-Math.max(0,Math.min(k,4-k,1)))*200+55); };
-                    setAccentColor('#'+f(5).toString(16).padStart(2,'0')+f(3).toString(16).padStart(2,'0')+f(1).toString(16).padStart(2,'0'));
-                  }}
-                  className="w-full cursor-pointer rainbow-slider"
-                  style={{ height:20, borderRadius:10, border:'none', outline:'none', appearance:'none', WebkitAppearance:'none', background:'linear-gradient(to right,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff2200)' }}
-                />
-                <div className="flex items-center gap-2 mt-1">
-                  <div style={{ width:32, height:32, borderRadius:8, background:accentColor, boxShadow:`0 0 12px ${accentColor}88`, flexShrink:0 }} />
-                  <span className="text-xs text-gray-400">{lang === 'GEO' ? 'არჩეული ფერი' : 'Selected color'}</span>
+              <div className="absolute right-0 top-full mt-2 rounded-2xl border border-white/[0.08] bg-[#0a0a14] backdrop-blur-xl shadow-2xl z-50 p-4 flex flex-col gap-4" style={{ width: 220 }}>
+                <p className="text-xs text-white/40 font-semibold uppercase tracking-widest">Style</p>
+                <div className="flex flex-col gap-1.5">
+                  {[
+                    { id: 'minimal', label: 'Minimal', desc: 'Pure dark, no glow' },
+                    { id: 'glass',   label: 'Glass',   desc: 'Subtle ambient depth' },
+                    { id: 'vibrant', label: 'Vibrant', desc: 'Glow + color' },
+                  ].map(preset => (
+                    <button
+                      key={preset.id}
+                      onClick={() => { setChatStyle(preset.id); localStorage.setItem('sherlock_style', preset.id); }}
+                      className={`text-left px-3 py-2.5 rounded-xl border transition-colors ${
+                        chatStyle === preset.id
+                          ? 'border-violet-500/50 bg-violet-500/[0.08] text-white'
+                          : 'border-white/[0.06] bg-transparent text-white/50 hover:text-white/80 hover:border-white/15'
+                      }`}
+                    >
+                      <p className="text-xs font-medium">{preset.label}</p>
+                      <p className="text-xs mt-0.5 opacity-60">{preset.desc}</p>
+                    </button>
+                  ))}
                 </div>
+                {chatStyle !== 'minimal' && (
+                  <>
+                    <p className="text-xs text-white/40 font-semibold uppercase tracking-widest -mb-2">Accent Color</p>
+                    <input
+                      type="range" min="0" max="359"
+                      value={(() => {
+                        const hex = accentColor.replace('#', '');
+                        const r = parseInt(hex.slice(0,2),16)/255, g = parseInt(hex.slice(2,4),16)/255, b = parseInt(hex.slice(4,6),16)/255;
+                        const max = Math.max(r,g,b), min = Math.min(r,g,b);
+                        if (max === min) return 0;
+                        let h = max === r ? (g-b)/(max-min) : max === g ? 2+(b-r)/(max-min) : 4+(r-g)/(max-min);
+                        return Math.round(((h*60)+360)%360);
+                      })()}
+                      onChange={e => {
+                        const h = Math.min(359, parseInt(e.target.value));
+                        const f = n => { const k=(n+h/60)%6; return Math.round((1-Math.max(0,Math.min(k,4-k,1)))*200+55); };
+                        setAccentColor('#'+f(5).toString(16).padStart(2,'0')+f(3).toString(16).padStart(2,'0')+f(1).toString(16).padStart(2,'0'));
+                      }}
+                      className="w-full cursor-pointer rainbow-slider"
+                      style={{ height:20, borderRadius:10, border:'none', outline:'none', appearance:'none', WebkitAppearance:'none', background:'linear-gradient(to right,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff2200)' }}
+                    />
+                    <div className="flex items-center gap-2">
+                      <div style={{ width:24, height:24, borderRadius:6, background:accentColor, flexShrink:0 }} />
+                      <span className="text-xs text-white/40">Selected</span>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -743,7 +760,7 @@ function RightColumn() {
       <div className={`flex items-center gap-1 px-4 py-2 border-b ${s.headerBorder} flex-shrink-0 overflow-x-auto`} style={{ scrollbarWidth: 'none' }}>
         {ROLE_SWITCHER.map(r => (
           <button key={r.id} onClick={() => setRole(r.id)}
-            className={`px-4 py-1 rounded-full text-xs font-medium transition-all duration-200 flex-shrink-0 ${role === r.id ? r.activeCls : 'text-gray-400 hover:text-white'}`}>
+            className={`px-3 py-1 text-xs transition-all duration-150 flex-shrink-0 border-b-2 ${role === r.id ? 'text-white font-semibold border-violet-500' : 'text-white/40 border-transparent hover:text-white/70'}`}>
             {customRoleNames[r.id] || (lang === 'GEO' ? ({ admin: 'ადმინი', assistant: 'ასისტენტი', teacher: 'მასწავლებელი', student: 'სტუდენტი' })[r.id] : r.label)}
           </button>
         ))}
@@ -761,7 +778,7 @@ function RightColumn() {
               return (
                 <button key={item.id}
                   onClick={() => setOpenGroup(g => g === item.id ? null : item.id)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-all duration-200 ${openGroup === item.id ? GROUP_OPEN_CLS[role] : inactiveCls}`}>
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-all duration-200 ${openGroup === item.id ? GROUP_OPEN_CLS : inactiveCls}`}>
                   {getEffLabel(role, item.id, item.label)} {openGroup === item.id ? '▲' : '▼'}
                 </button>
               );
@@ -802,16 +819,16 @@ function RightColumn() {
             )}
           </div>
         )}
-        {messages.map((msg, i) => <MessageBubble key={i} message={msg} theme={theme} accentColor={accentColor} />)}
+        {messages.map((msg, i) => <MessageBubble key={i} message={msg} accentColor={accentColor} />)}
       </div>
 
       {/* Thinking indicator */}
       <div style={{ display: loading ? 'flex' : 'none', alignItems: 'flex-end', gap: 8, flexShrink: 0 }}
         className={`px-4 py-2 border-t ${s.footerBorder}`}>
-        <div className={`w-8 h-8 text-sm rounded-full ${theme.avatar} flex items-center justify-center text-white font-bold flex-shrink-0`}>S</div>
+        <div className={`w-8 h-8 text-sm rounded-full ${THEME.avatar} flex items-center justify-center text-white font-bold flex-shrink-0`}>S</div>
         <div className={`px-4 py-2.5 rounded-2xl rounded-bl-sm ${s.assistantBubble} flex items-center gap-1.5`}>
           {[0, 1, 2].map(d => (
-            <div key={d} className="dot-bounce w-2 h-2 rounded-full" style={{ background: accentColor, animationDelay: `${d * 0.15}s` }} />
+            <div key={d} className="dot-bounce w-2 h-2 rounded-full" style={{ background: 'rgba(255,255,255,0.30)', animationDelay: `${d * 0.15}s` }} />
           ))}
         </div>
       </div>
@@ -831,11 +848,11 @@ function RightColumn() {
       )}
 
       {/* Input */}
-      <form onSubmit={sendMessage} className={`flex items-end gap-2 px-4 py-3 border-t ${s.footerBorder} flex-shrink-0`}>
+      <form onSubmit={sendMessage} className="flex items-end gap-2 px-4 py-3 border-t border-white/[0.06] flex-shrink-0">
         <input ref={fileInputRef} type="file" accept=".pdf,.txt,.md" onChange={handleFileSelect} className="hidden" />
         <button type="button" onClick={() => fileInputRef.current?.click()}
           style={{ minHeight: 40, minWidth: 40 }}
-          className={`px-3 py-2 rounded-xl text-sm flex-shrink-0 transition-all duration-150 active:scale-95 ${attachedFiles.length > 0 ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
+          className={`px-3 py-2 rounded-xl text-sm flex-shrink-0 transition-all duration-150 active:scale-95 ${attachedFiles.length > 0 ? 'text-white/80' : 'text-white/30 hover:text-white/60'}`}>
           📎
         </button>
         <textarea
@@ -844,16 +861,16 @@ function RightColumn() {
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) sendMessage(e); }}
-          className={`flex-1 resize-none rounded-xl px-3 py-2 text-sm focus:outline-none ${theme.ring} max-h-32 ${s.inputCls}`}
+          className="flex-1 resize-none rounded-2xl px-3 py-2 text-sm focus:outline-none bg-white/[0.05] border border-white/10 text-white/90 placeholder-white/20 focus:border-white/25 max-h-32"
         />
         <button type="button" onClick={() => setActivePanel(activePanel === 'real-library' ? null : 'real-library')}
           style={{ minHeight: 40, minWidth: 40 }}
-          className={`px-3 py-2 rounded-xl text-sm flex-shrink-0 transition-all duration-150 active:scale-95 ${activePanel === 'real-library' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
+          className={`px-3 py-2 rounded-xl text-sm flex-shrink-0 transition-all duration-150 active:scale-95 ${activePanel === 'real-library' ? 'text-white/80' : 'text-white/30 hover:text-white/60'}`}>
           📚
         </button>
         <button type="submit" disabled={loading || !input.trim()}
-          style={{ minHeight: 40, minWidth: 40, background: accentColor, boxShadow: `0 4px 14px ${accentColor}55` }}
-          className="px-4 py-2 rounded-xl text-white text-sm font-medium disabled:opacity-40 active:scale-95 transition-all duration-150">
+          style={{ minHeight: 40, minWidth: 40 }}
+          className="px-4 py-2 rounded-xl text-white text-sm font-medium disabled:opacity-40 active:scale-95 transition-all duration-150 bg-violet-600 hover:bg-violet-500">
           {lang === 'GEO' ? 'გაგზავნა' : 'Send'}
         </button>
       </form>
@@ -922,7 +939,7 @@ export default function AppLayout() {
       position: 'fixed', inset: 0,
       display: 'flex', flexDirection: 'column',
       overflow: 'hidden',
-      background: 'linear-gradient(135deg, #0a0015 0%, #0d0d1a 50%, #050510 100%)',
+      background: '#080810',
       color: 'white', fontFamily: 'sans-serif',
     }}>
       <style>{`
@@ -936,10 +953,10 @@ export default function AppLayout() {
       `}</style>
 
       {/* Ambient glow */}
-      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 80% 35% at 50% 0%, rgba(124,58,237,0.14), transparent)', pointerEvents: 'none', zIndex: 0 }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(124,58,237,0.06), transparent)', pointerEvents: 'none', zIndex: 0 }} />
 
       {/* Rainbow bar */}
-      <div style={{ height: 2, flexShrink: 0, position: 'relative', zIndex: 1, background: 'linear-gradient(90deg,#7c3aed,#4f46e5,#0891b2,#06b6d4,#7c3aed)', backgroundSize: '200% 100%', animation: 'rainbowBar 4s linear infinite' }} />
+      <div style={{ height: 1, flexShrink: 0, position: 'relative', zIndex: 1, opacity: 0.6, background: 'linear-gradient(90deg,#7c3aed,#4f46e5,#0891b2,#06b6d4,#7c3aed)', backgroundSize: '200% 100%', animation: 'rainbowBar 4s linear infinite' }} />
 
       {/* Two columns */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative', zIndex: 1 }}>
