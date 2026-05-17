@@ -24,7 +24,7 @@ export default function Login({ onSwitch, onSuccess }) {
     }
   };
 
-  const cardFont = (lang === 'ka' || lang === 'ja') ? 'sans-serif' : undefined;
+  const cardFont = lang === 'ka' ? 'sans-serif' : undefined;
 
   return (
     <div style={{

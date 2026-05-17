@@ -203,9 +203,7 @@ const ACCENT_COLORS = {
 
 export default function Chat() {
   const { user } = useAuth();
-  const storedLang = localStorage.getItem('sherlock_lang') || 'en';
-  const lang       = storedLang === 'ka' ? 'GEO' : 'EN';
-  const langKey    = storedLang === 'ka' ? 'ka' : 'en';
+  const lang = localStorage.getItem('sherlock_lang') === 'ka' ? 'GEO' : 'EN';
 
   const defaultRole = user?.role || 'admin';
   const [role, setRole]           = useState(defaultRole);
@@ -334,7 +332,7 @@ export default function Chat() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ messages: apiMessages, context: buildContext(libraryFiles, attachedFiles), language: langKey }),
+        body: JSON.stringify({ messages: apiMessages, context: buildContext(libraryFiles, attachedFiles), language: lang === 'GEO' ? 'ka' : 'en' }),
       });
       const data = await res.json();
       const aiText = data.message ?? 'No response.';

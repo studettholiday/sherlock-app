@@ -97,7 +97,5 @@ export const t = (lang, key) => translations[lang]?.[key] || translations.en[key
 export const languages = [
   { code: 'en', label: 'English' },
   { code: 'ka', label: 'ქართული' },
-  { code: 'de', label: 'Deutsch' },
-  { code: 'ja', label: '日本語' },
 ];
 export default translations;
