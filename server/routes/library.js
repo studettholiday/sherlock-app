@@ -66,6 +66,7 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
 
 // Get all library files for school
 router.get('/', authMiddleware, async (req, res) => {
+  console.log('[library] GET / schoolId=%s userId=%s', req.user.schoolId, req.user.userId);
   try {
     console.log('[library] GET / schoolId=%s role=%s', req.user.schoolId, req.user.role);
     const result = await pool.query(
