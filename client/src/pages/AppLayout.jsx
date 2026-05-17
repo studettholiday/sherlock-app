@@ -59,6 +59,7 @@ const CHAT_STYLES = {
     titleColor:      'text-white',
     assistantBubble: 'bg-white/[0.08] text-white border border-white/10',
     inputCls:        'bg-white/[0.08] border border-white/20 text-white placeholder-white/30',
+    selectCls:       'bg-white/[0.08] border border-white/20 text-white/80',
   },
 };
 
@@ -100,7 +101,7 @@ const ROLE_SWITCHER = [
 const BUTTON_GROUPS = {
   admin: [
     { id: 'people',    label: '👥 People',    children: [{ id: 'students', label: 'Students' }, { id: 'assistants', label: 'Assistants' }, { id: 'teachers', label: 'Teachers' }, { id: 'invite', label: 'Invite' }] },
-    { id: 'manage',    label: '📋 Manage',    children: [{ id: 'groups', label: 'Groups' }, { id: 'admin-schedule', label: 'Schedule' }, { id: 'subjects', label: 'Subjects' }] },
+    { id: 'manage',    label: '📋 Manage',    children: [{ id: 'groups', label: 'Groups' }, { id: 'admin-schedule', label: 'Schedule' }, { id: 'subjects', label: 'Subjects' }, { id: 'ai-use', label: 'Use' }] },
     { id: 'broadcast', label: '📢 Notify',    children: [{ id: 'broadcast', label: 'Broadcast' }, { id: 'admin-announce', label: 'Announce' }] },
     { id: 'events',    label: '🎪 Events',    children: [{ id: 'view-events', label: 'View Events' }, { id: 'add-event', label: 'Add Event' }, { id: 'delete-event', label: 'Delete Event' }] },
   ],
@@ -128,7 +129,7 @@ const BUTTON_GROUPS = {
 const GEO_BUTTON_GROUPS = {
   admin: [
     { id: 'people',    label: '👥 ხალხი',        children: [{ id: 'students', label: 'სტუდენტები' }, { id: 'assistants', label: 'ასისტენტები' }, { id: 'teachers', label: 'მასწავლებლები' }, { id: 'invite', label: 'მოწვევა' }] },
-    { id: 'manage',    label: '📋 მართვა',        children: [{ id: 'groups', label: 'ჯგუფები' }, { id: 'admin-schedule', label: 'განრიგი' }, { id: 'subjects', label: 'საგნები' }] },
+    { id: 'manage',    label: '📋 მართვა',        children: [{ id: 'groups', label: 'ჯგუფები' }, { id: 'admin-schedule', label: 'განრიგი' }, { id: 'subjects', label: 'საგნები' }, { id: 'ai-use', label: 'გამოყენება' }] },
     { id: 'broadcast', label: '📢 შეტყობინება',   children: [{ id: 'broadcast', label: 'ყველას' }, { id: 'admin-announce', label: 'ჯგუფს' }] },
     { id: 'events',    label: '🎪 ღონისძიებები', children: [{ id: 'view-events', label: 'ნახვა' }, { id: 'add-event', label: 'დამატება' }, { id: 'delete-event', label: 'წაშლა' }] },
   ],
@@ -438,9 +439,20 @@ function RightColumn() {
   const [accentColor, setAccentColor] = useState(ACCENT_COLORS[defaultRole] || '#7c3aed');
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [libraryFiles, setLibraryFiles]   = useState([]);
+  const [provider, setProvider] = useState(lang === 'GEO' ? 'gemini' : 'anthropic');
+  const [styleOpen, setStyleOpen]         = useState(false);
+  const [customLabels, setCustomLabels]   = useState({ admin: {}, assistant: {}, teacher: {}, student: {} });
+  const [customRoleNames, setCustomRoleNames] = useState({ admin: '', assistant: '', teacher: '', student: '' });
+  const [editSubmenuOpen, setEditSubmenuOpen] = useState(false);
+  const [editOpen, setEditOpen]     = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
+  const [editDraft, setEditDraft]   = useState({});
+  const [editRoleName, setEditRoleName] = useState('');
 
-  const messagesRef  = useRef(null);
-  const fileInputRef = useRef(null);
+  const messagesRef   = useRef(null);
+  const fileInputRef  = useRef(null);
+  const stylePanelRef = useRef(null);
+  const editBtnRef    = useRef(null);
   const s = CHAT_STYLES.glass;
 
   useEffect(() => { setAccentColor(ACCENT_COLORS[role] || '#7c3aed'); }, [role]);
@@ -449,6 +461,48 @@ function RightColumn() {
     setMessages([{ role: 'assistant', content: getGreeting(role, lang, user?.schoolName || '') }]);
     setInput(''); setLoading(false); setActivePanel(null); setOpenGroup(null); setAttachedFiles([]);
   }, [role]);
+
+  useEffect(() => {
+    if (!styleOpen) return;
+    const h = e => { if (stylePanelRef.current && !stylePanelRef.current.contains(e.target)) setStyleOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [styleOpen]);
+
+  useEffect(() => {
+    if (!editSubmenuOpen) return;
+    const h = e => { if (editBtnRef.current && !editBtnRef.current.contains(e.target)) setEditSubmenuOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [editSubmenuOpen]);
+
+  function getEffLabel(btnRole, id, baseLabel) {
+    return customLabels[btnRole]?.[id] ?? baseLabel;
+  }
+
+  function openEditor(targetRole) {
+    const groups = getButtonGroups(lang)[targetRole];
+    const draft = {};
+    groups.forEach(g => {
+      draft[g.id] = customLabels[targetRole]?.[g.id] ?? g.label;
+      if (g.children) g.children.forEach(c => { draft[c.id] = customLabels[targetRole]?.[c.id] ?? c.label; });
+    });
+    setEditDraft(draft);
+    setEditTarget(targetRole);
+    setEditRoleName(customRoleNames[targetRole] ?? '');
+    setEditOpen(true);
+    setEditSubmenuOpen(false);
+  }
+
+  function saveLabels() {
+    setCustomLabels(prev => ({ ...prev, [editTarget]: editDraft }));
+    if (editRoleName.trim()) setCustomRoleNames(prev => ({ ...prev, [editTarget]: editRoleName.trim() }));
+    setEditOpen(false); setEditTarget(null); setEditRoleName('');
+  }
+
+  function cancelEdit() {
+    setEditOpen(false); setEditTarget(null); setEditDraft({}); setEditRoleName('');
+  }
 
   function clearChat() {
     setMessages([{ role: 'assistant', content: getGreeting(role, lang, user?.schoolName || '') }]);
@@ -531,7 +585,7 @@ function RightColumn() {
       const res  = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ messages: apiMessages, context: buildContext(libraryFiles, attachedFiles), language: lang === 'GEO' ? 'ka' : 'en' }),
+        body: JSON.stringify({ messages: apiMessages, provider, context: buildContext(libraryFiles, attachedFiles), language: lang === 'GEO' ? 'ka' : 'en' }),
       });
       const data = await res.json();
       setMessages(prev => [...prev, { role: 'assistant', content: data.message ?? 'No response.' }]);
@@ -541,7 +595,7 @@ function RightColumn() {
     } finally { setLoading(false); }
   }
 
-  const inactiveCls = 'border border-white/15 text-gray-400 hover:text-white hover:border-white/30';
+  const inactiveCls  = 'border border-white/15 text-gray-400 hover:text-white hover:border-white/30';
   const openGroupDef = openGroup ? getButtonGroups(lang)[role]?.find(g => g.id === openGroup) : null;
 
   return (
@@ -555,6 +609,85 @@ function RightColumn() {
         <div className={`w-8 h-8 rounded-full ${theme.avatar} flex items-center justify-center text-white font-bold shadow-md flex-shrink-0`}>S</div>
         <h1 className={`text-base font-semibold ${s.titleColor}`}>Sherlock</h1>
         {user?.schoolName && <span className="text-xs text-white/35 ml-1">{user.schoolName}</span>}
+
+        <div className="ml-auto flex items-center gap-2">
+          {/* Edit button — visible to non-student users only */}
+          {user?.role !== 'student' && (
+            <div className="relative flex-shrink-0" ref={editBtnRef}>
+              <button
+                onClick={() => setEditSubmenuOpen(o => !o)}
+                className={`text-xs px-3 py-1.5 rounded-lg border transition-colors duration-150 ${editSubmenuOpen ? 'border-white/30 text-white bg-white/10' : 'border-white/15 text-gray-400 hover:text-white hover:border-white/30'}`}>
+                {lang === 'GEO' ? '✏️ რედაქტირება' : '✏️ Edit'}
+              </button>
+              {editSubmenuOpen && (
+                <div className="absolute right-0 mt-1 w-52 rounded-xl border border-white/15 bg-[#0f0f1a] shadow-2xl z-50 overflow-hidden">
+                  <button onClick={() => openEditor(user.role)}
+                    className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-white/[0.05] hover:text-white transition-colors">
+                    {lang === 'GEO' ? 'ჩემი პროფილი' : 'My Profile'}
+                  </button>
+                  {(user?.role === 'admin' || user?.role === 'assistant') && (
+                    <button onClick={() => openEditor('student')}
+                      className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-white/[0.05] hover:text-white transition-colors border-t border-white/[0.06]">
+                      {lang === 'GEO' ? 'სტუდენტის პროფილი' : 'Student Profile'}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Provider selector */}
+          <select
+            value={provider}
+            onChange={e => setProvider(e.target.value)}
+            disabled={loading}
+            style={{ colorScheme: 'dark' }}
+            className={`text-sm rounded-lg px-2 py-1 focus:outline-none ${theme.ring} disabled:opacity-40 ${s.selectCls}`}>
+            <option value="anthropic">Claude</option>
+            <option value="openai">GPT-4</option>
+            <option value="gemini">Gemini</option>
+          </select>
+
+          {/* Style customizer */}
+          <div className="relative flex-shrink-0" ref={stylePanelRef}>
+            <button
+              onClick={() => setStyleOpen(o => !o)}
+              className={`text-xs px-3 py-1.5 rounded-lg border transition-colors duration-150 ${styleOpen ? 'border-white/30 text-white bg-white/10' : 'border-white/15 text-gray-400 hover:text-white hover:border-white/30'}`}
+              style={{ borderColor: accentColor + '60' }}>
+              <span className="flex items-center gap-2">
+                <span style={{ background: accentColor, width: 10, height: 10, borderRadius: '50%', display: 'inline-block' }} />
+                {lang === 'GEO' ? 'სტილი' : 'Stylize'}
+              </span>
+            </button>
+            {styleOpen && (
+              <div className="absolute right-0 top-full mt-2 rounded-2xl border border-white/15 bg-[#0f0f1a]/95 backdrop-blur-xl shadow-2xl z-50 p-4 flex flex-col gap-3" style={{ width: 220 }}>
+                <p className="text-xs text-gray-400 font-medium">{lang === 'GEO' ? 'ფერი' : 'Color'}</p>
+                <input
+                  type="range" min="0" max="359"
+                  value={(() => {
+                    const hex = accentColor.replace('#', '');
+                    const r = parseInt(hex.slice(0,2),16)/255, g = parseInt(hex.slice(2,4),16)/255, b = parseInt(hex.slice(4,6),16)/255;
+                    const max = Math.max(r,g,b), min = Math.min(r,g,b);
+                    if (max === min) return 0;
+                    let h = max === r ? (g-b)/(max-min) : max === g ? 2+(b-r)/(max-min) : 4+(r-g)/(max-min);
+                    return Math.round(((h*60)+360)%360);
+                  })()}
+                  onChange={e => {
+                    const h = Math.min(359, parseInt(e.target.value));
+                    const f = n => { const k=(n+h/60)%6; return Math.round((1-Math.max(0,Math.min(k,4-k,1)))*200+55); };
+                    setAccentColor('#'+f(5).toString(16).padStart(2,'0')+f(3).toString(16).padStart(2,'0')+f(1).toString(16).padStart(2,'0'));
+                  }}
+                  className="w-full cursor-pointer rainbow-slider"
+                  style={{ height:20, borderRadius:10, border:'none', outline:'none', appearance:'none', WebkitAppearance:'none', background:'linear-gradient(to right,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff2200)' }}
+                />
+                <div className="flex items-center gap-2 mt-1">
+                  <div style={{ width:32, height:32, borderRadius:8, background:accentColor, boxShadow:`0 0 12px ${accentColor}88`, flexShrink:0 }} />
+                  <span className="text-xs text-gray-400">{lang === 'GEO' ? 'არჩეული ფერი' : 'Selected color'}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </header>
 
       {/* Role switcher */}
@@ -562,7 +695,7 @@ function RightColumn() {
         {ROLE_SWITCHER.map(r => (
           <button key={r.id} onClick={() => setRole(r.id)}
             className={`px-4 py-1 rounded-full text-xs font-medium transition-all duration-200 flex-shrink-0 ${role === r.id ? r.activeCls : 'text-gray-400 hover:text-white'}`}>
-            {lang === 'GEO' ? ({ admin: 'ადმინი', assistant: 'ასისტენტი', teacher: 'მასწავლებელი', student: 'სტუდენტი' })[r.id] : r.label}
+            {customRoleNames[r.id] || (lang === 'GEO' ? ({ admin: 'ადმინი', assistant: 'ასისტენტი', teacher: 'მასწავლებელი', student: 'სტუდენტი' })[r.id] : r.label)}
           </button>
         ))}
         <button onClick={clearChat} className="ml-auto text-xs px-2 py-1 rounded-lg text-gray-600 hover:text-gray-400 transition-colors">
@@ -580,7 +713,7 @@ function RightColumn() {
                 <button key={item.id}
                   onClick={() => setOpenGroup(g => g === item.id ? null : item.id)}
                   className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-all duration-200 ${openGroup === item.id ? GROUP_OPEN_CLS[role] : inactiveCls}`}>
-                  {item.label} {openGroup === item.id ? '▲' : '▼'}
+                  {getEffLabel(role, item.id, item.label)} {openGroup === item.id ? '▲' : '▼'}
                 </button>
               );
             }
@@ -589,7 +722,7 @@ function RightColumn() {
               <button key={item.id}
                 onClick={() => setActivePanel(activePanel === panelId ? null : panelId)}
                 className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all duration-200 ${activePanel === panelId ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
-                {item.label}
+                {getEffLabel(role, item.id, item.label)}
               </button>
             );
           })}
@@ -600,7 +733,7 @@ function RightColumn() {
               <button key={child.id}
                 onClick={() => setActivePanel(activePanel === child.id ? null : child.id)}
                 className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all duration-200 ${activePanel === child.id ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
-                {child.label}
+                {getEffLabel(role, child.id, child.label)}
               </button>
             ))}
           </div>
@@ -673,6 +806,50 @@ function RightColumn() {
           {lang === 'GEO' ? 'გაგზავნა' : 'Send'}
         </button>
       </form>
+
+      {/* Edit labels modal */}
+      {editOpen && editTarget && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0f0f1a] border border-white/15 rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[80vh]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+              <h3 className="text-sm font-semibold text-white">
+                {lang === 'GEO' ? `რედაქტირება — ${editTarget}` : `Edit — ${editTarget}`}
+              </h3>
+              <button onClick={cancelEdit} className="text-gray-500 hover:text-white text-sm transition-colors">✕</button>
+            </div>
+            <div className="p-5 overflow-y-auto flex-1 space-y-3">
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">{lang === 'GEO' ? 'როლის სახელი' : 'Role name'}</label>
+                <input
+                  value={editRoleName}
+                  onChange={e => setEditRoleName(e.target.value)}
+                  placeholder={editTarget}
+                  className="w-full rounded-xl border border-white/15 bg-white/[0.05] px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none"
+                />
+              </div>
+              <p className="text-xs text-gray-500 pt-1">{lang === 'GEO' ? 'ღილაკების სახელები' : 'Button labels'}</p>
+              {Object.entries(editDraft).map(([id, val]) => (
+                <div key={id} className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 w-28 flex-shrink-0 truncate">{id}</span>
+                  <input
+                    value={val}
+                    onChange={e => setEditDraft(d => ({ ...d, [id]: e.target.value }))}
+                    className="flex-1 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs text-white focus:outline-none"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2 px-5 py-4 border-t border-white/10">
+              <button onClick={cancelEdit} className="flex-1 py-2 rounded-xl border border-white/15 text-xs text-gray-400 hover:text-white transition-colors">
+                {lang === 'GEO' ? 'გაუქმება' : 'Cancel'}
+              </button>
+              <button onClick={saveLabels} className="flex-1 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs text-white font-medium transition-colors">
+                {lang === 'GEO' ? 'შენახვა' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -702,6 +879,9 @@ export default function AppLayout() {
         @keyframes spin        { to { transform: rotate(360deg); } }
         @keyframes dotBounce   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
         .dot-bounce { animation: dotBounce 0.6s ease-in-out infinite; }
+        input[type=range].rainbow-slider { height: 20px; border-radius: 10px; border: none; outline: none; appearance: none; -webkit-appearance: none; }
+        input[type=range].rainbow-slider::-webkit-slider-thumb { width: 22px; height: 22px; border-radius: 50%; background: white; border: 2px solid rgba(0,0,0,0.3); box-shadow: 0 1px 4px rgba(0,0,0,0.4); appearance: none; -webkit-appearance: none; cursor: pointer; }
+        input[type=range].rainbow-slider::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: white; border: 2px solid rgba(0,0,0,0.3); cursor: pointer; }
       `}</style>
 
       {/* Ambient glow */}
