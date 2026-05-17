@@ -38,7 +38,7 @@ export default function Dashboard() {
   const canLibrary = ['admin', 'assistant', 'teacher'].includes(user?.role);
 
   useEffect(() => { fetchData(); }, []);
-  useEffect(() => { if (user?.schoolId) fetchLibrary(); }, [user?.schoolId]);
+  useEffect(() => { fetchLibrary(); }, [user?.schoolId]);
 
   const fetchData = async () => {
     try {
