@@ -301,48 +301,52 @@ export default function Dashboard() {
         )}
 
         {/* AI Power Settings */}
-        {user?.role === 'admin' && (
-          <div style={{ marginBottom: '44px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: '700', margin: '0 0 4px 0', letterSpacing: '-0.01em' }}>⚡ AI Power Settings</h2>
-            <p style={{ color: COLORS.muted, fontSize: '13px', marginBottom: '20px', marginTop: 4 }}>Control how much AI power your school uses. This directly affects your API costs.</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {[
-                { id: 'focus', label: 'FOCUS', desc: 'Library only. Sherlock answers only from documents you upload. Zero hallucination, maximum control. Cheapest.' },
-                { id: 'smart', label: 'SMART', desc: 'Library + general knowledge. Balanced cost.' },
-                { id: 'full',  label: 'FULL',  desc: 'Unrestricted. Web search, anything. Most powerful, highest cost.' },
-              ].map(mode => {
-                const active = chatMode === mode.id;
-                return (
-                  <div
-                    key={mode.id}
-                    onClick={() => !chatModeSaving && saveChatMode(mode.id)}
-                    style={{
-                      background: active ? 'rgba(124,58,237,0.12)' : COLORS.card,
-                      border: active ? '1px solid #7c3aed' : `1px solid ${COLORS.border}`,
-                      boxShadow: active ? '0 0 18px rgba(124,58,237,0.25)' : 'none',
-                      borderRadius: '14px',
-                      padding: '16px 20px',
-                      cursor: chatModeSaving ? 'wait' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '16px',
-                      backdropFilter: 'blur(20px)',
-                      transition: 'border 0.15s, box-shadow 0.15s, background 0.15s',
-                    }}
-                  >
-                    <div style={{ flex: 1 }}>
-                      <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: 700, color: active ? '#a78bfa' : 'white', letterSpacing: '0.04em' }}>{mode.label}</p>
-                      <p style={{ margin: 0, fontSize: '13px', color: COLORS.muted, lineHeight: 1.5 }}>{mode.desc}</p>
+        {user?.role === 'admin' && (() => {
+          const geo = localStorage.getItem('sherlock_lang') === 'ka';
+          const aiModes = [
+            { id: 'focus', label: 'FOCUS', desc: 'Library only. Sherlock answers only from documents you upload. Zero hallucination, maximum control. Cheapest.', descGeo: 'მხოლოდ ბიბლიოთეკა. შერლოკი პასუხობს მხოლოდ ატვირთული დოკუმენტებიდან. ნულოვანი ჰალუცინაცია, მაქსიმალური კონტროლი. ყველაზე იაფი.' },
+            { id: 'smart', label: 'SMART', desc: 'Library + general knowledge. Balanced cost.',                                                                    descGeo: 'ბიბლიოთეკა + ზოგადი ცოდნა. შერლოკი პირველ რიგში იყენებს თქვენს დოკუმენტებს, შემდეგ საკუთარ ცოდნას. დაბალანსებული ხარჯი.' },
+            { id: 'full',  label: 'FULL',  desc: 'Unrestricted. Web search, anything. Most powerful, highest cost.',                                               descGeo: 'შეუზღუდავი. შერლოკს შეუძლია ინტერნეტ-ძიება, კონტენტის გენერირება, ნებისმიერ კითხვაზე პასუხი. ყველაზე მძლავრი, ყველაზე მაღალი ხარჯი.' },
+          ];
+          return (
+            <div style={{ marginBottom: '44px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '700', margin: '0 0 4px 0', letterSpacing: '-0.01em' }}>⚡ {geo ? 'AI სიმძლავრის პარამეტრები' : 'AI Power Settings'}</h2>
+              <p style={{ color: COLORS.muted, fontSize: '13px', marginBottom: '20px', marginTop: 4 }}>{geo ? 'როგორც ადმინი, თქვენ აკონტროლებთ რამხელა AI სიმძლავრეს იყენებს თქვენი სკოლა. ეს პირდაპირ გავლენას ახდენს თქვენს API ხარჯებზე.' : 'Control how much AI power your school uses. This directly affects your API costs.'}</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {aiModes.map(mode => {
+                  const active = chatMode === mode.id;
+                  return (
+                    <div
+                      key={mode.id}
+                      onClick={() => !chatModeSaving && saveChatMode(mode.id)}
+                      style={{
+                        background: active ? 'rgba(124,58,237,0.12)' : COLORS.card,
+                        border: active ? '1px solid #7c3aed' : `1px solid ${COLORS.border}`,
+                        boxShadow: active ? '0 0 18px rgba(124,58,237,0.25)' : 'none',
+                        borderRadius: '14px',
+                        padding: '16px 20px',
+                        cursor: chatModeSaving ? 'wait' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '16px',
+                        backdropFilter: 'blur(20px)',
+                        transition: 'border 0.15s, box-shadow 0.15s, background 0.15s',
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: 700, color: active ? '#a78bfa' : 'white', letterSpacing: '0.04em' }}>{mode.label}</p>
+                        <p style={{ margin: 0, fontSize: '13px', color: COLORS.muted, lineHeight: 1.5 }}>{geo ? mode.descGeo : mode.desc}</p>
+                      </div>
+                      {active && (
+                        <span style={{ fontSize: '12px', fontWeight: 700, padding: '4px 12px', borderRadius: '20px', background: 'rgba(124,58,237,0.25)', color: '#a78bfa', border: '1px solid rgba(124,58,237,0.5)', flexShrink: 0 }}>{geo ? 'აქტიური' : 'Active'}</span>
+                      )}
                     </div>
-                    {active && (
-                      <span style={{ fontSize: '12px', fontWeight: 700, padding: '4px 12px', borderRadius: '20px', background: 'rgba(124,58,237,0.25)', color: '#a78bfa', border: '1px solid rgba(124,58,237,0.5)', flexShrink: 0 }}>Active</span>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Knowledge Library */}
         <div style={{ marginBottom: '44px' }}>
