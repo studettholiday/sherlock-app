@@ -366,7 +366,11 @@ export default function Chat() {
 
   return (
     <div className="flex flex-col text-white font-sans overflow-hidden"
-      style={{ background: 'linear-gradient(135deg, #0a0015 0%, #0d0d1a 50%, #050510 100%)', height: `${vph}px` }}>
+      style={{
+        position: 'fixed', top: 0, left: 0, right: 0,
+        height: `${vph}px`,
+        background: 'linear-gradient(135deg, #0a0015 0%, #0d0d1a 50%, #050510 100%)',
+      }}>
 
       <style>{`
         @keyframes rainbowBar {
