@@ -7,6 +7,7 @@ module.exports = (req, res, next) => {
   try {
     const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
     req.user = decoded;
+    console.log('[auth] decoded token:', JSON.stringify(decoded));
     next();
   } catch (err) {
     res.status(401).json({ error: 'Invalid token' });
