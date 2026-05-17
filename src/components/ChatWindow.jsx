@@ -533,7 +533,7 @@ export default function ChatWindow({ lang, mobile = false, onClose = null }) {
       input[type=range].rainbow-slider::-webkit-slider-thumb { width: 22px; height: 22px; border-radius: 50%; background: white; border: 2px solid rgba(0,0,0,0.3); box-shadow: 0 1px 4px rgba(0,0,0,0.4); appearance: none; cursor: pointer; }
       input[type=range].rainbow-slider::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: white; border: 2px solid rgba(0,0,0,0.3); cursor: pointer; }
     `}</style>
-    <div className={`relative flex flex-col ${mobile ? 'w-full h-full rounded-none border-0' : 'max-w-2xl mx-auto border rounded-2xl'} overflow-hidden ${s.wrap}`} style={{ ...(mobile ? {} : { borderColor: accentColor + '40' }), ...(mobile && keyboardOpen ? { height: `${window.visualViewport?.height || window.innerHeight}px` } : {}) }}>
+    <div className={`relative flex flex-col ${mobile ? 'w-full rounded-none border-0' : 'max-w-2xl mx-auto border rounded-2xl'} ${s.wrap}`} style={{ height: mobile ? '100dvh' : 'min(680px, calc(100vh - 180px))', overflow: 'hidden', ...(mobile ? {} : { borderColor: accentColor + '40' }) }}>
 
       {/* Per-role ambient glow */}
       <div
@@ -677,9 +677,6 @@ export default function ChatWindow({ lang, mobile = false, onClose = null }) {
               )}
             </div>
 
-          {loading && (
-            <span className={`text-xs animate-pulse ${s.thinkingColor}`}>{lang === 'GEO' ? 'ფიქრობს...' : 'Thinking…'}</span>
-          )}
         </div>
       </header>
 
@@ -717,10 +714,10 @@ export default function ChatWindow({ lang, mobile = false, onClose = null }) {
       {(() => {
         const inactiveCls = s.colorScheme === 'light'
           ? 'border border-gray-300 text-gray-500 hover:text-gray-900 hover:border-gray-400'
-          : 'border border-white/15 text-gray-400 hover:text-white hover:border-white/30';
+          : 'border border-white/40 text-white/70 hover:text-white hover:border-white/60';
         const inactiveGroupCls = s.colorScheme === 'light'
           ? 'border border-gray-300 text-gray-600 hover:text-gray-900 hover:border-gray-400'
-          : 'border border-white/15 text-gray-400 hover:text-white hover:border-white/30';
+          : 'border border-white/40 text-white/70 hover:text-white hover:border-white/60';
         const openGroupDef = openGroup ? getButtonGroups(lang)[role].find(g => g.id === openGroup) : null;
         return (
           <div className={`flex flex-col border-b ${s.headerBorder} flex-shrink-0`}>
@@ -891,17 +888,33 @@ export default function ChatWindow({ lang, mobile = false, onClose = null }) {
         </div>
       )}
 
-      {/* Messages + active panel */}
-      <div ref={messagesRef} className={`${mobile ? 'flex-1' : 'h-[400px]'} overflow-y-auto px-4 py-4`} style={{ fontSize: 'clamp(13px, 3.5vw, 16px)', ...(mobile && isLandscape ? { maxHeight: '40vh' } : {}) }}>
-        {activePanel && (
-          <div className="mb-4">
-            <RolePanel role={role} panel={activePanel} onClose={() => setActivePanel(null)}
-              libraryProps={{ libraryFiles, onAddFile: addLibraryFile, onRemoveFile: removeLibraryFile, orgName, orgNameGenitive }} lang={lang} />
-          </div>
-        )}
+      {/* Role panel — absolute overlay above messages, independent scroll */}
+      {activePanel && (
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20, maxHeight: '60%', overflowY: 'auto', background: 'rgba(13,13,26,0.97)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '16px' }}>
+          <RolePanel role={role} panel={activePanel} onClose={() => setActivePanel(null)}
+            libraryProps={{ libraryFiles, onAddFile: addLibraryFile, onRemoveFile: removeLibraryFile, orgName, orgNameGenitive }} lang={lang} />
+        </div>
+      )}
+
+      {/* Messages */}
+      <div ref={messagesRef} className="flex-1 overflow-y-auto px-4 py-4 relative" style={{ fontSize: 'clamp(13px, 3.5vw, 16px)' }}>
         {messages.map((msg, i) => (
           <MessageBubble key={i} message={msg} theme={theme} styleName="glass" />
         ))}
+      </div>
+
+      {/* Animated thinking indicator */}
+      <div style={{ display: loading ? 'flex' : 'none', alignItems: 'flex-end', gap: '8px', flexShrink: 0 }}
+        className={`px-4 py-2 border-t ${s.footerBorder}`}>
+        <div className={`w-8 h-8 text-sm rounded-full ${theme.avatar} flex items-center justify-center text-white font-bold flex-shrink-0`}>
+          S
+        </div>
+        <div className={`px-4 py-2.5 rounded-2xl rounded-bl-sm ${s.assistantBubble} flex items-center gap-1.5`}>
+          {[0, 1, 2].map(d => (
+            <div key={d} className="dot-bounce w-2 h-2 rounded-full"
+              style={{ background: accentColor, animationDelay: `${d * 0.15}s` }} />
+          ))}
+        </div>
       </div>
 
       {/* Attached file pills */}

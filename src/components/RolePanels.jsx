@@ -1362,7 +1362,7 @@ export function RolePanel({ role, panel, onClose, libraryProps, lang = 'EN' }) {
     ? `${orgName} ბიბლიოთეკა`
     : getPanelTitle(panel, lang);
   return (
-    <div className={`rounded-2xl border ${th.border} bg-[#0d0d18] overflow-hidden flex flex-col max-h-[350px]`}>
+    <div className={`rounded-2xl border ${th.border} bg-[#0d0d18] overflow-hidden flex flex-col`}>
       <div className={`flex items-center justify-between px-4 py-2.5 border-b ${th.border} ${th.hdr} flex-shrink-0`}>
         <span className={`text-sm font-semibold ${th.accent}`}>{panelTitle}</span>
         <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors text-sm leading-none">✕</button>

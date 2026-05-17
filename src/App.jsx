@@ -416,14 +416,38 @@ export default function App() {
         position: 'relative',
       }}
     >
-      {/* Dark overlay for readability */}
+      {/* Animated rainbow bar */}
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 2,
+        zIndex: 100,
+        background: 'linear-gradient(90deg,#ff0000,#ff7700,#ffff00,#00ff00,#00ffff,#0000ff,#8b00ff,#ff0000)',
+        backgroundSize: '200% 100%',
+        animation: 'rainbowSlide 4s linear infinite',
+        pointerEvents: 'none',
+      }} />
+
+      {/* Deep dark overlay with purple ambient glow */}
       <div style={{
         position: 'fixed',
         top: 0,
         left: 0,
         width: '100%',
         height: '100%',
-        background: 'rgba(0, 0, 0, 0.45)',
+        background: 'linear-gradient(180deg, rgba(8,5,25,0.82) 0%, rgba(0,0,0,0.68) 100%)',
+        zIndex: 0,
+        pointerEvents: 'none',
+      }} />
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(99,50,220,0.18), transparent)',
         zIndex: 0,
         pointerEvents: 'none',
       }} />
@@ -614,7 +638,7 @@ export default function App() {
               </h2>
               <p className="mt-3 text-gray-400">{t.chatSubtitle}</p>
             </div>
-            <div className="mx-auto max-w-2xl px-4">
+            <div className="mx-auto max-w-2xl px-4" style={{ height: 'min(680px, calc(100vh - 180px))', overflow: 'hidden' }}>
               <ChatWindow lang={lang} />
             </div>
           </>
