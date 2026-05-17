@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const pdfParse = require('pdf-parse');
+const { PDFParse } = require('pdf-parse');
 const { Pool } = require('pg');
 const authMiddleware = require('../middleware/auth');
 
@@ -22,8 +22,9 @@ const upload = multer({
 
 async function extractText(buffer, mimetype) {
   if (mimetype === 'application/pdf') {
-    const data = await pdfParse(buffer);
-    return data.text;
+    const parser = new PDFParse({ data: buffer });
+    const result = await parser.getText();
+    return result.text;
   }
   return buffer.toString('utf8');
 }
