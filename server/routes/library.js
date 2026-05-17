@@ -3,37 +3,14 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const pdfParse = require('pdf-parse');
 const { Pool } = require('pg');
 const authMiddleware = require('../middleware/auth');
 
 const getPool = () => new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR || '/data/library';
-
-// Ensure upload directory exists
-try {
-  if (!fs.existsSync(UPLOAD_DIR)) {
-    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-    console.log('[library] Created upload dir:', UPLOAD_DIR);
-  }
-} catch (e) {
-  console.error('[library] Could not create upload dir:', UPLOAD_DIR, e.message);
-}
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const schoolDir = path.join(UPLOAD_DIR, String(req.user.schoolId));
-    if (!fs.existsSync(schoolDir)) fs.mkdirSync(schoolDir, { recursive: true });
-    cb(null, schoolDir);
-  },
-  filename: (req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, unique + path.extname(file.originalname));
-  }
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 25 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = ['.pdf', '.txt', '.md'];
@@ -43,23 +20,31 @@ const upload = multer({
   }
 });
 
+async function extractText(buffer, mimetype) {
+  if (mimetype === 'application/pdf') {
+    const data = await pdfParse(buffer);
+    return data.text;
+  }
+  return buffer.toString('utf8');
+}
+
 // Upload file (admin, assistant, teacher only)
 router.post('/upload', authMiddleware, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   if (!['admin', 'assistant', 'teacher'].includes(req.user.role)) {
-    fs.unlinkSync(req.file.path);
     return res.status(403).json({ error: 'Forbidden' });
   }
   try {
     console.log('[library] POST /upload file=%s size=%d schoolId=%s', req.file.originalname, req.file.size, req.user.schoolId);
+    const content = await extractText(req.file.buffer, req.file.mimetype);
     const result = await getPool().query(
-      'INSERT INTO library_files (school_id, filename, file_path, file_size, mime_type, uploaded_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [req.user.schoolId, req.file.originalname, req.file.path, req.file.size, req.file.mimetype, req.user.userId]
+      'INSERT INTO library_files (school_id, filename, file_path, file_size, mime_type, uploaded_by, content) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [req.user.schoolId, req.file.originalname, '', req.file.size, req.file.mimetype, req.user.userId, content]
     );
     console.log('[library] POST /upload inserted id=%s', result.rows[0].id);
     res.json({ file: result.rows[0] });
   } catch (err) {
-    console.error('[library] POST /upload DB error:', err.message);
+    console.error('[library] POST /upload error:', err.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -100,7 +85,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'File not found' });
     const file = result.rows[0];
-    if (fs.existsSync(file.file_path)) fs.unlinkSync(file.file_path);
+    if (file.file_path && fs.existsSync(file.file_path)) fs.unlinkSync(file.file_path);
     await getPool().query('DELETE FROM library_files WHERE id = $1', [req.params.id]);
     res.json({ success: true });
   } catch (err) {
@@ -112,26 +97,10 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 router.get('/context', authMiddleware, async (req, res) => {
   try {
     const result = await getPool().query(
-      'SELECT filename, file_path, mime_type FROM library_files WHERE school_id = $1',
+      'SELECT filename, content FROM library_files WHERE school_id = $1 AND content IS NOT NULL',
       [req.user.schoolId]
     );
-    const contents = [];
-    for (const file of result.rows) {
-      try {
-        if (file.mime_type === 'application/pdf') {
-          const pdfParse = require('pdf-parse');
-          const buffer = fs.readFileSync(file.file_path);
-          const data = await pdfParse(buffer);
-          contents.push({ filename: file.filename, content: data.text });
-        } else {
-          const text = fs.readFileSync(file.file_path, 'utf8');
-          contents.push({ filename: file.filename, content: text });
-        }
-      } catch (e) {
-        console.error('Error reading file:', file.filename, e.message);
-      }
-    }
-    res.json({ files: contents });
+    res.json({ files: result.rows.map(f => ({ filename: f.filename, content: f.content })) });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }

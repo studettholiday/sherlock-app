@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const fs = require('fs');
 const { Pool } = require('pg');
 const authMiddleware = require('../middleware/auth');
 
@@ -33,26 +32,10 @@ function checkRateLimit(userId) {
 async function getLibraryContext(schoolId) {
   try {
     const result = await pool.query(
-      'SELECT filename, file_path, mime_type FROM library_files WHERE school_id = $1',
+      'SELECT filename, content FROM library_files WHERE school_id = $1 AND content IS NOT NULL',
       [schoolId]
     );
-    const contents = [];
-    for (const file of result.rows) {
-      try {
-        if (file.mime_type === 'application/pdf') {
-          const pdfParse = require('pdf-parse');
-          const buffer = fs.readFileSync(file.file_path);
-          const data = await pdfParse(buffer);
-          contents.push({ filename: file.filename, content: data.text });
-        } else {
-          const text = fs.readFileSync(file.file_path, 'utf8');
-          contents.push({ filename: file.filename, content: text });
-        }
-      } catch (e) {
-        console.error('Error reading library file:', file.filename, e.message);
-      }
-    }
-    return contents;
+    return result.rows.map(f => ({ filename: f.filename, content: f.content }));
   } catch (err) {
     console.error('Library fetch error:', err.message);
     return [];
