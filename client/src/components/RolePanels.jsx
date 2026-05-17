@@ -1289,6 +1289,13 @@ const BORDER_SEL = {
   student:   'border-emerald-500',
 };
 
+const GLOW = {
+  admin:     'rgba(168,85,247,0.25)',
+  assistant: 'rgba(249,115,22,0.25)',
+  teacher:   'rgba(59,130,246,0.25)',
+  student:   'rgba(52,211,153,0.25)',
+};
+
 function AiUsePanel({ role, lang }) {
   const th = TH[role];
   const geo = lang === 'GEO';
@@ -1329,20 +1336,24 @@ function AiUsePanel({ role, lang }) {
         {AI_MODES.map(mode => (
           <div
             key={mode.id}
-            className={`rounded-xl border p-3 transition-colors ${
-              selected === mode.id ? `${BORDER_SEL[role]} bg-white/[0.06]` : `${th.border} bg-white/[0.02]`
+            onClick={() => !saving && choose(mode.id)}
+            className={`rounded-xl border p-3 transition-all duration-150 cursor-pointer ${
+              selected === mode.id
+                ? `${BORDER_SEL[role]} bg-white/[0.06]`
+                : `${th.border} bg-white/[0.02] hover:bg-white/[0.04]`
             }`}
+            style={selected === mode.id ? { boxShadow: `0 0 18px ${GLOW[role]}` } : undefined}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <p className={`text-xs font-bold mb-1 ${selected === mode.id ? th.accent : 'text-white'}`}>{mode.label}</p>
                 <p className="text-xs text-gray-400 leading-relaxed">{geo ? mode.descGeo : mode.desc}</p>
               </div>
-              <button
-                onClick={() => !saving && choose(mode.id)}
-                className={`flex-shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-colors ${th.btn} disabled:opacity-50`}
-                disabled={saving}
-              >{geo ? 'დაყენება' : 'Set'}</button>
+              {selected === mode.id && (
+                <span className={`flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full border ${BORDER_SEL[role]} ${th.hdr} ${th.accent}`}>
+                  {geo ? 'აქტიური' : 'Active'}
+                </span>
+              )}
             </div>
           </div>
         ))}
