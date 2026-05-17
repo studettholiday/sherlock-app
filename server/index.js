@@ -28,16 +28,6 @@ app.use('/api/youtube', youtubeRoutes);
 app.use('/api/search', searchRoutes);
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
-app.use(express.static(path.join(__dirname, 'public')));
-app.get('*', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public/index.html'));
-});
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-
-// TEMP DEBUG - remove after fix
 app.get('/api/debug/db', async (req, res) => {
   const { Pool } = require('pg');
   const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
@@ -49,3 +39,13 @@ app.get('/api/debug/db', async (req, res) => {
   } catch(e) { res.json({ error: e.message }); }
   finally { await pool.end(); }
 });
+app.use(express.static(path.join(__dirname, 'public')));
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public/index.html'));
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
+// TEMP DEBUG - remove after fix
