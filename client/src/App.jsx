@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import InviteAccept from './pages/InviteAccept';
 import Dashboard from './pages/Dashboard';
+import AppLayout from './pages/AppLayout';
 import JoinWithCode from './pages/JoinWithCode';
 import Chat from './pages/Chat';
 
@@ -431,7 +432,7 @@ function AppInner() {
 
   if (window.location.pathname === '/dashboard' || window.location.pathname === '/app') {
     if (!user) return null;
-    return <Dashboard />;
+    return <AppLayout />;
   }
 
   if (user && (window.location.pathname === "/" || window.location.pathname === "")) { if (typeof window !== "undefined") window.location.replace("/dashboard"); return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />; }
