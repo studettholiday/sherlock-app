@@ -387,6 +387,7 @@ function LeftColumn() {
             )}
 
             {/* Knowledge Library */}
+            {user?.role !== 'student' && (
             <div style={{ marginBottom: 36 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <h2 style={{ fontSize: 11, fontWeight: 600, margin: 0, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)' }}>Knowledge Library</h2>
@@ -427,8 +428,10 @@ function LeftColumn() {
                 </div>
               )}
             </div>
+            )}
 
             {/* Members */}
+            {user?.role !== 'student' && (
             <div>
               <h2 style={{ fontSize: 11, fontWeight: 600, margin: '0 0 12px', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)' }}>
                 Members · {members.length}
@@ -454,6 +457,7 @@ function LeftColumn() {
                 ))}
               </div>
             </div>
+            )}
           </>
         )}
       </div>
