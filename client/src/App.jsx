@@ -10,6 +10,7 @@ import JoinWithCode from './pages/JoinWithCode';
 import Chat from './pages/Chat';
 import PendingApproval from './pages/PendingApproval';
 import ResetPassword from './pages/ResetPassword';
+import ChooseClasses from './pages/ChooseClasses';
 
 const T = {
   EN: {
@@ -421,10 +422,15 @@ function AppInner() {
   const inviteToken = window.location.pathname.startsWith("/invite/") ? window.location.pathname.split("/invite/")[1] : null;
   if (loading) return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />;
 
-  const isPending = user && (user.schoolStatus === 'pending' || user.status === 'pending');
+  const isPending = user && (
+    user.schoolStatus === 'pending' ||
+    user.status === 'pending' ||
+    (user.role === 'student' && user.registrationStatus === 'pending')
+  );
+  const isStudentNeedingClasses = user && user.role === 'student' && user.registrationStatus === 'none';
 
   if (inviteToken) return (
-    <InviteAccept token={inviteToken} onSuccess={() => window.location.href = '/dashboard'} />
+    <InviteAccept token={inviteToken} onSuccess={(role) => window.location.href = role === 'student' ? '/choose-classes' : '/dashboard'} />
   );
 
   if (window.location.pathname === '/pending') {
@@ -432,6 +438,17 @@ function AppInner() {
       ? <Login onSwitch={() => setAuthPage('signup')} onSuccess={() => window.location.href = '/dashboard'} />
       : <Signup onSwitch={() => setAuthPage('login')} onSuccess={() => window.location.href = '/dashboard'} />;
     return <PendingApproval />;
+  }
+
+  if (window.location.pathname === '/choose-classes') {
+    if (!user) return authPage === 'login'
+      ? <Login onSwitch={() => setAuthPage('signup')} onSuccess={() => window.location.href = '/choose-classes'} />
+      : <Signup onSwitch={() => setAuthPage('login')} onSuccess={() => window.location.href = '/choose-classes'} />;
+    if (user.role !== 'student' || user.registrationStatus === 'approved') {
+      window.location.replace('/dashboard');
+      return <div style={{ minHeight: '100vh', background: '#0d0d1a' }} />;
+    }
+    return <ChooseClasses />;
   }
 
   if (window.location.pathname === '/join') return <JoinWithCode />;
@@ -446,10 +463,18 @@ function AppInner() {
   if (window.location.pathname === '/dashboard' || window.location.pathname === '/app') {
     if (!user) return null;
     if (isPending) { window.location.replace('/pending'); return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />; }
+    if (isStudentNeedingClasses) { window.location.replace('/choose-classes'); return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />; }
     return <AppLayout />;
   }
 
-  if (user && (window.location.pathname === "/" || window.location.pathname === "")) { if (typeof window !== "undefined") window.location.replace(isPending ? "/pending" : "/dashboard"); return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />; }
+  if (user && (window.location.pathname === "/" || window.location.pathname === "")) {
+    if (typeof window !== "undefined") {
+      if (isPending) window.location.replace('/pending');
+      else if (isStudentNeedingClasses) window.location.replace('/choose-classes');
+      else window.location.replace('/dashboard');
+    }
+    return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />;
+  }
 
   if (!user) return (
     authPage === 'login'

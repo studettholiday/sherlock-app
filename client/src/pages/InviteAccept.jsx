@@ -22,7 +22,7 @@ export default function InviteAccept({ token, onSuccess }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to accept invite');
       localStorage.setItem('sherlock_token', data.token);
-      onSuccess();
+      onSuccess(data.user?.role);
     } catch (err) {
       setError(err.message);
     } finally {

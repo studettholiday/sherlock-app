@@ -2,7 +2,9 @@ import { useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 
 export default function PendingApproval() {
-  const { logout, updateUser } = useAuth();
+  const { user, logout, updateUser } = useAuth();
+
+  const isStudentRegistrationPending = user?.role === 'student' && user?.schoolStatus === 'approved';
 
   useEffect(() => {
     const checkApproval = async () => {
@@ -13,8 +15,12 @@ export default function PendingApproval() {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
-        if (data.schoolStatus === 'approved') {
-          updateUser(data);
+        updateUser(data);
+        if (data.role === 'student' && data.schoolStatus === 'approved') {
+          if (data.registrationStatus === 'approved') {
+            window.location.replace('/dashboard');
+          }
+        } else if (data.schoolStatus === 'approved') {
           window.location.replace('/dashboard');
         }
       } catch {
@@ -47,10 +53,13 @@ export default function PendingApproval() {
       }}>
         <div style={{ fontSize: '3rem', marginBottom: 16 }}>⏳</div>
         <h1 style={{ color: '#fff', fontSize: '1.4rem', fontWeight: 700, margin: '0 0 12px' }}>
-          Pending Approval
+          {isStudentRegistrationPending ? 'Request Sent' : 'Pending Approval'}
         </h1>
         <p style={{ color: 'rgb(156,163,175)', fontSize: '0.95rem', lineHeight: 1.6, margin: '0 0 32px' }}>
-          Your registration is awaiting approval. You will receive access once your account has been reviewed.
+          {isStudentRegistrationPending
+            ? 'Your request has been sent! You will be notified when approved.'
+            : 'Your registration is awaiting approval. You will receive access once your account has been reviewed.'
+          }
         </p>
         <button
           onClick={logout}

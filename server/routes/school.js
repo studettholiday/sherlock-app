@@ -341,4 +341,53 @@ router.delete('/events/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// --- Web Registrations ---
+
+router.post('/web-registrations', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'student') return res.status(403).json({ error: 'Forbidden' });
+  const { group_ids } = req.body;
+  if (!Array.isArray(group_ids) || group_ids.length === 0) {
+    return res.status(400).json({ error: 'group_ids is required' });
+  }
+  const pool = getPool();
+  try {
+    await pool.query(
+      "DELETE FROM web_registrations WHERE user_id = $1 AND status = 'pending'",
+      [req.user.userId]
+    );
+    for (const groupId of group_ids) {
+      await pool.query(
+        'INSERT INTO web_registrations (user_id, group_id, school_id, status) VALUES ($1, $2, $3, $4)',
+        [req.user.userId, groupId, req.user.schoolId, 'pending']
+      );
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[web-registrations] POST error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.get('/web-registrations', authMiddleware, async (req, res) => {
+  if (!['admin', 'assistant'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const result = await getPool().query(
+      `SELECT wr.id, wr.status, wr.created_at,
+              u.name AS user_name, u.email AS user_email,
+              g.name AS group_name, s.name AS subject_name
+       FROM web_registrations wr
+       JOIN users u  ON wr.user_id  = u.id
+       JOIN groups g ON wr.group_id = g.id
+       LEFT JOIN subjects s ON g.subject_id = s.id
+       WHERE wr.school_id = $1 AND wr.status = 'pending'
+       ORDER BY wr.created_at DESC`,
+      [req.user.schoolId]
+    );
+    res.json({ registrations: result.rows });
+  } catch (err) {
+    console.error('[web-registrations] GET error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;

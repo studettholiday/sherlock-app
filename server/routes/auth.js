@@ -109,7 +109,22 @@ router.get('/me', async (req, res) => {
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     const user = result.rows[0];
-    res.json({ id: user.id, email: user.email, role: user.role, name: user.name, schoolId: user.school_id, schoolName: user.school_name, schoolStatus: user.school_status, hasApiKey: !!user.api_key_encrypted });
+    let registrationStatus = null;
+    if (user.role === 'student') {
+      try {
+        const regRes = await pool.query(
+          `SELECT
+            COUNT(*) FILTER (WHERE status = 'approved') AS approved_cnt,
+            COUNT(*) FILTER (WHERE status = 'pending')  AS pending_cnt
+           FROM web_registrations WHERE user_id = $1`,
+          [user.id]
+        );
+        const approved = parseInt(regRes.rows[0].approved_cnt);
+        const pending  = parseInt(regRes.rows[0].pending_cnt);
+        registrationStatus = approved > 0 ? 'approved' : pending > 0 ? 'pending' : 'none';
+      } catch { /* table may not exist yet */ }
+    }
+    res.json({ id: user.id, email: user.email, role: user.role, name: user.name, schoolId: user.school_id, schoolName: user.school_name, schoolStatus: user.school_status, hasApiKey: !!user.api_key_encrypted, registrationStatus });
   } catch (err) {
     res.status(401).json({ error: 'Invalid token' });
   }
