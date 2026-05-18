@@ -3,7 +3,7 @@ const router = express.Router();
 const { Pool } = require('pg');
 const authMiddleware = require('../middleware/auth');
 
-const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
+const getPool = () => new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
 
 function generateCode(prefix) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -15,7 +15,7 @@ function generateCode(prefix) {
 // Get school codes
 router.get('/codes', authMiddleware, async (req, res) => {
   try {
-    const result = await pool.query(
+    const result = await getPool().query(
       'SELECT teacher_code, student_code, assistant_code, status FROM schools WHERE id = $1',
       [req.user.schoolId]
     );
@@ -30,14 +30,14 @@ router.post('/codes/generate', authMiddleware, async (req, res) => {
   if (!['admin', 'assistant'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
   const { role } = req.body;
   if (!['teacher', 'student', 'assistant'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
-  const schoolResult = await pool.query('SELECT status FROM schools WHERE id = $1', [req.user.schoolId]);
+  const schoolResult = await getPool().query('SELECT status FROM schools WHERE id = $1', [req.user.schoolId]);
   if (schoolResult.rows[0]?.status !== 'approved') {
     return res.status(403).json({ error: 'School not yet approved. Please wait for admin approval.' });
   }
   const prefixes = { teacher: 'TCH', student: 'STD', assistant: 'AST' };
   const code = generateCode(prefixes[role]);
   try {
-    await pool.query(
+    await getPool().query(
       `UPDATE schools SET ${role}_code = $1 WHERE id = $2`,
       [code, req.user.schoolId]
     );
@@ -50,7 +50,7 @@ router.post('/codes/generate', authMiddleware, async (req, res) => {
 // Get school settings
 router.get('/settings', authMiddleware, async (req, res) => {
   try {
-    const result = await pool.query(
+    const result = await getPool().query(
       'SELECT chat_mode_ceiling FROM schools WHERE id = $1',
       [req.user.schoolId]
     );
@@ -68,7 +68,7 @@ router.patch('/settings', authMiddleware, async (req, res) => {
     return res.status(400).json({ error: 'Invalid chat_mode_ceiling value' });
   }
   try {
-    await pool.query(
+    await getPool().query(
       'UPDATE schools SET chat_mode_ceiling = $1 WHERE id = $2',
       [chat_mode_ceiling, req.user.schoolId]
     );
@@ -81,7 +81,7 @@ router.patch('/settings', authMiddleware, async (req, res) => {
 // Get school members
 router.get('/members', authMiddleware, async (req, res) => {
   try {
-    const result = await pool.query(
+    const result = await getPool().query(
       'SELECT id, name, email, role, created_at FROM users WHERE school_id = $1 ORDER BY created_at ASC',
       [req.user.schoolId]
     );
@@ -101,7 +101,7 @@ router.delete('/members/:userId', authMiddleware, async (req, res) => {
     return res.status(400).json({ error: 'Cannot delete yourself' });
   }
   try {
-    await pool.query(
+    await getPool().query(
       'DELETE FROM users WHERE id = $1 AND school_id = $2',
       [userId, req.user.schoolId]
     );
