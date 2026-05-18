@@ -1762,6 +1762,7 @@ function StudentSchedulePanel({ lang }) {
         <tr className="text-gray-500">
           <th className="text-left pb-2 font-medium">{lang === 'GEO' ? 'დღე' : 'Day'}</th>
           <th className="text-left pb-2 font-medium">{lang === 'GEO' ? 'დრო' : 'Time'}</th>
+          <th className="text-left pb-2 font-medium">{lang === 'GEO' ? 'საგანი' : 'Subject'}</th>
           <th className="text-left pb-2 font-medium">{lang === 'GEO' ? 'ჯგუფი' : 'Group'}</th>
         </tr>
       </thead>
@@ -1770,6 +1771,7 @@ function StudentSchedulePanel({ lang }) {
           <tr key={r.id} className="border-t border-white/[0.05]">
             <td className="py-1.5 text-gray-400">{GEO_DAYS[r.day_of_week] ?? r.day_of_week}</td>
             <td className="py-1.5 text-gray-300 font-mono">{(r.lesson_time || '').slice(0, 5)}</td>
+            <td className="py-1.5 text-violet-400">{r.subject_name}</td>
             <td className="py-1.5 text-white">{r.group_name}</td>
           </tr>
         ))}
