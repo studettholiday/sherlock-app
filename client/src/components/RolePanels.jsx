@@ -676,6 +676,13 @@ function SubjectsTabPanel({ role, lang }) {
   const [addingTimeFor, setAddingTimeFor] = useState(null);
   const [newDay, setNewDay] = useState(0);
   const [newTime, setNewTime] = useState('');
+  const [editingSubjectId, setEditingSubjectId] = useState(null);
+  const [editSubjectName, setEditSubjectName] = useState('');
+  const [editingGroupId, setEditingGroupId] = useState(null);
+  const [editGroupName, setEditGroupName] = useState('');
+  const [editingScheduleId, setEditingScheduleId] = useState(null);
+  const [editScheduleDay, setEditScheduleDay] = useState(0);
+  const [editScheduleTime, setEditScheduleTime] = useState('');
 
   async function loadSubjects() {
     const token = localStorage.getItem('sherlock_token');
@@ -792,6 +799,41 @@ function SubjectsTabPanel({ role, lang }) {
     setAddingTimeFor(null);
   }
 
+  async function saveSubjectName(id) {
+    if (!editSubjectName.trim()) return;
+    const token = localStorage.getItem('sherlock_token');
+    await fetch(`/api/school/subjects/${id}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: editSubjectName.trim() }),
+    });
+    setEditingSubjectId(null);
+    loadSubjects();
+  }
+
+  async function saveGroupName(id, subjectId) {
+    if (!editGroupName.trim()) return;
+    const token = localStorage.getItem('sherlock_token');
+    await fetch(`/api/school/groups/${id}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: editGroupName.trim() }),
+    });
+    setEditingGroupId(null);
+    loadGroupsFor(subjectId);
+  }
+
+  async function saveScheduleRow(id, groupId) {
+    const token = localStorage.getItem('sherlock_token');
+    await fetch(`/api/school/schedule/${id}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ day_of_week: parseInt(editScheduleDay), lesson_time: editScheduleTime }),
+    });
+    setEditingScheduleId(null);
+    loadScheduleFor(groupId);
+  }
+
   if (loading) return <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
 
   return (
@@ -799,30 +841,86 @@ function SubjectsTabPanel({ role, lang }) {
       {subjects.map(s => (
         <div key={s.id} className="rounded-xl border border-white/[0.08] overflow-hidden">
           <div className="flex items-center gap-2 px-3 py-2.5">
-            <button onClick={() => toggleSubject(s.id)} className="flex items-center gap-2 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity">
-              <span className="text-base flex-shrink-0">{s.emoji}</span>
-              <span className="text-sm text-white font-medium truncate">{s.name}</span>
-              <span className="text-xs text-gray-500 flex-shrink-0">{expandedSubject === s.id ? '▲' : '▼'}</span>
-            </button>
-            <button onClick={() => delSubject(s.id)} className="text-gray-600 hover:text-red-400 text-xs flex-shrink-0 transition-colors">✕</button>
+            {editingSubjectId === s.id ? (
+              <>
+                <span className="text-base flex-shrink-0">{s.emoji}</span>
+                <input autoFocus value={editSubjectName} onChange={e => setEditSubjectName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') saveSubjectName(s.id); if (e.key === 'Escape') setEditingSubjectId(null); }}
+                  className="flex-1 min-w-0 rounded-md border border-white/20 bg-white/[0.06] px-2 py-0.5 text-sm text-white focus:outline-none" />
+                <button onClick={() => saveSubjectName(s.id)} className="text-emerald-400 hover:text-emerald-300 text-xs flex-shrink-0">✓</button>
+                <button onClick={() => setEditingSubjectId(null)} className="text-gray-500 hover:text-white text-xs flex-shrink-0">✕</button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => toggleSubject(s.id)} className="flex items-center gap-2 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity">
+                  <span className="text-base flex-shrink-0">{s.emoji}</span>
+                  <span className="text-sm text-white font-medium truncate">{s.name}</span>
+                  <span className="text-xs text-gray-500 flex-shrink-0">{expandedSubject === s.id ? '▲' : '▼'}</span>
+                </button>
+                <button onClick={() => { setEditingSubjectId(s.id); setEditSubjectName(s.name); }}
+                  className="text-gray-600 hover:text-gray-300 text-xs flex-shrink-0 transition-colors">✏️</button>
+                <button onClick={() => delSubject(s.id)} className="text-gray-600 hover:text-red-400 text-xs flex-shrink-0 transition-colors">✕</button>
+              </>
+            )}
           </div>
           {expandedSubject === s.id && (
             <div className="border-t border-white/[0.06] px-3 pb-3 pt-2 space-y-1.5">
               {(subjectGroups[s.id] || []).map(g => (
                 <div key={g.id} className="rounded-lg border border-white/[0.06] bg-white/[0.02] overflow-hidden">
                   <div className="flex items-center justify-between px-3 py-1.5">
-                    <button onClick={() => toggleGroup(g.id)} className="flex items-center gap-1.5 flex-1 text-left hover:opacity-80 transition-opacity">
-                      <span className="text-xs text-white/80">{g.name}</span>
-                      <span className="text-[10px] text-gray-500">{expandedGroup === g.id ? '▲' : '▼'}</span>
-                    </button>
-                    <button onClick={() => delGroup(g.id, s.id)} className="text-gray-600 hover:text-red-400 text-xs transition-colors ml-2">✕</button>
+                    {editingGroupId === g.id ? (
+                      <>
+                        <input autoFocus value={editGroupName} onChange={e => setEditGroupName(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') saveGroupName(g.id, s.id); if (e.key === 'Escape') setEditingGroupId(null); }}
+                          className="flex-1 min-w-0 rounded-md border border-white/20 bg-white/[0.06] px-2 py-0.5 text-xs text-white focus:outline-none" />
+                        <button onClick={() => saveGroupName(g.id, s.id)} className="text-emerald-400 hover:text-emerald-300 text-[10px] ml-1.5">✓</button>
+                        <button onClick={() => setEditingGroupId(null)} className="text-gray-500 hover:text-white text-[10px] ml-1">✕</button>
+                      </>
+                    ) : (
+                      <>
+                        <button onClick={() => toggleGroup(g.id)} className="flex items-center gap-1.5 flex-1 text-left hover:opacity-80 transition-opacity">
+                          <span className="text-xs text-white/80">{g.name}</span>
+                          <span className="text-[10px] text-gray-500">{expandedGroup === g.id ? '▲' : '▼'}</span>
+                        </button>
+                        <button onClick={() => { setEditingGroupId(g.id); setEditGroupName(g.name); }}
+                          className="text-gray-600 hover:text-gray-300 text-[10px] transition-colors">✏️</button>
+                        <button onClick={() => delGroup(g.id, s.id)} className="text-gray-600 hover:text-red-400 text-xs transition-colors ml-1.5">✕</button>
+                      </>
+                    )}
                   </div>
                   {expandedGroup === g.id && (
                     <div className="border-t border-white/[0.04] px-3 pb-2 pt-1.5 space-y-1">
                       {(groupSchedules[g.id] || []).map(row => (
-                        <div key={row.id} className="flex items-center justify-between">
-                          <span className="text-[11px] text-gray-300">{GEO_DAYS[row.day_of_week]} — {(row.lesson_time || '').slice(0, 5)}</span>
-                          <button onClick={() => delScheduleRow(row.id, g.id)} className="text-gray-600 hover:text-red-400 text-[10px] transition-colors">✕</button>
+                        <div key={row.id}>
+                          {editingScheduleId === row.id ? (
+                            <div className="py-1 space-y-1">
+                              <div className="flex gap-0.5">
+                                {['ორშ','სამშ','ოთხ','ხუთ','პარ','შაბ','კვი'].map((d, i) => (
+                                  <button key={i} onClick={() => setEditScheduleDay(i)}
+                                    className={`flex-1 rounded-md py-0.5 text-[10px] font-medium transition-colors ${parseInt(editScheduleDay) === i ? 'bg-violet-600 text-white' : 'bg-white/[0.05] text-gray-400 hover:bg-white/[0.1] hover:text-white'}`}>
+                                    {d}
+                                  </button>
+                                ))}
+                              </div>
+                              <div className="flex gap-1 items-center">
+                                <input value={editScheduleTime} onChange={e => setEditScheduleTime(e.target.value)}
+                                  placeholder="16:00"
+                                  className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[11px] text-white/80 focus:outline-none flex-1" />
+                                <button onClick={() => saveScheduleRow(row.id, g.id)}
+                                  className="rounded-lg bg-violet-600 hover:bg-violet-500 px-2 py-0.5 text-[10px] text-white">✓</button>
+                                <button onClick={() => setEditingScheduleId(null)} className="text-gray-500 hover:text-white text-[10px]">✕</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] text-gray-300">{GEO_DAYS[row.day_of_week]} — {(row.lesson_time || '').slice(0, 5)}</span>
+                              <div className="flex items-center gap-1">
+                                <button onClick={() => { setEditingScheduleId(row.id); setEditScheduleDay(row.day_of_week); setEditScheduleTime((row.lesson_time || '').slice(0, 5)); }}
+                                  className="text-gray-600 hover:text-gray-300 text-[10px] transition-colors">✏️</button>
+                                <button onClick={() => delScheduleRow(row.id, g.id)} className="text-gray-600 hover:text-red-400 text-[10px] transition-colors">✕</button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                       {(groupSchedules[g.id] || []).length === 0 && addingTimeFor !== g.id && (

@@ -154,6 +154,25 @@ router.delete('/subjects/:id', authMiddleware, async (req, res) => {
   }
 });
 
+router.patch('/subjects/:id', authMiddleware, async (req, res) => {
+  if (!['admin', 'assistant'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
+  const { name, emoji } = req.body;
+  const sets = []; const params = []; let idx = 1;
+  if (name)  { sets.push(`name = $${idx++}`);  params.push(name); }
+  if (emoji) { sets.push(`emoji = $${idx++}`); params.push(emoji); }
+  if (!sets.length) return res.status(400).json({ error: 'Nothing to update' });
+  params.push(req.params.id, req.user.schoolId);
+  try {
+    const result = await getPool().query(
+      `UPDATE subjects SET ${sets.join(', ')} WHERE id = $${idx++} AND school_id = $${idx++} RETURNING *`,
+      params
+    );
+    res.json({ subject: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // --- Groups ---
 
 router.get('/groups', authMiddleware, async (req, res) => {
@@ -196,6 +215,21 @@ router.delete('/groups/:id', authMiddleware, async (req, res) => {
       [req.params.id, req.user.schoolId]
     );
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.patch('/groups/:id', authMiddleware, async (req, res) => {
+  if (!['admin', 'assistant'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ error: 'name is required' });
+  try {
+    const result = await getPool().query(
+      'UPDATE groups SET name = $1 WHERE id = $2 AND school_id = $3 RETURNING *',
+      [name, req.params.id, req.user.schoolId]
+    );
+    res.json({ group: result.rows[0] });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
@@ -245,6 +279,20 @@ router.delete('/schedule/:id', authMiddleware, async (req, res) => {
       [req.params.id, req.user.schoolId]
     );
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.patch('/schedule/:id', authMiddleware, async (req, res) => {
+  if (!['admin', 'assistant'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
+  const { day_of_week, lesson_time } = req.body;
+  try {
+    const result = await getPool().query(
+      'UPDATE schedule SET day_of_week = $1, lesson_time = $2 WHERE id = $3 AND school_id = $4 RETURNING *',
+      [day_of_week, lesson_time, req.params.id, req.user.schoolId]
+    );
+    res.json({ row: result.rows[0] });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
