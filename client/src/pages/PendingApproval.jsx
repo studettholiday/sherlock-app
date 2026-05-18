@@ -57,7 +57,7 @@ export default function PendingApproval() {
         </h1>
         <p style={{ color: 'rgb(156,163,175)', fontSize: '0.95rem', lineHeight: 1.6, margin: '0 0 32px' }}>
           {isStudentRegistrationPending
-            ? 'Your request has been sent! You will be notified when approved.'
+            ? 'Your class selection is being reviewed. You will receive access once approved.'
             : 'Your registration is awaiting approval. You will receive access once your account has been reviewed.'
           }
         </p>

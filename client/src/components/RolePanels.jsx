@@ -465,7 +465,122 @@ function MembersPanel({ role, lang, roleFilter, allMembers, onMembersRefresh }) 
   );
 }
 
-function StudentsPanel({ role, lang, allMembers, onMembersRefresh })   { return <MembersPanel role={role} lang={lang} roleFilter="student"   allMembers={allMembers} onMembersRefresh={onMembersRefresh} />; }
+const GEO_SCHED_DAYS = ['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვი'];
+
+function formatScheduleTimes(times) {
+  if (!times || times.length === 0) return '';
+  return times.map(t => {
+    const [day, ...rest] = t.split(' ');
+    const dayIdx = parseInt(day);
+    const dayName = !isNaN(dayIdx) ? (GEO_SCHED_DAYS[dayIdx] || day) : day;
+    return `${dayName} ${rest.join(' ')}`;
+  }).join(' · ');
+}
+
+function PendingRegistrationsPanel({ lang }) {
+  const [regs, setRegs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [acting, setActing] = useState(null);
+
+  async function load() {
+    setLoading(true);
+    const token = localStorage.getItem('sherlock_token');
+    try {
+      const res = await fetch('/api/school/web-registrations?status=pending', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setRegs(data.registrations || []);
+    } catch {}
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function act(id, status) {
+    setActing(id);
+    const token = localStorage.getItem('sherlock_token');
+    try {
+      await fetch(`/api/school/web-registrations/${id}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      setRegs(prev => prev.filter(r => r.id !== id));
+    } catch {}
+    setActing(null);
+  }
+
+  if (loading) return <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
+  if (!regs.length) return (
+    <p className="text-xs text-gray-500 text-center py-4">
+      {lang === 'GEO' ? 'მოლოდინი მოთხოვნები არ არის.' : 'No pending requests.'}
+    </p>
+  );
+
+  return (
+    <div className="space-y-2">
+      {regs.map(r => (
+        <div key={r.id} className="rounded-xl border border-white/[0.08] p-3 space-y-1.5">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-white truncate">{r.user_name || r.user_email}</p>
+              <p className="text-xs text-gray-400 truncate">
+                {r.subject_name && <span className="text-violet-400">{r.subject_name} — </span>}
+                {r.group_name}
+              </p>
+              {r.schedule_times?.length > 0 && (
+                <p className="text-xs text-gray-500 mt-0.5">{formatScheduleTimes(r.schedule_times)}</p>
+              )}
+            </div>
+            <div className="flex gap-1.5 flex-shrink-0">
+              <button
+                disabled={acting === r.id}
+                onClick={() => act(r.id, 'approved')}
+                className="rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs px-2 py-1 disabled:opacity-40 transition-colors"
+              >✅</button>
+              <button
+                disabled={acting === r.id}
+                onClick={() => act(r.id, 'rejected')}
+                className="rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs px-2 py-1 disabled:opacity-40 transition-colors"
+              >❌</button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StudentsPanel({ role, lang, allMembers, onMembersRefresh }) {
+  const [tab, setTab] = useState('members');
+  return (
+    <div>
+      <div className="flex gap-1 mb-3">
+        {['members', 'pending'].map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+              tab === t
+                ? 'bg-white/[0.1] text-white'
+                : 'text-gray-500 hover:text-white'
+            }`}
+          >
+            {t === 'members'
+              ? (lang === 'GEO' ? 'წევრები' : 'Members')
+              : (lang === 'GEO' ? 'მოლოდინი' : 'Pending')}
+          </button>
+        ))}
+      </div>
+      {tab === 'members'
+        ? <MembersPanel role={role} lang={lang} roleFilter="student" allMembers={allMembers} onMembersRefresh={onMembersRefresh} />
+        : <PendingRegistrationsPanel lang={lang} />
+      }
+    </div>
+  );
+}
+
 function AssistantsPanel({ role, lang, allMembers, onMembersRefresh }) { return <MembersPanel role={role} lang={lang} roleFilter="assistant" allMembers={allMembers} onMembersRefresh={onMembersRefresh} />; }
 
 function AdminEventsPanel({ lang }) {
