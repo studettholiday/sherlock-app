@@ -91,4 +91,24 @@ router.get('/members', authMiddleware, async (req, res) => {
   }
 });
 
+// Delete a school member (admin only)
+router.delete('/members/:userId', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  const { userId } = req.params;
+  if (parseInt(userId) === req.user.userId) {
+    return res.status(400).json({ error: 'Cannot delete yourself' });
+  }
+  try {
+    await pool.query(
+      'DELETE FROM users WHERE id = $1 AND school_id = $2',
+      [userId, req.user.schoolId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;
