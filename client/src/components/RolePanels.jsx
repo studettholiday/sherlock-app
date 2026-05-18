@@ -276,9 +276,10 @@ function AdminSchedulePanel({ lang }) {
   const [rows, setRows] = useState([]);
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ group: '', day: 'Monday', time: '', subject: '' });
-  const [adding, setAdding] = useState(false);
+  const [expanded, setExpanded] = useState(null);
+  const [addingFor, setAddingFor] = useState(null);
+  const [form, setForm] = useState({ day: 'Monday', time: '', subject: '' });
+  const [saving, setSaving] = useState(false);
 
   async function load() {
     const token = localStorage.getItem('sherlock_token');
@@ -288,9 +289,7 @@ function AdminSchedulePanel({ lang }) {
     ]);
     const [schedData, grpData] = await Promise.all([schedRes.json(), grpRes.json()]);
     setRows(schedData.schedule || []);
-    const grps = grpData.groups || [];
-    setGroups(grps);
-    if (grps.length) setForm(f => ({ ...f, group: f.group || grps[0].name }));
+    setGroups(grpData.groups || []);
     setLoading(false);
   }
 
@@ -302,77 +301,93 @@ function AdminSchedulePanel({ lang }) {
     load();
   }
 
-  async function addRow() {
-    if (!form.group || !form.time.trim() || !form.subject.trim()) return;
-    setAdding(true);
+  async function addRow(groupName) {
+    if (!form.time.trim() || !form.subject.trim()) return;
+    setSaving(true);
     const token = localStorage.getItem('sherlock_token');
     await fetch('/api/school/schedule', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ group: groupName, day: form.day, time: form.time, subject: form.subject }),
     });
-    setForm(f => ({ ...f, time: '', subject: '' }));
-    setShowAdd(false);
-    setAdding(false);
+    setForm({ day: 'Monday', time: '', subject: '' });
+    setAddingFor(null);
+    setSaving(false);
     load();
+  }
+
+  function toggleGroup(gName) {
+    setExpanded(prev => prev === gName ? null : gName);
+    setAddingFor(null);
+    setForm({ day: 'Monday', time: '', subject: '' });
+  }
+
+  function openAdd(gName) {
+    setAddingFor(gName);
+    setForm({ day: 'Monday', time: '', subject: '' });
   }
 
   if (loading) return <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
 
   return (
-    <div className="space-y-2">
-      <table className="w-full text-xs border-separate border-spacing-y-0.5">
-        <thead>
-          <tr className="text-gray-500">
-            <th className="text-left pb-1.5 font-medium pr-2">{lang === 'GEO' ? 'ჯგუფი' : 'Group'}</th>
-            <th className="text-left pb-1.5 font-medium pr-2">{lang === 'GEO' ? 'დღე' : 'Day'}</th>
-            <th className="text-left pb-1.5 font-medium pr-2">{lang === 'GEO' ? 'დრო' : 'Time'}</th>
-            <th className="text-left pb-1.5 font-medium pr-2">{lang === 'GEO' ? 'საგანი' : 'Subject'}</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(r => (
-            <tr key={r.id} className="border-t border-white/[0.05]">
-              <td className="py-1 pr-2 text-white/80">{r.group}</td>
-              <td className="py-1 pr-2 text-gray-400">{r.day}</td>
-              <td className="py-1 pr-2 text-gray-300 font-mono">{r.time}</td>
-              <td className="py-1 pr-2 text-gray-400">{r.subject}</td>
-              <td>
-                <button onClick={() => del(r.id)} className="text-gray-600 hover:text-red-400">✕</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {showAdd ? (
-        <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.02] p-3">
-          <select value={form.group} onChange={e => setForm(f => ({ ...f, group: e.target.value }))}
-            style={{ colorScheme: 'dark' }} className={`${FIELD} py-1.5`}>
-            {groups.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
-          </select>
-          <select value={form.day} onChange={e => setForm(f => ({ ...f, day: e.target.value }))}
-            style={{ colorScheme: 'dark' }} className={`${FIELD} py-1.5`}>
-            {WEEK_DAYS.map(d => <option key={d}>{d}</option>)}
-          </select>
-          <input value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))}
-            placeholder={lang === 'GEO' ? 'დრო (მაგ. 16:00)' : 'Time (e.g. 16:00)'} className={`${FIELD} py-1.5`} />
-          <input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
-            placeholder={lang === 'GEO' ? 'საგანი' : 'Subject'} className={`${FIELD} py-1.5`} />
-          <div className="flex gap-2">
-            <button onClick={addRow} disabled={adding || !form.time.trim() || !form.subject.trim()}
-              className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-3 py-1.5 text-xs text-white">
-              {lang === 'GEO' ? 'დამატება' : 'Add'}
+    <div className="space-y-1.5">
+      {groups.map(g => {
+        const gRows = rows.filter(r => r.group === g.name);
+        const isOpen = expanded === g.name;
+        return (
+          <div key={g.id} className="rounded-xl border border-white/[0.08] overflow-hidden">
+            <button
+              onClick={() => toggleGroup(g.name)}
+              className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-white/[0.03] transition-colors"
+            >
+              <span className="text-sm text-white font-medium">{g.name}</span>
+              <span className="text-xs text-gray-500">{isOpen ? '▲' : '▼'}</span>
             </button>
-            <button onClick={() => setShowAdd(false)} className="text-xs text-gray-500 hover:text-white">
-              {lang === 'GEO' ? 'გაუქმება' : 'Cancel'}
-            </button>
+            {isOpen && (
+              <div className="border-t border-white/[0.06] px-3 pb-3 pt-2 space-y-1">
+                {gRows.length === 0 && (
+                  <p className="text-xs text-gray-600 py-1">{lang === 'GEO' ? 'განრიგი ცარიელია.' : 'No schedule yet.'}</p>
+                )}
+                {gRows.map(r => (
+                  <div key={r.id} className="flex items-center gap-2 text-xs py-1 border-b border-white/[0.04]">
+                    <span className="text-gray-400 w-20 flex-shrink-0">{r.day}</span>
+                    <span className="text-gray-300 font-mono w-12 flex-shrink-0">{r.time}</span>
+                    <span className="text-white/80 flex-1 min-w-0 truncate">{r.subject}</span>
+                    <button onClick={() => del(r.id)} className="text-gray-600 hover:text-red-400 flex-shrink-0">✕</button>
+                  </div>
+                ))}
+                {addingFor === g.name ? (
+                  <div className="pt-2 space-y-2">
+                    <select value={form.day} onChange={e => setForm(f => ({ ...f, day: e.target.value }))}
+                      style={{ colorScheme: 'dark' }} className={`${FIELD} py-1.5 text-xs`}>
+                      {WEEK_DAYS.map(d => <option key={d}>{d}</option>)}
+                    </select>
+                    <input value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))}
+                      placeholder={lang === 'GEO' ? 'დრო (მაგ. 16:00)' : 'Time (e.g. 16:00)'} className={`${FIELD} py-1.5 text-xs`} />
+                    <input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
+                      placeholder={lang === 'GEO' ? 'საგანი' : 'Subject'} className={`${FIELD} py-1.5 text-xs`} />
+                    <div className="flex gap-2">
+                      <button onClick={() => addRow(g.name)} disabled={saving || !form.time.trim() || !form.subject.trim()}
+                        className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-3 py-1.5 text-xs text-white">
+                        {lang === 'GEO' ? 'დამატება' : 'Add'}
+                      </button>
+                      <button onClick={() => setAddingFor(null)} className="text-xs text-gray-500 hover:text-white">
+                        {lang === 'GEO' ? 'გაუქმება' : 'Cancel'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => openAdd(g.name)} className="mt-1 text-xs text-gray-500 hover:text-white transition-colors">
+                    {lang === 'GEO' ? '+ დროის დამატება' : '+ Add time'}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
-        </div>
-      ) : (
-        <button onClick={() => setShowAdd(true)} className="text-xs text-gray-500 hover:text-white transition-colors">
-          {lang === 'GEO' ? '+ სტრიქონის დამატება' : '+ Add row'}
-        </button>
+        );
+      })}
+      {groups.length === 0 && (
+        <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'ჯგუფები არ არის.' : 'No groups found.'}</p>
       )}
     </div>
   );
@@ -644,26 +659,63 @@ function InvitePanel({ role, lang }) {
 
 function SubjectsPanel({ role, lang }) {
   const th = TH[role];
-  const [subjects, setSubjects] = useState(['Guitar Basics', 'Music Theory', 'Vocals', 'Band Practice', 'Ear Training']);
+  const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState('');
+  const [adding, setAdding] = useState(false);
 
-  function add() { if (draft.trim()) { setSubjects(ss => [...ss, draft.trim()]); setDraft(''); } }
+  async function load() {
+    const token = localStorage.getItem('sherlock_token');
+    try {
+      const res = await fetch('/api/school/groups', { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      setGroups(data.groups || []);
+    } catch {}
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function del(id) {
+    const token = localStorage.getItem('sherlock_token');
+    await fetch(`/api/school/groups/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    load();
+  }
+
+  async function add() {
+    if (!draft.trim()) return;
+    setAdding(true);
+    const token = localStorage.getItem('sherlock_token');
+    await fetch('/api/school/groups', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: draft.trim() }),
+    });
+    setDraft('');
+    setAdding(false);
+    load();
+  }
+
+  if (loading) return <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
 
   return (
     <div className="space-y-2">
       <div className="space-y-1.5">
-        {subjects.map((s, i) => (
-          <div key={i} className="flex items-center justify-between rounded-xl border border-white/10 px-3 py-2">
-            <span className="text-sm text-white">{s}</span>
-            <button onClick={() => setSubjects(ss => ss.filter((_, j) => j !== i))} className="text-gray-600 hover:text-red-400 text-xs transition-colors">✕</button>
+        {groups.map(g => (
+          <div key={g.id} className="flex items-center justify-between rounded-xl border border-white/10 px-3 py-2">
+            <span className="text-sm text-white">{g.name}</span>
+            <button onClick={() => del(g.id)} className="text-gray-600 hover:text-red-400 text-xs transition-colors">✕</button>
           </div>
         ))}
+        {groups.length === 0 && (
+          <p className="text-xs text-gray-500 text-center py-2">{lang === 'GEO' ? 'საგნები არ არის.' : 'No subjects yet.'}</p>
+        )}
       </div>
       <div className="flex gap-2">
         <input value={draft} onChange={e => setDraft(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') add(); }}
           placeholder={lang === 'GEO' ? 'საგნის დამატება...' : 'Add subject…'} className={`${FIELD} py-1.5`} />
-        <button onClick={add} className={`rounded-xl ${th.btn} px-3 py-1.5 text-sm text-white transition-colors`}>+</button>
+        <button onClick={add} disabled={adding || !draft.trim()} className={`rounded-xl ${th.btn} disabled:opacity-40 px-3 py-1.5 text-sm text-white transition-colors`}>+</button>
       </div>
     </div>
   );
