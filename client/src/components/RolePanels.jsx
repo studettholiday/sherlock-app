@@ -983,11 +983,11 @@ function ScheduleTabPanel({ lang }) {
 function SubjectsPanel({ role, lang }) {
   const th = TH[role];
   const geo = lang === 'GEO';
-  const [tab, setTab] = useState('schedule');
+  const [tab, setTab] = useState('subjects');
 
   const tabs = geo
-    ? [['schedule', 'განრიგი'], ['subjects', 'საგნები'], ['use', 'გამოყენება']]
-    : [['schedule', 'Schedule'], ['subjects', 'Subjects'], ['use', 'Use']];
+    ? [['subjects', 'საგნები'], ['use', 'გამოყენება']]
+    : [['subjects', 'Subjects'], ['use', 'Use']];
 
   return (
     <div className="space-y-3">
@@ -1004,7 +1004,6 @@ function SubjectsPanel({ role, lang }) {
         ))}
       </div>
       {tab === 'subjects' && <SubjectsTabPanel role={role} lang={lang} />}
-      {tab === 'schedule' && <ScheduleTabPanel lang={lang} />}
       {tab === 'use' && <AiUsePanel role={role} lang={lang} />}
     </div>
   );
