@@ -59,7 +59,7 @@ router.post('/signup', async (req, res) => {
     const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
     const adminId = process.env.TELEGRAM_ADMIN_ID;
     if (telegramToken && adminId) {
-      const message = `🏫 New school registration!\n\nSchool: ${schoolName}\nEmail: ${email}\nID: ${schoolId}\n\nApprove: /approve_school_${schoolId}\nReject: /reject_school_${schoolId}`;
+      const message = `🏫 New school registration!\n\nSchool: ${schoolName}\nDirector: ${directorName}\nPhone: ${phone}\nWebsite: ${website || "not provided"}\nEmail: ${email}\nID: ${schoolId}\n\nApprove: /approve_school_${schoolId}\nReject: /reject_school_${schoolId}`;
       fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
