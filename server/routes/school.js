@@ -112,14 +112,61 @@ router.delete('/members/:userId', authMiddleware, async (req, res) => {
   }
 });
 
+// --- Subjects ---
+
+router.get('/subjects', authMiddleware, async (req, res) => {
+  try {
+    const result = await getPool().query(
+      'SELECT * FROM subjects WHERE school_id = $1 ORDER BY created_at ASC',
+      [req.user.schoolId]
+    );
+    res.json({ subjects: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/subjects', authMiddleware, async (req, res) => {
+  if (!['admin', 'assistant'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
+  const { name, emoji } = req.body;
+  if (!name) return res.status(400).json({ error: 'name is required' });
+  try {
+    const result = await getPool().query(
+      'INSERT INTO subjects (school_id, name, emoji) VALUES ($1, $2, $3) RETURNING *',
+      [req.user.schoolId, name, emoji || '📚']
+    );
+    res.json({ subject: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.delete('/subjects/:id', authMiddleware, async (req, res) => {
+  if (!['admin', 'assistant'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    await getPool().query(
+      'DELETE FROM subjects WHERE id = $1 AND school_id = $2',
+      [req.params.id, req.user.schoolId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // --- Groups ---
 
 router.get('/groups', authMiddleware, async (req, res) => {
   try {
-    const result = await getPool().query(
-      'SELECT * FROM groups WHERE school_id = $1 ORDER BY name ASC',
-      [req.user.schoolId]
-    );
+    const { subject_id } = req.query;
+    let query = 'SELECT * FROM groups WHERE school_id = $1';
+    const params = [req.user.schoolId];
+    if (subject_id) {
+      query += ' AND subject_id = $2';
+      params.push(subject_id);
+    }
+    query += ' ORDER BY name ASC';
+    const result = await getPool().query(query, params);
     res.json({ groups: result.rows });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
@@ -128,12 +175,12 @@ router.get('/groups', authMiddleware, async (req, res) => {
 
 router.post('/groups', authMiddleware, async (req, res) => {
   if (!['admin', 'assistant'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
-  const { name, instrument } = req.body;
+  const { name, instrument, subject_id } = req.body;
   if (!name) return res.status(400).json({ error: 'name is required' });
   try {
     const result = await getPool().query(
-      'INSERT INTO groups (school_id, name, instrument) VALUES ($1, $2, $3) RETURNING *',
-      [req.user.schoolId, name, instrument || null]
+      'INSERT INTO groups (school_id, name, instrument, subject_id) VALUES ($1, $2, $3, $4) RETURNING *',
+      [req.user.schoolId, name, instrument || null, subject_id || null]
     );
     res.json({ group: result.rows[0] });
   } catch (err) {
