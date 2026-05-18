@@ -26,7 +26,7 @@ router.post('/generate', authMiddleware, async (req, res) => {
     if (email) {
       try {
         const emailResult = await resend.emails.send({
-          from: 'hello@sherlock.school',
+          from: 'onboarding@resend.dev',
           to: email,
           subject: `You've been invited to join ${schoolName}`,
           html: `<p>You've been invited to join <strong>${schoolName}</strong> on Sherlock.</p><p><a href="${inviteUrl}">Click here to accept your invitation</a></p><p>Or copy this link: ${inviteUrl}</p>`,
