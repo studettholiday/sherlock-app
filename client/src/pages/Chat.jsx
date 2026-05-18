@@ -561,7 +561,7 @@ export default function Chat() {
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) sendMessage(e); }}
             className={`flex-1 resize-none rounded-xl px-3 py-2 text-sm focus:outline-none ${theme.ring} max-h-32 ${s.inputCls}`}
           />
-          {role !== 'student' && (
+          {user?.role !== 'student' && (
             <button
               type="button"
               title="Knowledge Library"
