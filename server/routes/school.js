@@ -205,14 +205,18 @@ router.delete('/groups/:id', authMiddleware, async (req, res) => {
 
 router.get('/schedule', authMiddleware, async (req, res) => {
   try {
-    const result = await getPool().query(
-      `SELECT s.*, g.name AS group_name
+    const { group_id } = req.query;
+    let query = `SELECT s.*, g.name AS group_name
        FROM schedule s
        LEFT JOIN groups g ON s.group_id = g.id
-       WHERE s.school_id = $1
-       ORDER BY s.day_of_week, s.lesson_time`,
-      [req.user.schoolId]
-    );
+       WHERE s.school_id = $1`;
+    const params = [req.user.schoolId];
+    if (group_id) {
+      query += ' AND s.group_id = $2';
+      params.push(group_id);
+    }
+    query += ' ORDER BY s.day_of_week, s.lesson_time';
+    const result = await getPool().query(query, params);
     res.json({ schedule: result.rows });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });

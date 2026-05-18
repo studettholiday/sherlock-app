@@ -86,6 +86,8 @@ const LIBRARY_CATS = [
 
 const MOODS = ['😤', '😐', '😊', '🔥'];
 
+const GEO_DAYS = ['ორშაბათი', 'სამშაბათი', 'ოთხშაბათი', 'ხუთშაბათი', 'პარასკევი', 'შაბათი', 'კვირა'];
+
 const DEMO_NOTES = [
   { id: 1, text: 'გიტარის აკორდები — C, Am, F, G', date: '12 მაი' },
   { id: 2, text: 'პრაქტიკა: 30 წუთი სკალები',      date: '11 მაი' },
@@ -657,8 +659,6 @@ function InvitePanel({ role, lang }) {
   );
 }
 
-const GEO_DAYS = ['ორშაბათი', 'სამშაბათი', 'ოთხშაბათი', 'ხუთშაბათი', 'პარასკევი', 'შაბათი', 'კვირა'];
-
 function SubjectsTabPanel({ role, lang }) {
   const th = TH[role];
   const [subjects, setSubjects] = useState([]);
@@ -671,6 +671,11 @@ function SubjectsTabPanel({ role, lang }) {
   const [addingSubject, setAddingSubject] = useState(false);
   const [addingGroupFor, setAddingGroupFor] = useState(null);
   const [newGroupName, setNewGroupName] = useState('');
+  const [expandedGroup, setExpandedGroup] = useState(null);
+  const [groupSchedules, setGroupSchedules] = useState({});
+  const [addingTimeFor, setAddingTimeFor] = useState(null);
+  const [newDay, setNewDay] = useState(0);
+  const [newTime, setNewTime] = useState('');
 
   async function loadSubjects() {
     const token = localStorage.getItem('sherlock_token');
@@ -735,6 +740,45 @@ function SubjectsTabPanel({ role, lang }) {
     loadGroupsFor(subjectId);
   }
 
+  async function loadScheduleFor(groupId) {
+    const token = localStorage.getItem('sherlock_token');
+    try {
+      const res = await fetch(`/api/school/schedule?group_id=${groupId}`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      setGroupSchedules(prev => ({ ...prev, [groupId]: data.schedule || [] }));
+    } catch {}
+  }
+
+  async function delScheduleRow(rowId, groupId) {
+    const token = localStorage.getItem('sherlock_token');
+    await fetch(`/api/school/schedule/${rowId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    loadScheduleFor(groupId);
+  }
+
+  async function addTime(groupId) {
+    if (!newTime) return;
+    const token = localStorage.getItem('sherlock_token');
+    await fetch('/api/school/schedule', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ group_id: groupId, day_of_week: parseInt(newDay), lesson_time: newTime }),
+    });
+    setNewTime('');
+    setAddingTimeFor(null);
+    loadScheduleFor(groupId);
+  }
+
+  function toggleGroup(groupId) {
+    if (expandedGroup === groupId) {
+      setExpandedGroup(null);
+    } else {
+      setExpandedGroup(groupId);
+      if (!groupSchedules[groupId]) loadScheduleFor(groupId);
+    }
+    setAddingTimeFor(null);
+    setNewTime('');
+  }
+
   function toggleSubject(id) {
     if (expandedSubject === id) {
       setExpandedSubject(null);
@@ -744,6 +788,8 @@ function SubjectsTabPanel({ role, lang }) {
     }
     setAddingGroupFor(null);
     setNewGroupName('');
+    setExpandedGroup(null);
+    setAddingTimeFor(null);
   }
 
   if (loading) return <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
@@ -763,9 +809,47 @@ function SubjectsTabPanel({ role, lang }) {
           {expandedSubject === s.id && (
             <div className="border-t border-white/[0.06] px-3 pb-3 pt-2 space-y-1.5">
               {(subjectGroups[s.id] || []).map(g => (
-                <div key={g.id} className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-1.5">
-                  <span className="text-xs text-white/80">{g.name}</span>
-                  <button onClick={() => delGroup(g.id, s.id)} className="text-gray-600 hover:text-red-400 text-xs transition-colors">✕</button>
+                <div key={g.id} className="rounded-lg border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+                  <div className="flex items-center justify-between px-3 py-1.5">
+                    <button onClick={() => toggleGroup(g.id)} className="flex items-center gap-1.5 flex-1 text-left hover:opacity-80 transition-opacity">
+                      <span className="text-xs text-white/80">{g.name}</span>
+                      <span className="text-[10px] text-gray-500">{expandedGroup === g.id ? '▲' : '▼'}</span>
+                    </button>
+                    <button onClick={() => delGroup(g.id, s.id)} className="text-gray-600 hover:text-red-400 text-xs transition-colors ml-2">✕</button>
+                  </div>
+                  {expandedGroup === g.id && (
+                    <div className="border-t border-white/[0.04] px-3 pb-2 pt-1.5 space-y-1">
+                      {(groupSchedules[g.id] || []).map(row => (
+                        <div key={row.id} className="flex items-center justify-between">
+                          <span className="text-[11px] text-gray-300">{GEO_DAYS[row.day_of_week]} — {(row.lesson_time || '').slice(0, 5)}</span>
+                          <button onClick={() => delScheduleRow(row.id, g.id)} className="text-gray-600 hover:text-red-400 text-[10px] transition-colors">✕</button>
+                        </div>
+                      ))}
+                      {(groupSchedules[g.id] || []).length === 0 && addingTimeFor !== g.id && (
+                        <p className="text-[10px] text-gray-600 py-0.5">{lang === 'GEO' ? 'დრო არ არის.' : 'No times yet.'}</p>
+                      )}
+                      {addingTimeFor === g.id ? (
+                        <div className="flex gap-1.5 pt-1 flex-wrap items-center">
+                          <select value={newDay} onChange={e => setNewDay(e.target.value)}
+                            className="rounded-lg border border-white/[0.08] bg-[#1a1a2e] px-2 py-1 text-[11px] text-white/80 focus:outline-none">
+                            {GEO_DAYS.map((d, i) => <option key={i} value={i}>{d}</option>)}
+                          </select>
+                          <input type="time" value={newTime} onChange={e => setNewTime(e.target.value)}
+                            className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-[11px] text-white/80 focus:outline-none w-24" />
+                          <button onClick={() => addTime(g.id)} disabled={!newTime}
+                            className={`rounded-lg ${th.btn} disabled:opacity-40 px-2 py-1 text-[11px] text-white`}>
+                            {lang === 'GEO' ? 'დამატება' : 'Add'}
+                          </button>
+                          <button onClick={() => setAddingTimeFor(null)} className="text-gray-500 hover:text-white text-[11px] px-1">✕</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => { setAddingTimeFor(g.id); setNewDay(0); setNewTime(''); }}
+                          className="text-[11px] text-gray-500 hover:text-white transition-colors mt-0.5">
+                          {lang === 'GEO' ? '+ დროის დამატება' : '+ Add time'}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
               {(subjectGroups[s.id] || []).length === 0 && !addingGroupFor && (
