@@ -259,6 +259,15 @@ function LeftColumn() {
     setInvites(prev => prev.filter(i => i.id !== id));
   }
 
+  async function deleteMember(memberId, memberName) {
+    if (!window.confirm(`Remove ${memberName} from this school? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/school/members/${memberId}`, { method: 'DELETE', headers });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `Delete failed (${res.status})`); }
+      setMembers(prev => prev.filter(m => m.id !== memberId));
+    } catch (e) { alert(e.message); }
+  }
+
   async function fetchLibrary() {
     const tk = localStorage.getItem('sherlock_token');
     if (!tk) return;
@@ -441,18 +450,24 @@ function LeftColumn() {
                   <div style={{ padding: 28, textAlign: 'center', color: COLORS.muted, fontSize: 13 }}>No members yet</div>
                 ) : members.map((m, i) => (
                   <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: i < members.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none', gap: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
                       <div style={{ width: 32, height: 32, borderRadius: '50%', background: roleBg[m.role] || 'rgba(255,255,255,0.08)', border: `1px solid ${roleBorder[m.role] || 'rgba(255,255,255,0.1)'}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: roleColor[m.role] || 'white', flexShrink: 0 }}>
                         {(m.name || '?')[0].toUpperCase()}
                       </div>
-                      <div style={{ minWidth: 0 }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</div>
                         <div style={{ fontSize: 11, color: COLORS.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.email}</div>
                       </div>
                     </div>
-                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.40)', flexShrink: 0 }}>
-                      {m.role}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.40)' }}>{m.role}</span>
+                      {user?.role === 'admin' && m.id !== user?.id && (
+                        <button onClick={() => deleteMember(m.id, m.name)}
+                          style={{ padding: '3px 8px', background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 6, color: '#f87171', cursor: 'pointer', fontSize: 11, fontWeight: 600, lineHeight: 1.4 }}>
+                          ✕
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
