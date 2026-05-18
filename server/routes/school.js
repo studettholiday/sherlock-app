@@ -267,7 +267,8 @@ router.post('/schedule', authMiddleware, async (req, res) => {
     );
     res.json({ row: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+    console.error('[schedule] POST error:', err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
