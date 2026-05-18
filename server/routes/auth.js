@@ -3,9 +3,12 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
+const { Resend } = require('resend');
+const crypto = require('crypto');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
 const JWT_SECRET = process.env.JWT_SECRET || 'sherlock-secret-change-in-production';
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // School signup (standard) or invite-based signup
 router.post('/signup', async (req, res) => {
@@ -109,6 +112,70 @@ router.get('/me', async (req, res) => {
     res.json({ id: user.id, email: user.email, role: user.role, name: user.name, schoolId: user.school_id, schoolName: user.school_name, schoolStatus: user.school_status, hasApiKey: !!user.api_key_encrypted });
   } catch (err) {
     res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+// Forgot password
+router.post('/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Missing email' });
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token VARCHAR(6) NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    const userRes = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    // Always respond 200 to avoid email enumeration
+    if (userRes.rows.length === 0) return res.json({ ok: true });
+    const userId = userRes.rows[0].id;
+    const token = crypto.randomBytes(3).toString('hex').toUpperCase();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    await pool.query('DELETE FROM password_reset_tokens WHERE user_id = $1', [userId]);
+    await pool.query(
+      'INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
+      [userId, token, expiresAt]
+    );
+    const resetLink = `https://app.sherlock.school/reset-password?token=${token}`;
+    try {
+      await resend.emails.send({
+        from: 'onboarding@resend.dev',
+        to: email,
+        subject: 'Reset your Sherlock password',
+        html: `<p>You requested a password reset for your Sherlock account.</p><p><a href="${resetLink}">Click here to reset your password</a></p><p>Or copy this link: ${resetLink}</p><p>This link expires in 1 hour.</p><p>If you didn't request this, you can safely ignore this email.</p>`,
+      });
+    } catch (emailErr) {
+      console.error('[forgot-password] email send failed:', emailErr.message);
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Reset password
+router.post('/reset-password', async (req, res) => {
+  const { token, new_password } = req.body;
+  if (!token || !new_password) return res.status(400).json({ error: 'Missing fields' });
+  try {
+    const result = await pool.query(
+      'SELECT * FROM password_reset_tokens WHERE token = $1 AND expires_at > NOW()',
+      [token]
+    );
+    if (result.rows.length === 0) return res.status(400).json({ error: 'Invalid or expired token' });
+    const { user_id, id: tokenId } = result.rows[0];
+    const hash = await bcrypt.hash(new_password, 12);
+    await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, user_id]);
+    await pool.query('DELETE FROM password_reset_tokens WHERE id = $1', [tokenId]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 

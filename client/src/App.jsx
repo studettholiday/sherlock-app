@@ -9,6 +9,7 @@ import AppLayout from './pages/AppLayout';
 import JoinWithCode from './pages/JoinWithCode';
 import Chat from './pages/Chat';
 import PendingApproval from './pages/PendingApproval';
+import ResetPassword from './pages/ResetPassword';
 
 const T = {
   EN: {
@@ -434,6 +435,8 @@ function AppInner() {
   }
 
   if (window.location.pathname === '/join') return <JoinWithCode />;
+
+  if (window.location.pathname === '/reset-password') return <ResetPassword />;
 
   if (window.location.pathname === '/chat') {
     if (!user) return <Login onSwitch={() => setAuthPage('signup')} onSuccess={() => window.location.href = '/chat'} />;
