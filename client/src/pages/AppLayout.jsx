@@ -227,6 +227,7 @@ function LeftColumn() {
   const [libLoading, setLibLoading]   = useState(false);
   const [libUploading, setLibUploading] = useState(false);
   const [libError, setLibError]       = useState('');
+  const [openFolders, setOpenFolders] = useState({ assistant: true, teacher: true, student: true });
   const fileInputRef = useRef(null);
 
   useEffect(() => { fetchData(); }, []);
@@ -264,7 +265,7 @@ function LeftColumn() {
     try {
       const res = await fetch(`/api/school/members/${memberId}`, { method: 'DELETE', headers });
       if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `Delete failed (${res.status})`); }
-      setMembers(prev => prev.filter(m => m.id !== memberId));
+      fetchData();
     } catch (e) { alert(e.message); }
   }
 
@@ -439,40 +440,65 @@ function LeftColumn() {
             </div>
             )}
 
-            {/* Members */}
-            {user?.role !== 'student' && (
-            <div>
-              <h2 style={{ fontSize: 11, fontWeight: 600, margin: '0 0 12px', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)' }}>
-                Members · {members.length}
-              </h2>
-              <div style={{ background: COLORS.card, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, overflow: 'hidden' }}>
-                {members.length === 0 ? (
-                  <div style={{ padding: 28, textAlign: 'center', color: COLORS.muted, fontSize: 13 }}>No members yet</div>
-                ) : members.map((m, i) => (
-                  <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: i < members.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none', gap: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
-                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: roleBg[m.role] || 'rgba(255,255,255,0.08)', border: `1px solid ${roleBorder[m.role] || 'rgba(255,255,255,0.1)'}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: roleColor[m.role] || 'white', flexShrink: 0 }}>
-                        {(m.name || '?')[0].toUpperCase()}
-                      </div>
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</div>
-                        <div style={{ fontSize: 11, color: COLORS.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.email}</div>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                      <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.40)' }}>{m.role}</span>
-                      {user?.role === 'admin' && m.id !== user?.id && (
-                        <button onClick={() => deleteMember(m.id, m.name)}
-                          style={{ padding: '3px 8px', background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 6, color: '#f87171', cursor: 'pointer', fontSize: 11, fontWeight: 600, lineHeight: 1.4 }}>
-                          ✕
-                        </button>
-                      )}
-                    </div>
+            {/* Members — grouped by role */}
+            {(user?.role === 'admin' || user?.role === 'assistant') && (() => {
+              const folderDefs = user?.role === 'admin'
+                ? [
+                    { key: 'assistant', label: '👨‍💼 Assistants', canDelete: true },
+                    { key: 'teacher',   label: '👨‍🏫 Teachers',   canDelete: true },
+                    { key: 'student',   label: '👨‍🎓 Students',   canDelete: true },
+                  ]
+                : [
+                    { key: 'teacher', label: '👨‍🏫 Teachers', canDelete: false },
+                    { key: 'student', label: '👨‍🎓 Students', canDelete: true  },
+                  ];
+              return (
+                <div>
+                  <h2 style={{ fontSize: 11, fontWeight: 600, margin: '0 0 12px', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)' }}>
+                    Members
+                  </h2>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {folderDefs.map(folder => {
+                      const folderMembers = members.filter(m => m.role === folder.key);
+                      const isOpen = openFolders[folder.key] !== false;
+                      return (
+                        <div key={folder.key}>
+                          <button
+                            onClick={() => setOpenFolders(prev => ({ ...prev, [folder.key]: !isOpen }))}
+                            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: isOpen && folderMembers.length > 0 ? '10px 10px 0 0' : 10, cursor: 'pointer', color: 'white', textAlign: 'left' }}>
+                            <span style={{ fontSize: 13, fontWeight: 600 }}>{folder.label}</span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.08)', borderRadius: 20, padding: '1px 8px' }}>{folderMembers.length}</span>
+                              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{isOpen ? '▲' : '▼'}</span>
+                            </span>
+                          </button>
+                          {isOpen && (
+                            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
+                              {folderMembers.length === 0 ? (
+                                <div style={{ padding: '10px 14px', fontSize: 12, color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>No members</div>
+                              ) : folderMembers.map((m, i) => (
+                                <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', borderBottom: i < folderMembers.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none', gap: 8 }}>
+                                  <div style={{ minWidth: 0, flex: 1 }}>
+                                    <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</div>
+                                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.email}</div>
+                                  </div>
+                                  {folder.canDelete && m.id !== user?.id && (
+                                    <button onClick={() => deleteMember(m.id, m.name)}
+                                      style={{ padding: '2px 7px', background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 6, color: '#f87171', cursor: 'pointer', fontSize: 11, fontWeight: 600, lineHeight: 1.4, flexShrink: 0 }}>
+                                      ✕
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
-            </div>
-            )}
+                </div>
+              );
+            })()}
           </>
         )}
       </div>
