@@ -211,14 +211,13 @@ const GROUP_OPEN_CLS = 'text-white border border-white/30 bg-white/[0.05]';
 const ACCENT_COLORS = { admin: '#7c3aed', assistant: '#7c3aed', teacher: '#7c3aed', student: '#7c3aed' };
 
 /* ── Left Column ─────────────────────────────────────────────────────────────── */
-function LeftColumn() {
+function LeftColumn({ members, membersLoading, onMembersRefresh }) {
   const { user, logout } = useAuth();
   const token      = localStorage.getItem('sherlock_token');
   const headers    = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
   const canManage  = user?.role === 'admin' || user?.role === 'assistant';
   const canLibrary = ['admin', 'assistant', 'teacher'].includes(user?.role);
 
-  const [members, setMembers]         = useState([]);
   const [invites, setInvites]         = useState([]);
   const [inviteRole, setInviteRole]   = useState('teacher');
   const [dataLoading, setDataLoading] = useState(true);
@@ -235,13 +234,9 @@ function LeftColumn() {
 
   async function fetchData() {
     try {
-      const reqs = [fetch('/api/school/members', { headers })];
-      if (canManage) reqs.push(fetch('/api/invites', { headers }));
-      const results = await Promise.all(reqs);
-      const mData = await results[0].json();
-      setMembers(mData.members || []);
-      if (canManage && results[1]) {
-        const iData = await results[1].json();
+      if (canManage) {
+        const res = await fetch('/api/invites', { headers });
+        const iData = await res.json();
         setInvites(iData.invites || []);
       }
     } catch (e) { console.error(e); }
@@ -265,7 +260,7 @@ function LeftColumn() {
     try {
       const res = await fetch(`/api/school/members/${memberId}`, { method: 'DELETE', headers });
       if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `Delete failed (${res.status})`); }
-      fetchData();
+      onMembersRefresh();
     } catch (e) { alert(e.message); }
   }
 
@@ -336,7 +331,7 @@ function LeftColumn() {
 
       {/* Scrollable content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px' }}>
-        {dataLoading ? (
+        {(dataLoading || membersLoading) ? (
           <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 40 }}>
             <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid rgba(124,58,237,0.2)', borderTopColor: '#7c3aed', animation: 'spin 0.8s linear infinite' }} />
           </div>
@@ -523,7 +518,7 @@ function LeftColumn() {
 }
 
 /* ── Right Column (Chat Panel) ───────────────────────────────────────────────── */
-function RightColumn() {
+function RightColumn({ members, onMembersRefresh }) {
   const { user } = useAuth();
   const lang = localStorage.getItem('sherlock_lang') === 'ka' ? 'GEO' : 'EN';
 
@@ -885,6 +880,8 @@ function RightColumn() {
             ) : (
               <RolePanel role={role} panel={activePanel} onClose={() => setActivePanel(null)}
                 libraryProps={{ orgName: user?.schoolName || '', orgNameGenitive: '' }}
+                allMembers={members}
+                onMembersRefresh={onMembersRefresh}
                 lang={lang} />
             )}
           </div>
@@ -997,6 +994,21 @@ function RightColumn() {
 /* ── AppLayout ───────────────────────────────────────────────────────────────── */
 export default function AppLayout() {
   const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768);
+  const [members, setMembers] = useState([]);
+  const [membersLoading, setMembersLoading] = useState(true);
+
+  async function fetchMembers() {
+    const token = localStorage.getItem('sherlock_token');
+    if (!token) { setMembersLoading(false); return; }
+    try {
+      const res = await fetch('/api/school/members', { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      setMembers(data.members || []);
+    } catch (e) { console.error(e); }
+    finally { setMembersLoading(false); }
+  }
+
+  useEffect(() => { fetchMembers(); }, []);
 
   useEffect(() => {
     const h = () => setIsDesktop(window.innerWidth >= 768);
@@ -1032,10 +1044,10 @@ export default function AppLayout() {
 
       {/* Two columns */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative', zIndex: 1 }}>
-        <LeftColumn />
+        <LeftColumn members={members} membersLoading={membersLoading} onMembersRefresh={fetchMembers} />
         {/* Divider */}
         <div style={{ width: 1, flexShrink: 0, background: 'rgba(255,255,255,0.08)' }} />
-        <RightColumn />
+        <RightColumn members={members} onMembersRefresh={fetchMembers} />
       </div>
     </div>
   );

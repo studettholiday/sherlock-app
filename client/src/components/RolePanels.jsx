@@ -285,19 +285,25 @@ function AdminSchedulePanel({ lang }) {
   );
 }
 
-function MembersPanel({ role, lang, roleFilter }) {
+function MembersPanel({ role, lang, roleFilter, allMembers, onMembersRefresh }) {
   const th = TH[role];
-  const [members, setMembers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const usingProp = allMembers != null;
+  const [localMembers, setLocalMembers] = useState([]);
+  const [loading, setLoading] = useState(!usingProp);
   const [error, setError]     = useState('');
 
+  const members = usingProp
+    ? allMembers.filter(m => m.role === roleFilter)
+    : localMembers;
+
   useEffect(() => {
+    if (usingProp) return;
     const token = localStorage.getItem('sherlock_token');
     fetch('/api/school/members', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
-      .then(data => { setMembers((data.members || []).filter(m => m.role === roleFilter)); setLoading(false); })
+      .then(data => { setLocalMembers((data.members || []).filter(m => m.role === roleFilter)); setLoading(false); })
       .catch(e => { setError(e.message); setLoading(false); });
-  }, []);
+  }, [usingProp]);
 
   async function remove(id, name) {
     if (!window.confirm(`Remove ${name}? This cannot be undone.`)) return;
@@ -307,7 +313,11 @@ function MembersPanel({ role, lang, roleFilter }) {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) {
-      setMembers(prev => prev.filter(m => m.id !== id));
+      if (usingProp) {
+        onMembersRefresh?.();
+      } else {
+        setLocalMembers(prev => prev.filter(m => m.id !== id));
+      }
     } else {
       const d = await res.json().catch(() => ({}));
       alert(d.error || 'Delete failed');
@@ -345,8 +355,8 @@ function MembersPanel({ role, lang, roleFilter }) {
   );
 }
 
-function StudentsPanel({ role, lang })   { return <MembersPanel role={role} lang={lang} roleFilter="student"   />; }
-function AssistantsPanel({ role, lang }) { return <MembersPanel role={role} lang={lang} roleFilter="assistant" />; }
+function StudentsPanel({ role, lang, allMembers, onMembersRefresh })   { return <MembersPanel role={role} lang={lang} roleFilter="student"   allMembers={allMembers} onMembersRefresh={onMembersRefresh} />; }
+function AssistantsPanel({ role, lang, allMembers, onMembersRefresh }) { return <MembersPanel role={role} lang={lang} roleFilter="assistant" allMembers={allMembers} onMembersRefresh={onMembersRefresh} />; }
 
 function AdminEventsPanel() {
   const [events, setEvents] = useState(INIT_EVENTS);
@@ -597,7 +607,7 @@ function AssistantRequestsPanel({ lang }) {
   );
 }
 
-function TeachersPanel({ role, lang }) { return <MembersPanel role={role} lang={lang} roleFilter="teacher" />; }
+function TeachersPanel({ role, lang, allMembers, onMembersRefresh }) { return <MembersPanel role={role} lang={lang} roleFilter="teacher" allMembers={allMembers} onMembersRefresh={onMembersRefresh} />; }
 
 // ─── Teacher panels ───────────────────────────────────────────────────────────
 
@@ -1337,12 +1347,12 @@ function AiUsePanel({ role, lang }) {
 
 // ─── Panel router ─────────────────────────────────────────────────────────────
 
-function panelContent(role, panel, libraryProps, lang) {
+function panelContent(role, panel, libraryProps, lang, allMembers, onMembersRefresh) {
   switch (panel) {
     case 'groups':          return <GroupsPanel role={role} lang={lang} />;
     case 'admin-schedule':  return <AdminSchedulePanel lang={lang} />;
-    case 'students':        return <StudentsPanel role={role} lang={lang} />;
-    case 'assistants':      return <AssistantsPanel role={role} lang={lang} />;
+    case 'students':        return <StudentsPanel role={role} lang={lang} allMembers={allMembers} onMembersRefresh={onMembersRefresh} />;
+    case 'assistants':      return <AssistantsPanel role={role} lang={lang} allMembers={allMembers} onMembersRefresh={onMembersRefresh} />;
     case 'admin-events':    return <AdminEventsPanel />;
     case 'broadcast':       return <BroadcastPanel lang={lang} />;
     case 'admin-announce':
@@ -1364,7 +1374,7 @@ function panelContent(role, panel, libraryProps, lang) {
     case 'add-subject':     return <StudentAddSubjectPanel lang={lang} />;
     case 'remove-subject':  return <StudentRemoveSubjectPanel lang={lang} />;
     case 'requests':        return <AssistantRequestsPanel lang={lang} />;
-    case 'teachers':        return <TeachersPanel role={role} lang={lang} />;
+    case 'teachers':        return <TeachersPanel role={role} lang={lang} allMembers={allMembers} onMembersRefresh={onMembersRefresh} />;
     case 'subjects':        return <SubjectsPanel role={role} lang={lang} />;
     case 'view-events':     return <AdminViewEventsPanel />;
     case 'add-event':       return <AdminAddEventPanel role={role} lang={lang} />;
@@ -1420,7 +1430,7 @@ export const PANEL_ACTIVE_CLS = {
   student:   'bg-white/[0.08] text-white border border-white/20',
 };
 
-export function RolePanel({ role, panel, onClose, libraryProps, lang = 'EN' }) {
+export function RolePanel({ role, panel, onClose, libraryProps, lang = 'EN', allMembers, onMembersRefresh }) {
   const th = TH[role];
   const orgName = libraryProps?.orgName ?? '';
   const panelTitle = (panel === 'knowledge-library' && lang === 'GEO' && orgName)
@@ -1433,7 +1443,7 @@ export function RolePanel({ role, panel, onClose, libraryProps, lang = 'EN' }) {
         <button onClick={onClose} className="text-white/30 hover:text-white/60 transition-colors text-sm leading-none">✕</button>
       </div>
       <div className="p-4 overflow-y-auto flex-1">
-        {panelContent(role, panel, libraryProps, lang)}
+        {panelContent(role, panel, libraryProps, lang, allMembers, onMembersRefresh)}
       </div>
     </div>
   );
