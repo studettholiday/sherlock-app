@@ -26,7 +26,7 @@ export default function PendingApproval() {
           Pending Approval
         </h1>
         <p style={{ color: 'rgb(156,163,175)', fontSize: '0.95rem', lineHeight: 1.6, margin: '0 0 32px' }}>
-          Your school registration is awaiting admin approval. You will receive access once your account has been reviewed.
+          Your registration is awaiting approval. You will receive access once your account has been reviewed.
         </p>
         <button
           onClick={logout}
