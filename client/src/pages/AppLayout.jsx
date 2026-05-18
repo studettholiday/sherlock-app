@@ -637,6 +637,15 @@ function RightColumn() {
   const inactiveCls = 'border border-white/10 text-white/60 hover:text-white hover:border-white/25 transition-colors';
   const openGroupDef = openGroup ? getButtonGroups(lang)[role]?.find(g => g.id === openGroup) : null;
 
+  const visibleRoleSwitcher = ROLE_SWITCHER.filter(r => {
+    const userRole = user?.role;
+    if (userRole === 'admin') return true;
+    if (userRole === 'assistant') return r.id === 'assistant' || r.id === 'student';
+    if (userRole === 'teacher') return r.id === 'teacher';
+    if (userRole === 'student') return r.id === 'student';
+    return true;
+  });
+
   return (
     <div className={`flex flex-col flex-1 overflow-hidden ${s.wrap}`} style={{ position: 'relative' }}>
       {/* Ambient glow */}
@@ -758,7 +767,7 @@ function RightColumn() {
 
       {/* Role switcher */}
       <div className={`flex items-center gap-1 px-4 py-2 border-b ${s.headerBorder} flex-shrink-0 overflow-x-auto`} style={{ scrollbarWidth: 'none' }}>
-        {ROLE_SWITCHER.map(r => (
+        {visibleRoleSwitcher.map(r => (
           <button key={r.id} onClick={() => setRole(r.id)}
             className={`px-3 py-1 text-xs transition-all duration-150 flex-shrink-0 border-b-2 ${role === r.id ? 'text-white font-semibold border-violet-500' : 'text-white/40 border-transparent hover:text-white/70'}`}>
             {customRoleNames[r.id] || (lang === 'GEO' ? ({ admin: 'ადმინი', assistant: 'ასისტენტი', teacher: 'მასწავლებელი', student: 'სტუდენტი' })[r.id] : r.label)}
