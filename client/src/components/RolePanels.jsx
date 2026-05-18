@@ -1742,21 +1742,35 @@ function KnowledgeLibraryPanel({ role, lang, orgName, orgNameGenitive, libraryFi
 // ─── Student panels ───────────────────────────────────────────────────────────
 
 function StudentSchedulePanel({ lang }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    fetch('/api/school/my-schedule', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => { setRows(d.schedule || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  if (loading) return <p className="text-xs text-gray-500">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
+  if (!rows.length) return <p className="text-xs text-gray-500">{lang === 'GEO' ? 'განრიგი ცარიელია.' : 'No schedule yet.'}</p>;
+
   return (
     <table className="w-full text-xs">
       <thead>
         <tr className="text-gray-500">
           <th className="text-left pb-2 font-medium">{lang === 'GEO' ? 'დღე' : 'Day'}</th>
           <th className="text-left pb-2 font-medium">{lang === 'GEO' ? 'დრო' : 'Time'}</th>
-          <th className="text-left pb-2 font-medium">{lang === 'GEO' ? 'საგანი' : 'Subject'}</th>
+          <th className="text-left pb-2 font-medium">{lang === 'GEO' ? 'ჯგუფი' : 'Group'}</th>
         </tr>
       </thead>
       <tbody>
-        {STUDENT_SCHEDULE.map((r, i) => (
-          <tr key={i} className="border-t border-white/[0.05]">
-            <td className="py-1.5 text-gray-400">{r.day}</td>
-            <td className="py-1.5 text-gray-300 font-mono">{r.time}</td>
-            <td className="py-1.5 text-white">{r.subject}</td>
+        {rows.map(r => (
+          <tr key={r.id} className="border-t border-white/[0.05]">
+            <td className="py-1.5 text-gray-400">{GEO_DAYS[r.day_of_week] ?? r.day_of_week}</td>
+            <td className="py-1.5 text-gray-300 font-mono">{(r.lesson_time || '').slice(0, 5)}</td>
+            <td className="py-1.5 text-white">{r.group_name}</td>
           </tr>
         ))}
       </tbody>

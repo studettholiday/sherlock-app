@@ -419,4 +419,25 @@ router.patch('/web-registrations/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// --- My Schedule (student) ---
+
+router.get('/my-schedule', authMiddleware, async (req, res) => {
+  try {
+    const result = await getPool().query(
+      `SELECT s.id, s.day_of_week, s.lesson_time, g.name AS group_name, sub.name AS subject_name
+       FROM web_registrations wr
+       JOIN groups g ON wr.group_id = g.id
+       LEFT JOIN subjects sub ON g.subject_id = sub.id
+       JOIN schedule s ON s.group_id = g.id
+       WHERE wr.user_id = $1 AND wr.status = 'approved' AND wr.school_id = $2
+       ORDER BY s.day_of_week, s.lesson_time`,
+      [req.user.userId, req.user.schoolId]
+    );
+    res.json({ schedule: result.rows });
+  } catch (err) {
+    console.error('[my-schedule] GET error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;
