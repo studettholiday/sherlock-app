@@ -1,27 +1,43 @@
 const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
+const { Resend } = require('resend');
 const authMiddleware = require('../middleware/auth');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // POST /api/invites/generate
 router.post('/generate', authMiddleware, async (req, res) => {
   if (!['admin', 'assistant'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
-  const { target_role } = req.body;
+  const { target_role, email } = req.body;
   if (!['assistant', 'teacher', 'student'].includes(target_role)) return res.status(400).json({ error: 'Invalid target_role' });
   try {
+    const schoolResult = await pool.query('SELECT name FROM schools WHERE id = $1', [req.user.schoolId]);
+    const schoolName = schoolResult.rows[0]?.name ?? 'your school';
+
     const result = await pool.query(
       'INSERT INTO invites (school_id, created_by, target_role) VALUES ($1, $2, $3) RETURNING code, target_role, expires_at',
       [req.user.schoolId, req.user.userId, target_role]
     );
     const invite = result.rows[0];
-    const baseUrl = process.env.APP_URL || 'https://sherlock-app-production.up.railway.app';
+    const inviteUrl = `https://app.sherlock.school/invite/${invite.code}`;
+
+    if (email) {
+      await resend.emails.send({
+        from: 'hello@sherlock.school',
+        to: email,
+        subject: `You've been invited to join ${schoolName}`,
+        html: `<p>You've been invited to join <strong>${schoolName}</strong> on Sherlock.</p><p><a href="${inviteUrl}">Click here to accept your invitation</a></p><p>Or copy this link: ${inviteUrl}</p>`,
+      });
+    }
+
     res.json({
       code: invite.code,
-      invite_url: `${baseUrl}/join?code=${invite.code}`,
+      invite_url: inviteUrl,
       target_role: invite.target_role,
       expires_at: invite.expires_at,
+      email_sent: !!email,
     });
   } catch (err) {
     console.error(err);

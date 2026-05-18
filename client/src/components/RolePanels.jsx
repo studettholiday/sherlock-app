@@ -441,21 +441,58 @@ function AnnouncePanel({ role, lang }) {
 function InvitePanel({ role, lang }) {
   const th = TH[role];
   const [email, setEmail] = useState('');
-  const [sent, setSent] = useState('');
+  const [targetRole, setTargetRole] = useState('student');
+  const [status, setStatus] = useState('');
+  const [sending, setSending] = useState(false);
 
-  function send() { if (email.trim()) { setSent(email.trim()); setEmail(''); setTimeout(() => setSent(''), 3000); } }
+  async function send() {
+    if (!email.trim()) return;
+    setSending(true);
+    setStatus('');
+    try {
+      const token = localStorage.getItem('sherlock_token');
+      const res = await fetch('/api/invites/generate', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_role: targetRole, email: email.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setStatus('ok:' + email.trim());
+      setEmail('');
+    } catch (err) {
+      setStatus('err:' + err.message);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  const sentEmail = status.startsWith('ok:') ? status.slice(3) : '';
+  const errMsg    = status.startsWith('err:') ? status.slice(4) : '';
+
+  const roleOptions = lang === 'GEO'
+    ? [['student', 'სტუდენტი'], ['teacher', 'მასწავლებელი'], ['assistant', 'ასისტენტი']]
+    : [['student', 'Student'], ['teacher', 'Teacher'], ['assistant', 'Assistant']];
 
   return (
     <div className="space-y-3">
+      <select value={targetRole} onChange={e => setTargetRole(e.target.value)}
+        style={{ colorScheme: 'dark' }} className={`${FIELD} cursor-pointer`}>
+        {roleOptions.map(([val, label]) => <option key={val} value={val}>{label}</option>)}
+      </select>
       <input type="email" value={email} onChange={e => setEmail(e.target.value)}
         placeholder={lang === 'GEO' ? 'ელ. ფოსტა' : 'Email address'} className={FIELD} />
-      {sent
-        ? <p className={`text-sm ${th.conf}`}>{lang === 'GEO' ? `✅ მოწვევა გაიგზავნა: ${sent}!` : `✅ Invitation sent to ${sent}!`}</p>
-        : <button onClick={send} disabled={!email.trim()}
-            className={`rounded-xl ${th.btn} disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors`}>
-            {lang === 'GEO' ? 'მოწვევის გაგზავნა' : 'Send Invitation'}
-          </button>
-      }
+      {sentEmail
+        ? <p className={`text-sm ${th.conf}`}>{lang === 'GEO' ? `✅ მოწვევა გაიგზავნა: ${sentEmail}!` : `✅ Invitation sent to ${sentEmail}!`}</p>
+        : errMsg
+        ? <p className="text-sm text-red-400">{errMsg}</p>
+        : null}
+      <button onClick={send} disabled={!email.trim() || sending}
+          className={`rounded-xl ${th.btn} disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors`}>
+          {sending
+            ? (lang === 'GEO' ? 'იგზავნება...' : 'Sending…')
+            : (lang === 'GEO' ? 'მოწვევის გაგზავნა' : 'Send Invitation')}
+      </button>
     </div>
   );
 }
