@@ -27,6 +27,7 @@ export function AuthProvider({ children }) {
         if (data.status === 'approved') {
           setUser(data);
           stopPolling();
+          window.location.replace('/dashboard');
         }
       } catch {
         stopPolling();

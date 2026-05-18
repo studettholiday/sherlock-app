@@ -1,7 +1,25 @@
+import { useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 
 export default function PendingApproval() {
   const { logout } = useAuth();
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const token = localStorage.getItem('sherlock_token');
+      if (!token) return;
+      try {
+        const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+        const data = await res.json();
+        if (data.status === 'approved') {
+          window.location.replace('/dashboard');
+        }
+      } catch {
+        // ignore network errors
+      }
+    }, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div style={{
