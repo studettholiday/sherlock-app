@@ -190,66 +190,134 @@ function getPanelTitle(panel, lang) {
 
 function GroupsPanel({ role, lang }) {
   const th = TH[role];
-  const [groups, setGroups] = useState(INIT_GROUPS);
-  const [editingId, setEditingId] = useState(null);
-  const [draft, setDraft] = useState('');
+  const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [adding, setAdding] = useState(false);
 
-  function startEdit(g) { setEditingId(g.id); setDraft(g.name); }
-  function saveEdit() {
-    if (draft.trim()) setGroups(gs => gs.map(g => g.id === editingId ? { ...g, name: draft.trim() } : g));
-    setEditingId(null);
+  async function load() {
+    const token = localStorage.getItem('sherlock_token');
+    try {
+      const res = await fetch('/api/school/groups', { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      setGroups(data.groups || []);
+    } catch {}
+    setLoading(false);
   }
-  function addGroup() {
-    const id = Date.now();
-    setGroups(gs => [...gs, { id, name: 'New Group', count: 0 }]);
-    setEditingId(id);
-    setDraft('New Group');
+
+  useEffect(() => { load(); }, []);
+
+  async function del(id) {
+    const token = localStorage.getItem('sherlock_token');
+    await fetch(`/api/school/groups/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    load();
   }
+
+  async function addGroup() {
+    if (!newName.trim()) return;
+    setAdding(true);
+    const token = localStorage.getItem('sherlock_token');
+    await fetch('/api/school/groups', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newName.trim(), instrument: '' }),
+    });
+    setNewName('');
+    setShowAdd(false);
+    setAdding(false);
+    load();
+  }
+
+  if (loading) return <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
 
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-2">
         {groups.map(g => (
           <div key={g.id} className={`rounded-xl border ${th.border} p-3 flex items-center gap-2 min-w-0`}>
-            {editingId === g.id ? (
-              <input
-                autoFocus
-                value={draft}
-                onChange={e => setDraft(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingId(null); }}
-                onBlur={saveEdit}
-                className="flex-1 min-w-0 bg-transparent text-white text-xs outline-none border-b border-white/40"
-              />
-            ) : (
-              <span
-                className="flex-1 min-w-0 text-xs text-white cursor-pointer hover:opacity-70 truncate"
-                onClick={() => startEdit(g)}
-                title="Click to edit"
-              >{g.name}</span>
-            )}
-            <span className="text-xs text-gray-600 flex-shrink-0">{g.count}</span>
+            <span className="flex-1 min-w-0 text-xs text-white truncate">{g.name}</span>
             <button
-              onClick={() => setGroups(gs => gs.filter(x => x.id !== g.id))}
+              onClick={() => del(g.id)}
               className="text-gray-600 hover:text-red-400 text-xs flex-shrink-0"
             >✕</button>
           </div>
         ))}
       </div>
-      <button
-        onClick={addGroup}
-        className={`w-full rounded-xl border border-dashed ${th.border} py-2 text-xs text-gray-500 hover:text-white transition-colors`}
-      >{lang === 'GEO' ? '+ ჯგუფის დამატება' : '+ Add Group'}</button>
+      {showAdd ? (
+        <div className="flex gap-2">
+          <input
+            autoFocus
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') addGroup(); if (e.key === 'Escape') setShowAdd(false); }}
+            placeholder={lang === 'GEO' ? 'ჯგუფის სახელი...' : 'Group name…'}
+            className={`${FIELD} py-1.5 flex-1`}
+          />
+          <button onClick={addGroup} disabled={adding || !newName.trim()}
+            className={`rounded-xl ${th.btn} disabled:opacity-40 px-3 py-1.5 text-xs text-white`}>
+            {lang === 'GEO' ? 'დამატება' : 'Add'}
+          </button>
+          <button onClick={() => setShowAdd(false)} className="text-gray-500 hover:text-white text-xs px-2">✕</button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setShowAdd(true)}
+          className={`w-full rounded-xl border border-dashed ${th.border} py-2 text-xs text-gray-500 hover:text-white transition-colors`}
+        >{lang === 'GEO' ? '+ ჯგუფის დამატება' : '+ Add Group'}</button>
+      )}
     </div>
   );
 }
 
-function AdminSchedulePanel({ lang }) {
-  const [rows, setRows] = useState(INIT_SCHEDULE);
+const WEEK_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-  function update(id, col, val) { setRows(rs => rs.map(r => r.id === id ? { ...r, [col]: val } : r)); }
-  function addRow() {
-    setRows(rs => [...rs, { id: Date.now(), group: 'New Group', day: 'Monday', time: '09:00', subject: 'Subject' }]);
+function AdminSchedulePanel({ lang }) {
+  const [rows, setRows] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ group: '', day: 'Monday', time: '', subject: '' });
+  const [adding, setAdding] = useState(false);
+
+  async function load() {
+    const token = localStorage.getItem('sherlock_token');
+    const [schedRes, grpRes] = await Promise.all([
+      fetch('/api/school/schedule', { headers: { Authorization: `Bearer ${token}` } }),
+      fetch('/api/school/groups',   { headers: { Authorization: `Bearer ${token}` } }),
+    ]);
+    const [schedData, grpData] = await Promise.all([schedRes.json(), grpRes.json()]);
+    setRows(schedData.schedule || []);
+    const grps = grpData.groups || [];
+    setGroups(grps);
+    if (grps.length) setForm(f => ({ ...f, group: f.group || grps[0].name }));
+    setLoading(false);
   }
+
+  useEffect(() => { load(); }, []);
+
+  async function del(id) {
+    const token = localStorage.getItem('sherlock_token');
+    await fetch(`/api/school/schedule/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    load();
+  }
+
+  async function addRow() {
+    if (!form.group || !form.time.trim() || !form.subject.trim()) return;
+    setAdding(true);
+    const token = localStorage.getItem('sherlock_token');
+    await fetch('/api/school/schedule', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    });
+    setForm(f => ({ ...f, time: '', subject: '' }));
+    setShowAdd(false);
+    setAdding(false);
+    load();
+  }
+
+  if (loading) return <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
 
   return (
     <div className="space-y-2">
@@ -266,21 +334,46 @@ function AdminSchedulePanel({ lang }) {
         <tbody>
           {rows.map(r => (
             <tr key={r.id} className="border-t border-white/[0.05]">
-              {['group', 'day', 'time', 'subject'].map(col => (
-                <td key={col} className="py-1 pr-2">
-                  <input value={r[col]} onChange={e => update(r.id, col, e.target.value)} className={CELL} />
-                </td>
-              ))}
+              <td className="py-1 pr-2 text-white/80">{r.group}</td>
+              <td className="py-1 pr-2 text-gray-400">{r.day}</td>
+              <td className="py-1 pr-2 text-gray-300 font-mono">{r.time}</td>
+              <td className="py-1 pr-2 text-gray-400">{r.subject}</td>
               <td>
-                <button onClick={() => setRows(rs => rs.filter(x => x.id !== r.id))} className="text-gray-600 hover:text-red-400">✕</button>
+                <button onClick={() => del(r.id)} className="text-gray-600 hover:text-red-400">✕</button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      <button onClick={addRow} className="text-xs text-gray-500 hover:text-white transition-colors">
-        {lang === 'GEO' ? '+ სტრიქონის დამატება' : '+ Add row'}
-      </button>
+      {showAdd ? (
+        <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.02] p-3">
+          <select value={form.group} onChange={e => setForm(f => ({ ...f, group: e.target.value }))}
+            style={{ colorScheme: 'dark' }} className={`${FIELD} py-1.5`}>
+            {groups.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
+          </select>
+          <select value={form.day} onChange={e => setForm(f => ({ ...f, day: e.target.value }))}
+            style={{ colorScheme: 'dark' }} className={`${FIELD} py-1.5`}>
+            {WEEK_DAYS.map(d => <option key={d}>{d}</option>)}
+          </select>
+          <input value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))}
+            placeholder={lang === 'GEO' ? 'დრო (მაგ. 16:00)' : 'Time (e.g. 16:00)'} className={`${FIELD} py-1.5`} />
+          <input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
+            placeholder={lang === 'GEO' ? 'საგანი' : 'Subject'} className={`${FIELD} py-1.5`} />
+          <div className="flex gap-2">
+            <button onClick={addRow} disabled={adding || !form.time.trim() || !form.subject.trim()}
+              className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-3 py-1.5 text-xs text-white">
+              {lang === 'GEO' ? 'დამატება' : 'Add'}
+            </button>
+            <button onClick={() => setShowAdd(false)} className="text-xs text-gray-500 hover:text-white">
+              {lang === 'GEO' ? 'გაუქმება' : 'Cancel'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setShowAdd(true)} className="text-xs text-gray-500 hover:text-white transition-colors">
+          {lang === 'GEO' ? '+ სტრიქონის დამატება' : '+ Add row'}
+        </button>
+      )}
     </div>
   );
 }
@@ -358,34 +451,86 @@ function MembersPanel({ role, lang, roleFilter, allMembers, onMembersRefresh }) 
 function StudentsPanel({ role, lang, allMembers, onMembersRefresh })   { return <MembersPanel role={role} lang={lang} roleFilter="student"   allMembers={allMembers} onMembersRefresh={onMembersRefresh} />; }
 function AssistantsPanel({ role, lang, allMembers, onMembersRefresh }) { return <MembersPanel role={role} lang={lang} roleFilter="assistant" allMembers={allMembers} onMembersRefresh={onMembersRefresh} />; }
 
-function AdminEventsPanel() {
-  const [events, setEvents] = useState(INIT_EVENTS);
+function AdminEventsPanel({ lang }) {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ name: '', date: '', time: '', place: '' });
+  const [adding, setAdding] = useState(false);
 
-  function update(id, field, val) { setEvents(es => es.map(e => e.id === id ? { ...e, [field]: val } : e)); }
-  function add() {
-    setEvents(es => [...es, { id: Date.now(), name: 'New Event', date: '1 Jan 2026', time: '10:00', place: 'TBD' }]);
+  async function load() {
+    const token = localStorage.getItem('sherlock_token');
+    try {
+      const res = await fetch('/api/school/events', { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      setEvents(data.events || []);
+    } catch {}
+    setLoading(false);
   }
+
+  useEffect(() => { load(); }, []);
+
+  async function del(id) {
+    const token = localStorage.getItem('sherlock_token');
+    await fetch(`/api/school/events/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    load();
+  }
+
+  async function add() {
+    if (!form.name.trim()) return;
+    setAdding(true);
+    const token = localStorage.getItem('sherlock_token');
+    await fetch('/api/school/events', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    });
+    setForm({ name: '', date: '', time: '', place: '' });
+    setShowAdd(false);
+    setAdding(false);
+    load();
+  }
+
+  if (loading) return <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
 
   return (
     <div className="space-y-2">
       {events.map(ev => (
-        <div key={ev.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-3 space-y-1.5">
+        <div key={ev.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
           <div className="flex items-center gap-2">
-            <input
-              value={ev.name}
-              onChange={e => update(ev.id, 'name', e.target.value)}
-              className="flex-1 bg-transparent text-white text-xs font-medium outline-none border-b border-transparent focus:border-white/30"
-            />
-            <button onClick={() => setEvents(es => es.filter(e => e.id !== ev.id))} className="text-gray-600 hover:text-red-400 text-xs flex-shrink-0">✕</button>
+            <p className="flex-1 text-xs text-white font-medium">{ev.name}</p>
+            <button onClick={() => del(ev.id)} className="text-gray-600 hover:text-red-400 text-xs flex-shrink-0">✕</button>
           </div>
-          <div className="flex gap-2">
-            <input value={ev.date}  onChange={e => update(ev.id, 'date',  e.target.value)} className="bg-transparent text-gray-400 text-xs outline-none border-b border-transparent focus:border-white/30 w-28" />
-            <input value={ev.time}  onChange={e => update(ev.id, 'time',  e.target.value)} className="bg-transparent text-gray-400 text-xs outline-none border-b border-transparent focus:border-white/30 w-14" />
-            <input value={ev.place} onChange={e => update(ev.id, 'place', e.target.value)} className="bg-transparent text-gray-400 text-xs outline-none border-b border-transparent focus:border-white/30 flex-1" />
-          </div>
+          <p className="text-xs text-gray-500 mt-1">📅 {ev.date} · {ev.time}&nbsp;&nbsp;📍 {ev.place}</p>
         </div>
       ))}
-      <button onClick={add} className="text-xs text-gray-500 hover:text-white transition-colors">+ Add event</button>
+      {showAdd ? (
+        <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.02] p-3">
+          {[
+            ['name',  lang === 'GEO' ? 'ღონისძიების სახელი' : 'Event name'],
+            ['date',  lang === 'GEO' ? 'თარიღი'            : 'Date'],
+            ['time',  lang === 'GEO' ? 'დრო'               : 'Time'],
+            ['place', lang === 'GEO' ? 'ადგილი'            : 'Place'],
+          ].map(([field, placeholder]) => (
+            <input key={field} value={form[field]}
+              onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))}
+              placeholder={placeholder} className={`${FIELD} py-1.5`} />
+          ))}
+          <div className="flex gap-2">
+            <button onClick={add} disabled={adding || !form.name.trim()}
+              className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-3 py-1.5 text-xs text-white">
+              {lang === 'GEO' ? 'დამატება' : 'Add'}
+            </button>
+            <button onClick={() => setShowAdd(false)} className="text-xs text-gray-500 hover:text-white">
+              {lang === 'GEO' ? 'გაუქმება' : 'Cancel'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setShowAdd(true)} className="text-xs text-gray-500 hover:text-white transition-colors">
+          {lang === 'GEO' ? '+ ღონისძიების დამატება' : '+ Add event'}
+        </button>
+      )}
     </div>
   );
 }
@@ -1390,7 +1535,7 @@ function panelContent(role, panel, libraryProps, lang, allMembers, onMembersRefr
     case 'admin-schedule':  return <AdminSchedulePanel lang={lang} />;
     case 'students':        return <StudentsPanel role={role} lang={lang} allMembers={allMembers} onMembersRefresh={onMembersRefresh} />;
     case 'assistants':      return <AssistantsPanel role={role} lang={lang} allMembers={allMembers} onMembersRefresh={onMembersRefresh} />;
-    case 'admin-events':    return <AdminEventsPanel />;
+    case 'admin-events':    return <AdminEventsPanel lang={lang} />;
     case 'broadcast':       return <BroadcastPanel lang={lang} />;
     case 'admin-announce':
     case 'announce':        return <AnnouncePanel role={role} lang={lang} />;
