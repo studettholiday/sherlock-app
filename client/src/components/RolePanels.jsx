@@ -113,6 +113,7 @@ const PANEL_TITLES = {
   'groups':          'Groups',
   'admin-schedule':  'Schedule',
   'students':        'Students',
+  'assistants':      'Assistants',
   'admin-events':    'Events',
   'broadcast':       'Notify',
   'admin-announce':  'Announce',
@@ -148,6 +149,7 @@ const GEO_PANEL_TITLES = {
   'groups':          'ჯგუფები',
   'admin-schedule':  'განრიგი',
   'students':        'სტუდენტები',
+  'assistants':      'ასისტენტები',
   'admin-events':    'ღონისძიებები',
   'broadcast':       'განცხადება',
   'admin-announce':  'გამოცხადება',
@@ -283,43 +285,68 @@ function AdminSchedulePanel({ lang }) {
   );
 }
 
-function StudentsPanel({ role, lang }) {
+function MembersPanel({ role, lang, roleFilter }) {
   const th = TH[role];
-  const [students, setStudents] = useState(INIT_STUDENTS);
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState('');
 
-  function toggle(id) {
-    setStudents(ss => ss.map(s => s.id === id ? { ...s, status: s.status === 'active' ? 'pending' : 'active' } : s));
+  useEffect(() => {
+    const token = localStorage.getItem('sherlock_token');
+    fetch('/api/school/members', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => { setMembers((data.members || []).filter(m => m.role === roleFilter)); setLoading(false); })
+      .catch(e => { setError(e.message); setLoading(false); });
+  }, []);
+
+  async function remove(id, name) {
+    if (!window.confirm(`Remove ${name}? This cannot be undone.`)) return;
+    const token = localStorage.getItem('sherlock_token');
+    const res = await fetch(`/api/school/members/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) {
+      setMembers(prev => prev.filter(m => m.id !== id));
+    } else {
+      const d = await res.json().catch(() => ({}));
+      alert(d.error || 'Delete failed');
+    }
   }
-  function add() {
-    setStudents(ss => [...ss, { id: Date.now(), name: 'New Student', group: ALL_GROUP_NAMES[0], status: 'pending' }]);
-  }
+
+  if (loading) return <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
+  if (error)   return <p className="text-xs text-red-400 text-center py-4">{error}</p>;
+  if (!members.length) return (
+    <p className="text-xs text-gray-500 text-center py-4">
+      {lang === 'GEO' ? 'წევრები არ მოიძებნა.' : `No ${roleFilter}s found.`}
+    </p>
+  );
 
   return (
     <div className="space-y-1">
-      {students.map(s => (
-        <div key={s.id} className={`flex items-center gap-2 py-2 border-b ${th.border}`}>
+      {members.map(m => (
+        <div key={m.id} className={`flex items-center gap-2 py-2 border-b ${th.border}`}>
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-white truncate">{s.name}</p>
-            <p className="text-xs text-gray-500 truncate">{s.group}</p>
+            <p className="text-xs text-white truncate">{m.name || '—'}</p>
+            <p className="text-xs text-gray-500 truncate">{m.email}</p>
           </div>
-          <button
-            onClick={() => toggle(s.id)}
-            className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${
-              s.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
-            }`}
-          >{s.status}</button>
-          <button
-            onClick={() => setStudents(ss => ss.filter(x => x.id !== s.id))}
-            className="text-gray-600 hover:text-red-400 text-xs flex-shrink-0"
-          >✕</button>
+          <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0 bg-emerald-500/20 text-emerald-400">
+            {lang === 'GEO' ? 'აქტიური' : 'active'}
+          </span>
+          {role === 'admin' && (
+            <button
+              onClick={() => remove(m.id, m.name || m.email)}
+              className="text-gray-600 hover:text-red-400 text-xs flex-shrink-0"
+            >✕</button>
+          )}
         </div>
       ))}
-      <button onClick={add} className="text-xs text-gray-500 hover:text-white transition-colors pt-1">
-        {lang === 'GEO' ? '+ სტუდენტის დამატება' : '+ Add student'}
-      </button>
     </div>
   );
 }
+
+function StudentsPanel({ role, lang })   { return <MembersPanel role={role} lang={lang} roleFilter="student"   />; }
+function AssistantsPanel({ role, lang }) { return <MembersPanel role={role} lang={lang} roleFilter="assistant" />; }
 
 function AdminEventsPanel() {
   const [events, setEvents] = useState(INIT_EVENTS);
@@ -570,55 +597,7 @@ function AssistantRequestsPanel({ lang }) {
   );
 }
 
-function TeachersPanel({ role, lang }) {
-  const th = TH[role];
-  const [teachers, setTeachers] = useState(INIT_TEACHERS);
-  const [name,    setName]    = useState('');
-  const [subject, setSubject] = useState('');
-  const [added,   setAdded]   = useState(false);
-
-  function add() {
-    if (!name.trim() || !subject.trim()) return;
-    setTeachers(ts => [...ts, { id: Date.now(), name: name.trim(), subject: subject.trim() }]);
-    setName(''); setSubject('');
-    setAdded(true);
-    setTimeout(() => setAdded(false), 3000);
-  }
-
-  return (
-    <div className="space-y-2">
-      {teachers.map(t => (
-        <div key={t.id} className={`flex items-center justify-between rounded-xl border ${th.border} px-3 py-2`}>
-          <div>
-            <p className="text-xs text-white font-medium">{t.name}</p>
-            <p className="text-xs text-gray-500">{t.subject}</p>
-          </div>
-          <button onClick={() => setTeachers(ts => ts.filter(x => x.id !== t.id))}
-            className="text-gray-600 hover:text-red-400 text-xs transition-colors">
-            {lang === 'GEO' ? 'წაშლა' : 'Remove'}
-          </button>
-        </div>
-      ))}
-      <div className="pt-1 space-y-2 border-t border-white/[0.06]">
-        <div className="flex gap-2 pt-1">
-          <input value={name} onChange={e => setName(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') add(); }}
-            placeholder={lang === 'GEO' ? 'სახელი' : 'Name'} className={`${FIELD} py-1.5`} />
-          <input value={subject} onChange={e => setSubject(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') add(); }}
-            placeholder={lang === 'GEO' ? 'საგანი' : 'Subject'} className={`${FIELD} py-1.5`} />
-        </div>
-        {added
-          ? <p className={`text-sm ${th.conf}`}>{lang === 'GEO' ? '✅ მასწავლებელი დამატებულია!' : '✅ Teacher added!'}</p>
-          : <button onClick={add} disabled={!name.trim() || !subject.trim()}
-              className={`rounded-xl ${th.btn} disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors`}>
-              {lang === 'GEO' ? 'მასწავლებლის დამატება' : 'Add Teacher'}
-            </button>
-        }
-      </div>
-    </div>
-  );
-}
+function TeachersPanel({ role, lang }) { return <MembersPanel role={role} lang={lang} roleFilter="teacher" />; }
 
 // ─── Teacher panels ───────────────────────────────────────────────────────────
 
@@ -1363,6 +1342,7 @@ function panelContent(role, panel, libraryProps, lang) {
     case 'groups':          return <GroupsPanel role={role} lang={lang} />;
     case 'admin-schedule':  return <AdminSchedulePanel lang={lang} />;
     case 'students':        return <StudentsPanel role={role} lang={lang} />;
+    case 'assistants':      return <AssistantsPanel role={role} lang={lang} />;
     case 'admin-events':    return <AdminEventsPanel />;
     case 'broadcast':       return <BroadcastPanel lang={lang} />;
     case 'admin-announce':
