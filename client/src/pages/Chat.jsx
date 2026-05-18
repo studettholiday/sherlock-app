@@ -133,7 +133,7 @@ const ROLE_SWITCHER = [
 const BUTTON_GROUPS = {
   admin: [
     { id: 'people',    label: '👥 People',    children: [{ id: 'students', label: 'Students' }, { id: 'assistants', label: 'Assistants' }, { id: 'teachers', label: 'Teachers' }, { id: 'invite', label: 'Invite' }] },
-    { id: 'manage',    label: '📋 Manage',    children: [{ id: 'admin-schedule', label: 'Schedule' }, { id: 'subjects', label: 'Subjects' }] },
+    { id: 'manage',    label: '📋 Manage',    children: [{ id: 'subjects', label: 'Manage' }] },
     { id: 'broadcast', label: '📢 Notify',    children: [{ id: 'broadcast', label: 'Broadcast' }, { id: 'admin-announce', label: 'Announce' }] },
     { id: 'events',    label: '🎪 Events',    children: [{ id: 'view-events', label: 'View Events' }, { id: 'add-event', label: 'Add Event' }, { id: 'delete-event', label: 'Delete Event' }] },
   ],
@@ -161,7 +161,7 @@ const BUTTON_GROUPS = {
 const GEO_BUTTON_GROUPS = {
   admin: [
     { id: 'people',    label: '👥 ხალხი',        children: [{ id: 'students', label: 'სტუდენტები' }, { id: 'assistants', label: 'ასისტენტები' }, { id: 'teachers', label: 'მასწავლებლები' }, { id: 'invite', label: 'მოწვევა' }] },
-    { id: 'manage',    label: '📋 მართვა',        children: [{ id: 'admin-schedule', label: 'განრიგი' }, { id: 'subjects', label: 'საგნები' }] },
+    { id: 'manage',    label: '📋 მართვა',        children: [{ id: 'subjects', label: 'მართვა' }] },
     { id: 'broadcast', label: '📢 შეტყობინება',   children: [{ id: 'broadcast', label: 'ყველას' }, { id: 'admin-announce', label: 'ჯგუფს' }] },
     { id: 'events',    label: '🎪 ღონისძიებები', children: [{ id: 'view-events', label: 'ნახვა' }, { id: 'add-event', label: 'დამატება' }, { id: 'delete-event', label: 'წაშლა' }] },
   ],

@@ -828,35 +828,32 @@ function SubjectsTabPanel({ role, lang }) {
 
 function ScheduleTabPanel({ lang }) {
   const [subjects, setSubjects] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [scheduleRows, setScheduleRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedSubject, setExpandedSubject] = useState(null);
-  const [subjectGroups, setSubjectGroups] = useState({});
   const [expandedGroup, setExpandedGroup] = useState(null);
-  const [scheduleRows, setScheduleRows] = useState([]);
   const [addingFor, setAddingFor] = useState(null);
   const [form, setForm] = useState({ day: 'ორშაბათი', time: '' });
   const [saving, setSaving] = useState(false);
 
-  async function loadSubjects() {
+  async function load() {
     const token = localStorage.getItem('sherlock_token');
     try {
-      const res = await fetch('/api/school/subjects', { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      setSubjects(data.subjects || []);
+      const [subjRes, grpRes, schedRes] = await Promise.all([
+        fetch('/api/school/subjects', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/school/groups',   { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/school/schedule', { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
+      const [subjData, grpData, schedData] = await Promise.all([subjRes.json(), grpRes.json(), schedRes.json()]);
+      setSubjects(subjData.subjects || []);
+      setGroups(grpData.groups || []);
+      setScheduleRows(schedData.schedule || []);
     } catch {}
     setLoading(false);
   }
 
-  async function loadGroupsFor(subjectId) {
-    const token = localStorage.getItem('sherlock_token');
-    try {
-      const res = await fetch(`/api/school/groups?subject_id=${subjectId}`, { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      setSubjectGroups(prev => ({ ...prev, [subjectId]: data.groups || [] }));
-    } catch {}
-  }
-
-  async function loadSchedule() {
+  async function reloadSchedule() {
     const token = localStorage.getItem('sherlock_token');
     try {
       const res = await fetch('/api/school/schedule', { headers: { Authorization: `Bearer ${token}` } });
@@ -865,12 +862,12 @@ function ScheduleTabPanel({ lang }) {
     } catch {}
   }
 
-  useEffect(() => { loadSubjects(); loadSchedule(); }, []);
+  useEffect(() => { load(); }, []);
 
   async function delRow(id) {
     const token = localStorage.getItem('sherlock_token');
     await fetch(`/api/school/schedule/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
-    loadSchedule();
+    reloadSchedule();
   }
 
   async function addRow(groupId) {
@@ -885,18 +882,12 @@ function ScheduleTabPanel({ lang }) {
     setForm({ day: 'ორშაბათი', time: '' });
     setAddingFor(null);
     setSaving(false);
-    loadSchedule();
+    reloadSchedule();
   }
 
   function toggleSubject(id) {
-    if (expandedSubject === id) {
-      setExpandedSubject(null);
-      setExpandedGroup(null);
-    } else {
-      setExpandedSubject(id);
-      setExpandedGroup(null);
-      if (!subjectGroups[id]) loadGroupsFor(id);
-    }
+    setExpandedSubject(prev => prev === id ? null : id);
+    setExpandedGroup(null);
     setAddingFor(null);
   }
 
@@ -910,75 +901,78 @@ function ScheduleTabPanel({ lang }) {
 
   return (
     <div className="space-y-1.5">
-      {subjects.map(s => (
-        <div key={s.id} className="rounded-xl border border-white/[0.08] overflow-hidden">
-          <button onClick={() => toggleSubject(s.id)}
-            className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-white/[0.03] transition-colors">
-            <span className="text-base flex-shrink-0">{s.emoji}</span>
-            <span className="text-sm text-white font-medium flex-1">{s.name}</span>
-            <span className="text-xs text-gray-500">{expandedSubject === s.id ? '▲' : '▼'}</span>
-          </button>
-          {expandedSubject === s.id && (
-            <div className="border-t border-white/[0.06] px-3 pb-3 pt-2 space-y-1.5">
-              {(subjectGroups[s.id] || []).length === 0 && (
-                <p className="text-xs text-gray-600 py-1">{lang === 'GEO' ? 'ჯგუფები არ არის.' : 'No groups.'}</p>
-              )}
-              {(subjectGroups[s.id] || []).map(g => {
-                const gRows = scheduleRows.filter(r => r.group_id === g.id);
-                const isOpen = expandedGroup === g.id;
-                return (
-                  <div key={g.id} className="rounded-lg border border-white/[0.06] overflow-hidden">
-                    <button onClick={() => toggleGroup(g.id)}
-                      className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-white/[0.03] transition-colors">
-                      <span className="text-xs text-white/80 font-medium">{g.name}</span>
-                      <span className="text-xs text-gray-500">{isOpen ? '▲' : '▼'}</span>
-                    </button>
-                    {isOpen && (
-                      <div className="border-t border-white/[0.05] px-3 pb-2 pt-1.5 space-y-1">
-                        {gRows.length === 0 && (
-                          <p className="text-xs text-gray-600 py-1">{lang === 'GEO' ? 'განრიგი ცარიელია.' : 'No schedule yet.'}</p>
-                        )}
-                        {gRows.map(r => (
-                          <div key={r.id} className="flex items-center gap-2 text-xs py-1 border-b border-white/[0.04]">
-                            <span className="text-gray-400 flex-1">{r.day_of_week}</span>
-                            <span className="text-gray-300 font-mono w-12 flex-shrink-0">{r.lesson_time}</span>
-                            <button onClick={() => delRow(r.id)} className="text-gray-600 hover:text-red-400 flex-shrink-0">✕</button>
-                          </div>
-                        ))}
-                        {addingFor === g.id ? (
-                          <div className="pt-1.5 space-y-1.5">
-                            <select value={form.day} onChange={e => setForm(f => ({ ...f, day: e.target.value }))}
-                              style={{ colorScheme: 'dark' }} className={`${FIELD} py-1 text-xs`}>
-                              {GEO_DAYS.map(d => <option key={d}>{d}</option>)}
-                            </select>
-                            <input value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))}
-                              placeholder={lang === 'GEO' ? 'დრო (მაგ. 16:00)' : 'Time (e.g. 16:00)'}
-                              className={`${FIELD} py-1 text-xs`} />
-                            <div className="flex gap-2">
-                              <button onClick={() => addRow(g.id)} disabled={saving || !form.time.trim()}
-                                className="rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-2.5 py-1 text-xs text-white">
-                                {lang === 'GEO' ? 'დამატება' : 'Add'}
-                              </button>
-                              <button onClick={() => setAddingFor(null)} className="text-xs text-gray-500 hover:text-white">
-                                {lang === 'GEO' ? 'გაუქმება' : 'Cancel'}
-                              </button>
+      {subjects.map(s => {
+        const sGroups = groups.filter(g => g.subject_id === s.id);
+        const isSubOpen = expandedSubject === s.id;
+        return (
+          <div key={s.id} className="rounded-xl border border-white/[0.08] overflow-hidden">
+            <button onClick={() => toggleSubject(s.id)}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-white/[0.03] transition-colors">
+              <span className="text-base flex-shrink-0">{s.emoji}</span>
+              <span className="text-sm text-white font-medium flex-1">{s.name}</span>
+              <span className="text-xs text-gray-500">{isSubOpen ? '▲' : '▼'}</span>
+            </button>
+            {isSubOpen && (
+              <div className="border-t border-white/[0.06] px-3 pb-3 pt-2 space-y-1.5">
+                {sGroups.length === 0 && (
+                  <p className="text-xs text-gray-600 py-1">{lang === 'GEO' ? 'ჯგუფები არ არის.' : 'No groups.'}</p>
+                )}
+                {sGroups.map(g => {
+                  const gRows = scheduleRows.filter(r => r.group_id === g.id);
+                  const isGrpOpen = expandedGroup === g.id;
+                  return (
+                    <div key={g.id} className="rounded-lg border border-white/[0.06] overflow-hidden">
+                      <button onClick={() => toggleGroup(g.id)}
+                        className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-white/[0.03] transition-colors">
+                        <span className="text-xs text-white/80 font-medium">{g.name}</span>
+                        <span className="text-xs text-gray-500">{isGrpOpen ? '▲' : '▼'}</span>
+                      </button>
+                      {isGrpOpen && (
+                        <div className="border-t border-white/[0.05] px-3 pb-2 pt-1.5 space-y-1">
+                          {gRows.length === 0 && (
+                            <p className="text-xs text-gray-600 py-1">{lang === 'GEO' ? 'განრიგი ცარიელია.' : 'No schedule yet.'}</p>
+                          )}
+                          {gRows.map(r => (
+                            <div key={r.id} className="flex items-center gap-2 text-xs py-1 border-b border-white/[0.04]">
+                              <span className="text-gray-400 flex-1">{r.day_of_week}</span>
+                              <span className="text-gray-300 font-mono w-12 flex-shrink-0">{r.lesson_time}</span>
+                              <button onClick={() => delRow(r.id)} className="text-gray-600 hover:text-red-400 flex-shrink-0">✕</button>
                             </div>
-                          </div>
-                        ) : (
-                          <button onClick={() => { setAddingFor(g.id); setForm({ day: 'ორშაბათი', time: '' }); }}
-                            className="text-xs text-gray-500 hover:text-white transition-colors mt-0.5">
-                            {lang === 'GEO' ? '+ დროის დამატება' : '+ Add time'}
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      ))}
+                          ))}
+                          {addingFor === g.id ? (
+                            <div className="pt-1.5 space-y-1.5">
+                              <select value={form.day} onChange={e => setForm(f => ({ ...f, day: e.target.value }))}
+                                style={{ colorScheme: 'dark' }} className={`${FIELD} py-1 text-xs`}>
+                                {GEO_DAYS.map(d => <option key={d}>{d}</option>)}
+                              </select>
+                              <input value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))}
+                                placeholder="HH:MM" className={`${FIELD} py-1 text-xs`} />
+                              <div className="flex gap-2">
+                                <button onClick={() => addRow(g.id)} disabled={saving || !form.time.trim()}
+                                  className="rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-2.5 py-1 text-xs text-white">
+                                  {lang === 'GEO' ? 'დამატება' : 'Add'}
+                                </button>
+                                <button onClick={() => setAddingFor(null)} className="text-xs text-gray-500 hover:text-white">
+                                  {lang === 'GEO' ? 'გაუქმება' : 'Cancel'}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button onClick={() => { setAddingFor(g.id); setForm({ day: 'ორშაბათი', time: '' }); }}
+                              className="text-xs text-gray-500 hover:text-white transition-colors mt-0.5">
+                              {lang === 'GEO' ? '+ დროის დამატება' : '+ Add time'}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
       {subjects.length === 0 && (
         <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'საგნები არ არის.' : 'No subjects found.'}</p>
       )}
@@ -989,11 +983,11 @@ function ScheduleTabPanel({ lang }) {
 function SubjectsPanel({ role, lang }) {
   const th = TH[role];
   const geo = lang === 'GEO';
-  const [tab, setTab] = useState('subjects');
+  const [tab, setTab] = useState('schedule');
 
   const tabs = geo
-    ? [['subjects', 'საგნები'], ['schedule', 'განრიგი'], ['use', 'გამოყენება']]
-    : [['subjects', 'Subjects'], ['schedule', 'Schedule'], ['use', 'Use']];
+    ? [['schedule', 'განრიგი'], ['subjects', 'საგნები'], ['use', 'გამოყენება']]
+    : [['schedule', 'Schedule'], ['subjects', 'Subjects'], ['use', 'Use']];
 
   return (
     <div className="space-y-3">
