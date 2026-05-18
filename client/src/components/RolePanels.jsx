@@ -829,18 +829,25 @@ function SubjectsTabPanel({ role, lang }) {
                         <p className="text-[10px] text-gray-600 py-0.5">{lang === 'GEO' ? 'დრო არ არის.' : 'No times yet.'}</p>
                       )}
                       {addingTimeFor === g.id ? (
-                        <div className="flex gap-1.5 pt-1 flex-wrap items-center">
-                          <select value={newDay} onChange={e => setNewDay(e.target.value)}
-                            className="rounded-lg border border-white/[0.08] bg-[#1a1a2e] px-2 py-1 text-[11px] text-white/80 focus:outline-none">
-                            {GEO_DAYS.map((d, i) => <option key={i} value={i}>{d}</option>)}
-                          </select>
-                          <input type="time" value={newTime} onChange={e => setNewTime(e.target.value)}
-                            className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-[11px] text-white/80 focus:outline-none w-24" />
-                          <button onClick={() => addTime(g.id)} disabled={!newTime}
-                            className={`rounded-lg ${th.btn} disabled:opacity-40 px-2 py-1 text-[11px] text-white`}>
-                            {lang === 'GEO' ? 'დამატება' : 'Add'}
-                          </button>
-                          <button onClick={() => setAddingTimeFor(null)} className="text-gray-500 hover:text-white text-[11px] px-1">✕</button>
+                        <div className="pt-1.5 space-y-1.5">
+                          <div className="flex gap-1">
+                            {['ორშ','სამშ','ოთხ','ხუთ','პარ','შაბ','კვი'].map((d, i) => (
+                              <button key={i} onClick={() => setNewDay(i)}
+                                className={`flex-1 rounded-md py-1 text-[10px] font-medium transition-colors ${parseInt(newDay) === i ? 'bg-violet-600 text-white' : 'bg-white/[0.05] text-gray-400 hover:bg-white/[0.1] hover:text-white'}`}>
+                                {d}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="flex gap-1.5 items-center">
+                            <input value={newTime} onChange={e => setNewTime(e.target.value)}
+                              placeholder="16:00"
+                              className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-[11px] text-white/80 focus:outline-none flex-1" />
+                            <button onClick={() => addTime(g.id)} disabled={!newTime.trim()}
+                              className="rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-2.5 py-1 text-[11px] text-white transition-colors">
+                              {lang === 'GEO' ? 'დამატება' : 'Add'}
+                            </button>
+                            <button onClick={() => setAddingTimeFor(null)} className="text-gray-500 hover:text-white text-[11px] px-1">✕</button>
+                          </div>
                         </div>
                       ) : (
                         <button onClick={() => { setAddingTimeFor(g.id); setNewDay(0); setNewTime(''); }}
