@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import AppLayout from './pages/AppLayout';
 import JoinWithCode from './pages/JoinWithCode';
 import Chat from './pages/Chat';
+import PendingApproval from './pages/PendingApproval';
 
 const T = {
   EN: {
@@ -419,9 +420,18 @@ function AppInner() {
   const inviteToken = window.location.pathname.startsWith("/invite/") ? window.location.pathname.split("/invite/")[1] : null;
   if (loading) return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />;
 
+  const isPending = user && (user.schoolStatus === 'pending' || user.status === 'pending');
+
   if (inviteToken) return (
     <InviteAccept token={inviteToken} onSuccess={() => window.location.href = '/dashboard'} />
   );
+
+  if (window.location.pathname === '/pending') {
+    if (!user) return authPage === 'login'
+      ? <Login onSwitch={() => setAuthPage('signup')} onSuccess={() => window.location.href = '/dashboard'} />
+      : <Signup onSwitch={() => setAuthPage('login')} onSuccess={() => window.location.href = '/dashboard'} />;
+    return <PendingApproval />;
+  }
 
   if (window.location.pathname === '/join') return <JoinWithCode />;
 
@@ -432,10 +442,11 @@ function AppInner() {
 
   if (window.location.pathname === '/dashboard' || window.location.pathname === '/app') {
     if (!user) return null;
+    if (isPending) { window.location.replace('/pending'); return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />; }
     return <AppLayout />;
   }
 
-  if (user && (window.location.pathname === "/" || window.location.pathname === "")) { if (typeof window !== "undefined") window.location.replace("/dashboard"); return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />; }
+  if (user && (window.location.pathname === "/" || window.location.pathname === "")) { if (typeof window !== "undefined") window.location.replace(isPending ? "/pending" : "/dashboard"); return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />; }
 
   if (!user) return (
     authPage === 'login'
