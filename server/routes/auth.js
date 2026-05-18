@@ -179,4 +179,34 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
+// Accept invite
+router.post('/invite/accept', async (req, res) => {
+  const { token, name, email, password } = req.body;
+  if (!token || !name || !email || !password) return res.status(400).json({ error: 'Missing fields' });
+  try {
+    const inviteRes = await pool.query(
+      'SELECT i.*, s.name as school_name FROM invites i JOIN schools s ON i.school_id = s.id WHERE i.code = $1',
+      [token]
+    );
+    if (inviteRes.rows.length === 0) return res.status(400).json({ error: 'Invalid invite token' });
+    const invite = inviteRes.rows[0];
+    if (invite.used_at) return res.status(400).json({ error: 'Invite already used' });
+    if (new Date(invite.expires_at) < new Date()) return res.status(400).json({ error: 'Invite expired' });
+    const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (existing.rows.length > 0) return res.status(409).json({ error: 'Email already registered' });
+    const hash = await bcrypt.hash(password, 12);
+    const userResult = await pool.query(
+      'INSERT INTO users (school_id, email, password_hash, role, name) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, role, name',
+      [invite.school_id, email, hash, invite.target_role, name]
+    );
+    const user = userResult.rows[0];
+    await pool.query('UPDATE invites SET used_by = $1, used_at = NOW() WHERE code = $2', [user.id, token]);
+    const jwtToken = jwt.sign({ userId: user.id, schoolId: invite.school_id, role: invite.target_role }, JWT_SECRET, { expiresIn: '7d' });
+    return res.json({ token: jwtToken, user: { ...user, schoolId: invite.school_id, schoolName: invite.school_name } });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;
