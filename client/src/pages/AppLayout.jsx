@@ -876,11 +876,13 @@ function RightColumn() {
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) sendMessage(e); }}
           className="flex-1 resize-none rounded-2xl px-3 py-2 text-sm focus:outline-none bg-white/[0.05] border border-white/10 text-white/90 placeholder-white/20 focus:border-white/25 max-h-32"
         />
-        <button type="button" onClick={() => setActivePanel(activePanel === 'real-library' ? null : 'real-library')}
-          style={{ minHeight: 40, minWidth: 40 }}
-          className={`px-3 py-2 rounded-xl text-sm flex-shrink-0 transition-all duration-150 active:scale-95 ${activePanel === 'real-library' ? 'text-white/80' : 'text-white/30 hover:text-white/60'}`}>
-          📚
-        </button>
+        {user?.role !== 'student' && (
+          <button type="button" onClick={() => setActivePanel(activePanel === 'real-library' ? null : 'real-library')}
+            style={{ minHeight: 40, minWidth: 40 }}
+            className={`px-3 py-2 rounded-xl text-sm flex-shrink-0 transition-all duration-150 active:scale-95 ${activePanel === 'real-library' ? 'text-white/80' : 'text-white/30 hover:text-white/60'}`}>
+            📚
+          </button>
+        )}
         <button type="submit" disabled={loading || !input.trim()}
           style={{ minHeight: 40, minWidth: 40 }}
           className="px-4 py-2 rounded-xl text-white text-sm font-medium disabled:opacity-40 active:scale-95 transition-all duration-150 bg-violet-600 hover:bg-violet-500">
