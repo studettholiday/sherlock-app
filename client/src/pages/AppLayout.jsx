@@ -227,7 +227,7 @@ function LeftColumn() {
   const [libLoading, setLibLoading]   = useState(false);
   const [libUploading, setLibUploading] = useState(false);
   const [libError, setLibError]       = useState('');
-  const [openFolders, setOpenFolders] = useState({ assistant: true, teacher: true, student: true });
+  const [memberModal, setMemberModal] = useState(null);
   const fileInputRef = useRef(null);
 
   useEffect(() => { fetchData(); }, []);
@@ -460,38 +460,17 @@ function LeftColumn() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {folderDefs.map(folder => {
                       const folderMembers = members.filter(m => m.role === folder.key);
-                      const isOpen = openFolders[folder.key] !== false;
                       return (
                         <div key={folder.key}>
                           <button
-                            onClick={() => setOpenFolders(prev => ({ ...prev, [folder.key]: !isOpen }))}
-                            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: isOpen && folderMembers.length > 0 ? '10px 10px 0 0' : 10, cursor: 'pointer', color: 'white', textAlign: 'left' }}>
+                            onClick={() => setMemberModal({ key: folder.key, label: folder.label, canDelete: folder.canDelete })}
+                            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, cursor: 'pointer', color: 'white', textAlign: 'left' }}>
                             <span style={{ fontSize: 13, fontWeight: 600 }}>{folder.label}</span>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                               <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.08)', borderRadius: 20, padding: '1px 8px' }}>{folderMembers.length}</span>
-                              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{isOpen ? '▲' : '▼'}</span>
+                              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>▶</span>
                             </span>
                           </button>
-                          {isOpen && (
-                            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
-                              {folderMembers.length === 0 ? (
-                                <div style={{ padding: '10px 14px', fontSize: 12, color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>No members</div>
-                              ) : folderMembers.map((m, i) => (
-                                <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', borderBottom: i < folderMembers.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none', gap: 8 }}>
-                                  <div style={{ minWidth: 0, flex: 1 }}>
-                                    <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</div>
-                                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.email}</div>
-                                  </div>
-                                  {folder.canDelete && m.id !== user?.id && (
-                                    <button onClick={() => deleteMember(m.id, m.name)}
-                                      style={{ padding: '2px 7px', background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 6, color: '#f87171', cursor: 'pointer', fontSize: 11, fontWeight: 600, lineHeight: 1.4, flexShrink: 0 }}>
-                                      ✕
-                                    </button>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )}
                         </div>
                       );
                     })}
@@ -502,6 +481,43 @@ function LeftColumn() {
           </>
         )}
       </div>
+
+      {/* Members modal */}
+      {memberModal && (() => {
+        const modalMembers = members.filter(m => m.role === memberModal.key);
+        return (
+          <div
+            onClick={() => setMemberModal(null)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{ background: '#0f0f1a', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, width: '100%', maxWidth: 480, maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
+                <span style={{ fontSize: 15, fontWeight: 700, color: 'white' }}>{memberModal.label}</span>
+                <button onClick={() => setMemberModal(null)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '2px 6px', borderRadius: 6 }}>✕</button>
+              </div>
+              <div style={{ overflowY: 'auto', flex: 1 }}>
+                {modalMembers.length === 0 ? (
+                  <div style={{ padding: '24px', fontSize: 13, color: 'rgba(255,255,255,0.35)', textAlign: 'center' }}>No members</div>
+                ) : modalMembers.map((m, i) => (
+                  <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: i < modalMembers.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none', gap: 12 }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</div>
+                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.email}</div>
+                    </div>
+                    {memberModal.canDelete && m.id !== user?.id && (
+                      <button onClick={() => deleteMember(m.id, m.name)}
+                        style={{ padding: '4px 10px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#f87171', cursor: 'pointer', fontSize: 13, fontWeight: 600, flexShrink: 0 }}>
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
