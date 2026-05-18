@@ -112,4 +112,133 @@ router.delete('/members/:userId', authMiddleware, async (req, res) => {
   }
 });
 
+// --- Groups ---
+
+router.get('/groups', authMiddleware, async (req, res) => {
+  try {
+    const result = await getPool().query(
+      'SELECT * FROM groups WHERE school_id = $1 ORDER BY name ASC',
+      [req.user.schoolId]
+    );
+    res.json({ groups: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/groups', authMiddleware, async (req, res) => {
+  if (!['admin', 'assistant'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
+  const { name, instrument } = req.body;
+  if (!name) return res.status(400).json({ error: 'name is required' });
+  try {
+    const result = await getPool().query(
+      'INSERT INTO groups (school_id, name, instrument) VALUES ($1, $2, $3) RETURNING *',
+      [req.user.schoolId, name, instrument || null]
+    );
+    res.json({ group: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.delete('/groups/:id', authMiddleware, async (req, res) => {
+  if (!['admin', 'assistant'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    await getPool().query(
+      'DELETE FROM groups WHERE id = $1 AND school_id = $2',
+      [req.params.id, req.user.schoolId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// --- Schedule ---
+
+router.get('/schedule', authMiddleware, async (req, res) => {
+  try {
+    const result = await getPool().query(
+      `SELECT s.*, g.name AS group_name
+       FROM schedule s
+       LEFT JOIN groups g ON s.group_id = g.id
+       WHERE s.school_id = $1
+       ORDER BY s.day_of_week, s.lesson_time`,
+      [req.user.schoolId]
+    );
+    res.json({ schedule: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/schedule', authMiddleware, async (req, res) => {
+  if (!['admin', 'assistant'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
+  const { group_id, day_of_week, lesson_time, subject, room } = req.body;
+  try {
+    const result = await getPool().query(
+      'INSERT INTO schedule (school_id, group_id, day_of_week, lesson_time, subject, room) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [req.user.schoolId, group_id || null, day_of_week || null, lesson_time || null, subject || null, room || null]
+    );
+    res.json({ row: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.delete('/schedule/:id', authMiddleware, async (req, res) => {
+  if (!['admin', 'assistant'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    await getPool().query(
+      'DELETE FROM schedule WHERE id = $1 AND school_id = $2',
+      [req.params.id, req.user.schoolId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// --- Events ---
+
+router.get('/events', authMiddleware, async (req, res) => {
+  try {
+    const result = await getPool().query(
+      'SELECT * FROM events WHERE school_id = $1 ORDER BY event_date ASC',
+      [req.user.schoolId]
+    );
+    res.json({ events: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/events', authMiddleware, async (req, res) => {
+  if (!['admin', 'assistant'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
+  const { name, event_date, event_time, place } = req.body;
+  if (!name) return res.status(400).json({ error: 'name is required' });
+  try {
+    const result = await getPool().query(
+      'INSERT INTO events (school_id, name, event_date, event_time, place) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [req.user.schoolId, name, event_date || null, event_time || null, place || null]
+    );
+    res.json({ event: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.delete('/events/:id', authMiddleware, async (req, res) => {
+  if (!['admin', 'assistant'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    await getPool().query(
+      'DELETE FROM events WHERE id = $1 AND school_id = $2',
+      [req.params.id, req.user.schoolId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;

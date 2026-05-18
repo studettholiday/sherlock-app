@@ -1,0 +1,28 @@
+CREATE TABLE IF NOT EXISTS groups (
+  id SERIAL PRIMARY KEY,
+  school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  instrument VARCHAR(255),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS schedule (
+  id SERIAL PRIMARY KEY,
+  school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE,
+  group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL,
+  day_of_week VARCHAR(20),
+  lesson_time VARCHAR(20),
+  subject VARCHAR(255),
+  room VARCHAR(100),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS events (
+  id SERIAL PRIMARY KEY,
+  school_id INTEGER REFERENCES schools(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  event_date DATE,
+  event_time VARCHAR(20),
+  place VARCHAR(255),
+  created_at TIMESTAMP DEFAULT NOW()
+);
