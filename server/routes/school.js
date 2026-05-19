@@ -641,12 +641,18 @@ router.post('/notes', authMiddleware, async (req, res) => {
 });
 
 router.patch('/notes/:id', authMiddleware, async (req, res) => {
-  const { title, content, label_id, image_url } = req.body;
-  if (!title && !content && !image_url) return res.status(400).json({ error: 'Note must have title, content, or image' });
+  const body = req.body;
+  const sets = [], params = [];
+  if ('label_id'  in body) { params.push(body.label_id  ?? null); sets.push(`label_id = $${params.length}`); }
+  if ('title'     in body) { params.push(body.title     || null); sets.push(`title = $${params.length}`); }
+  if ('content'   in body) { params.push(body.content   || '');   sets.push(`content = $${params.length}`); }
+  if ('image_url' in body) { params.push(body.image_url || null); sets.push(`image_url = $${params.length}`); }
+  if (!sets.length) return res.status(400).json({ error: 'Nothing to update' });
+  params.push(req.params.id, req.user.userId);
   try {
     const result = await getPool().query(
-      'UPDATE student_notes SET title = $1, content = $2, label_id = $3, image_url = $4, updated_at = NOW() WHERE id = $5 AND user_id = $6 RETURNING *',
-      [title || null, content || '', label_id || null, image_url || null, req.params.id, req.user.userId]
+      `UPDATE student_notes SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${params.length - 1} AND user_id = $${params.length} RETURNING *`,
+      params
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
     res.json({ note: result.rows[0] });
@@ -703,12 +709,19 @@ router.post('/notes/diary', authMiddleware, async (req, res) => {
 });
 
 router.patch('/notes/diary/:id', authMiddleware, async (req, res) => {
-  const { mood, practiced, goal, label_id, image_url } = req.body;
-  if (!practiced) return res.status(400).json({ error: 'practiced is required' });
+  const body = req.body;
+  const sets = [], params = [];
+  if ('label_id'  in body) { params.push(body.label_id  ?? null); sets.push(`label_id = $${params.length}`); }
+  if ('mood'      in body) { params.push(body.mood      || null); sets.push(`mood = $${params.length}`); }
+  if ('practiced' in body) { params.push(body.practiced);         sets.push(`practiced = $${params.length}`); }
+  if ('goal'      in body) { params.push(body.goal      || null); sets.push(`goal = $${params.length}`); }
+  if ('image_url' in body) { params.push(body.image_url || null); sets.push(`image_url = $${params.length}`); }
+  if (!sets.length) return res.status(400).json({ error: 'Nothing to update' });
+  params.push(req.params.id, req.user.userId);
   try {
     const result = await getPool().query(
-      'UPDATE student_diary SET mood = $1, practiced = $2, goal = $3, label_id = $4, image_url = $5 WHERE id = $6 AND user_id = $7 RETURNING *',
-      [mood || null, practiced, goal || null, label_id || null, image_url || null, req.params.id, req.user.userId]
+      `UPDATE student_diary SET ${sets.join(', ')} WHERE id = $${params.length - 1} AND user_id = $${params.length} RETURNING *`,
+      params
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
     res.json({ entry: result.rows[0] });
