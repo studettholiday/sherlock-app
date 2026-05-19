@@ -2002,7 +2002,7 @@ function StudentChangeGroupPanel({ lang }) {
       if (myGroups.length) {
         const first = myGroups[0];
         setFromGroup(first);
-        const sameSubject = groups.filter(g => g.subject_name === first.subject_name && g.id !== first.group_id);
+        const sameSubject = groups.filter(g => g.subject_id === first.subject_id && g.id !== first.group_id);
         if (sameSubject.length) setToGroup(sameSubject[0].id);
       }
       setLoading(false);
@@ -2012,11 +2012,11 @@ function StudentChangeGroupPanel({ lang }) {
   function onFromChange(groupId) {
     const selected = currentGroups.find(g => String(g.group_id) === String(groupId));
     setFromGroup(selected);
-    const sameSubject = allGroups.filter(g => g.subject_name === selected.subject_name && g.id !== selected.group_id);
+    const sameSubject = allGroups.filter(g => g.subject_id === selected.subject_id && g.id !== selected.group_id);
     setToGroup(sameSubject.length ? sameSubject[0].id : '');
   }
 
-  const availableTo = fromGroup ? allGroups.filter(g => g.subject_name === fromGroup.subject_name && g.id !== fromGroup.group_id) : [];
+  const availableTo = fromGroup ? allGroups.filter(g => g.subject_id === fromGroup.subject_id && g.id !== fromGroup.group_id) : [];
 
   async function submit() {
     if (!toGroup) return;

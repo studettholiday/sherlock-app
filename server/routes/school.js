@@ -424,7 +424,7 @@ router.patch('/web-registrations/:id', authMiddleware, async (req, res) => {
 router.get('/my-schedule', authMiddleware, async (req, res) => {
   try {
     const result = await getPool().query(
-      `SELECT s.id, s.day_of_week, s.lesson_time, g.name AS group_name, sub.name AS subject_name
+      `SELECT s.id, s.day_of_week, s.lesson_time, g.id AS group_id, g.name AS group_name, g.subject_id, sub.name AS subject_name
        FROM web_registrations wr
        JOIN groups g ON wr.group_id = g.id
        LEFT JOIN subjects sub ON g.subject_id = sub.id
