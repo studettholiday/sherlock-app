@@ -1965,32 +1965,55 @@ function StudentReportExamAbsencePanel({ lang }) {
 }
 
 function StudentChangeGroupPanel({ lang }) {
-  const available = ALL_GROUP_NAMES.filter(g => g !== STUDENT_CURRENT_GROUP);
-  const [newGroup, setNewGroup] = useState(available[0]);
-  const [reason, setReason] = useState('');
+  const [groups, setGroups] = useState([]);
+  const [currentGroups, setCurrentGroups] = useState([]);
+  const [newGroup, setNewGroup] = useState('');
   const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  function submit() { if (newGroup) { setSent(true); setReason(''); setTimeout(() => setSent(false), 3000); } }
+  useEffect(() => {
+    const token = localStorage.getItem('sherlock_token');
+    Promise.all([
+      fetch('/api/school/groups', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      fetch('/api/school/my-schedule', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
+    ]).then(([gd, sd]) => {
+      const allGroups = gd.groups || [];
+      const myGroupIds = (sd.schedule || []).map(s => s.group_id);
+      setCurrentGroups((sd.schedule || []).map(s => s.group_name));
+      setGroups(allGroups.filter(g => !myGroupIds.includes(g.id)));
+      if (allGroups.length) setNewGroup(allGroups[0].id);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
 
+  async function submit() {
+    if (!newGroup) return;
+    const token = localStorage.getItem('sherlock_token');
+    await fetch('/api/school/web-registrations', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ group_id: newGroup })
+    });
+    setSent(true);
+    setTimeout(() => setSent(false), 3000);
+  }
+
+  if (loading) return <p className="text-xs text-gray-500">Loading…</p>;
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
-        <p className="text-xs text-gray-500">{lang === 'GEO' ? 'მიმდინარე ჯგუფი' : 'Current group'}</p>
-        <p className="text-sm text-white font-medium mt-0.5">{STUDENT_CURRENT_GROUP}</p>
+        <p className="text-xs text-gray-500">{lang === 'GEO' ? 'მიმდინარე ჯგუფები' : 'Current groups'}</p>
+        {currentGroups.map(g => <p key={g} className="text-sm text-white font-medium mt-0.5">{g}</p>)}
       </div>
       <div>
         <p className="text-xs text-gray-500 mb-1.5">{lang === 'GEO' ? 'გადასვლის მოთხოვნა' : 'Request transfer to'}</p>
-        <select value={newGroup} onChange={e => setNewGroup(e.target.value)} style={{ colorScheme: 'dark' }}
-          className={`${FIELD} cursor-pointer`}>
-          {available.map(g => <option key={g}>{g}</option>)}
+        <select value={newGroup} onChange={e => setNewGroup(e.target.value)} style={{ colorScheme: 'dark' }} className={`${FIELD} cursor-pointer`}>
+          {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
         </select>
       </div>
-      <textarea rows={2} value={reason} onChange={e => setReason(e.target.value)}
-        placeholder={lang === 'GEO' ? 'გადასვლის მიზეზი (სურვილისამებრ)...' : 'Reason for transfer (optional)…'} className={FIELD} />
       {sent
-        ? <p className="text-emerald-400 text-sm">{lang === 'GEO' ? '✅ მოთხოვნა გაიგზავნა' : '✅ Request sent to assistant'}</p>
-        : <button onClick={submit}
-            className="rounded-xl bg-violet-600 hover:bg-violet-500 px-4 py-2 text-sm text-white font-medium transition-colors">
+        ? <p className="text-emerald-400 text-sm">✅ {lang === 'GEO' ? 'მოთხოვნა გაიგზავნა' : 'Request sent'}</p>
+        : <button onClick={submit} className="rounded-xl bg-violet-600 hover:bg-violet-500 px-4 py-2 text-sm text-white font-medium transition-colors">
             {lang === 'GEO' ? 'მოთხოვნის გაგზავნა' : 'Submit Request'}
           </button>
       }
@@ -1999,33 +2022,58 @@ function StudentChangeGroupPanel({ lang }) {
 }
 
 function StudentAddSubjectPanel({ lang }) {
-  const available = ALL_SUBJECTS.filter(s => !STUDENT_ENROLLED.includes(s));
-  const [subject, setSubject] = useState(available[0] ?? '');
+  const [subjects, setSubjects] = useState([]);
+  const [enrolled, setEnrolled] = useState([]);
+  const [subject, setSubject] = useState('');
   const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  function submit() { if (subject) { setSent(true); setTimeout(() => setSent(false), 3000); } }
+  useEffect(() => {
+    const token = localStorage.getItem('sherlock_token');
+    Promise.all([
+      fetch('/api/school/subjects', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      fetch('/api/school/my-schedule', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
+    ]).then(([sd, sc]) => {
+      const allSubjects = sd.subjects || [];
+      const mySubjectNames = (sc.schedule || []).map(s => s.subject_name);
+      setEnrolled(mySubjectNames);
+      const available = allSubjects.filter(s => !mySubjectNames.includes(s.name));
+      setSubjects(available);
+      if (available.length) setSubject(available[0].id);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
 
+  async function submit() {
+    if (!subject) return;
+    const token = localStorage.getItem('sherlock_token');
+    await fetch('/api/school/web-registrations', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ group_id: subject })
+    });
+    setSent(true);
+    setTimeout(() => setSent(false), 3000);
+  }
+
+  if (loading) return <p className="text-xs text-gray-500">Loading…</p>;
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
         <p className="text-xs text-gray-500 mb-1">{lang === 'GEO' ? 'ამჟამად ჩარიცხული' : 'Currently enrolled'}</p>
         <div className="flex flex-wrap gap-1.5">
-          {STUDENT_ENROLLED.map(s => (
-            <span key={s} className="text-xs bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full">{s}</span>
-          ))}
+          {enrolled.map(s => <span key={s} className="text-xs bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full">{s}</span>)}
         </div>
       </div>
       <div>
         <p className="text-xs text-gray-500 mb-1.5">{lang === 'GEO' ? 'დასამატებელი საგანი' : 'Subject to add'}</p>
-        <select value={subject} onChange={e => setSubject(e.target.value)} style={{ colorScheme: 'dark' }}
-          className={`${FIELD} cursor-pointer`}>
-          {available.map(s => <option key={s}>{s}</option>)}
+        <select value={subject} onChange={e => setSubject(e.target.value)} style={{ colorScheme: 'dark' }} className={`${FIELD} cursor-pointer`}>
+          {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
       </div>
       {sent
-        ? <p className="text-emerald-400 text-sm">{lang === 'GEO' ? '✅ მოთხოვნა გაიგზავნა' : '✅ Request sent to assistant'}</p>
-        : <button onClick={submit} disabled={!subject}
-            className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
+        ? <p className="text-emerald-400 text-sm">✅ {lang === 'GEO' ? 'მოთხოვნა გაიგზავნა' : 'Request sent'}</p>
+        : <button onClick={submit} disabled={!subject} className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
             {lang === 'GEO' ? 'მოთხოვნის გაგზავნა' : 'Submit Request'}
           </button>
       }
@@ -2034,32 +2082,53 @@ function StudentAddSubjectPanel({ lang }) {
 }
 
 function StudentRemoveSubjectPanel({ lang }) {
+  const [enrolled, setEnrolled] = useState([]);
   const [checked, setChecked] = useState([]);
   const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  function toggle(s) { setChecked(cs => cs.includes(s) ? cs.filter(x => x !== s) : [...cs, s]); }
-  function submit() { if (checked.length) { setSent(true); setChecked([]); setTimeout(() => setSent(false), 3000); } }
+  useEffect(() => {
+    const token = localStorage.getItem('sherlock_token');
+    fetch('/api/school/my-schedule', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => {
+        setEnrolled(d.schedule || []);
+        setLoading(false);
+      }).catch(() => setLoading(false));
+  }, []);
 
+  function toggle(id) { setChecked(cs => cs.includes(id) ? cs.filter(x => x !== id) : [...cs, id]); }
+
+  async function submit() {
+    if (!checked.length) return;
+    const token = localStorage.getItem('sherlock_token');
+    await Promise.all(checked.map(group_id =>
+      fetch(`/api/school/web-registrations`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group_id, action: 'remove' })
+      })
+    ));
+    setSent(true);
+    setChecked([]);
+    setTimeout(() => setSent(false), 3000);
+  }
+
+  if (loading) return <p className="text-xs text-gray-500">Loading…</p>;
   return (
     <div className="space-y-3">
       <p className="text-xs text-gray-500">{lang === 'GEO' ? 'აირჩიეთ წასაშლელი საგნები' : 'Select subjects to remove'}</p>
       <div className="space-y-2">
-        {STUDENT_ENROLLED.map(s => (
-          <label key={s} className="flex items-center gap-3 cursor-pointer rounded-xl border border-white/10 px-3 py-2 hover:bg-white/[0.03] transition-colors">
-            <input
-              type="checkbox"
-              checked={checked.includes(s)}
-              onChange={() => toggle(s)}
-              className="accent-emerald-500 w-4 h-4 flex-shrink-0"
-            />
-            <span className="text-sm text-white">{s}</span>
+        {enrolled.map(s => (
+          <label key={s.id} className="flex items-center gap-3 cursor-pointer rounded-xl border border-white/10 px-3 py-2 hover:bg-white/[0.03] transition-colors">
+            <input type="checkbox" checked={checked.includes(s.group_id)} onChange={() => toggle(s.group_id)} className="accent-emerald-500 w-4 h-4 flex-shrink-0" />
+            <span className="text-sm text-white">{s.subject_name} — {s.group_name}</span>
           </label>
         ))}
       </div>
       {sent
-        ? <p className="text-emerald-400 text-sm">{lang === 'GEO' ? '✅ მოთხოვნა გაიგზავნა' : '✅ Request sent to assistant'}</p>
-        : <button onClick={submit} disabled={!checked.length}
-            className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
+        ? <p className="text-emerald-400 text-sm">✅ {lang === 'GEO' ? 'მოთხოვნა გაიგზავნა' : 'Request sent'}</p>
+        : <button onClick={submit} disabled={!checked.length} className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
             {lang === 'GEO' ? 'მოთხოვნის გაგზავნა' : 'Submit Request'}
           </button>
       }
