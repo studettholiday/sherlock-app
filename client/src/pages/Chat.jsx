@@ -368,7 +368,7 @@ export default function Chat() {
     <div className="flex flex-col text-white font-sans overflow-hidden"
       style={{
         position: 'fixed', top: 0, left: 0, right: 0,
-        height: `${vph}px`,
+        height: '100dvh',
         background: 'linear-gradient(135deg, #0a0015 0%, #0d0d1a 50%, #050510 100%)',
       }}>
 
@@ -495,7 +495,7 @@ export default function Chat() {
         })()}
 
         {/* Messages + active panel */}
-        <div ref={messagesRef} className="flex-1 overflow-y-auto px-4 py-4" style={{ fontSize: 'clamp(13px, 3.5vw, 16px)' }}>
+        <div ref={messagesRef} className="flex-1 overflow-y-auto px-4 py-4" style={{ fontSize: 'clamp(13px, 3.5vw, 16px)', minHeight: 0 }}>
           {activePanel && (
             <div className="mb-4">
               <RolePanel role={role} panel={activePanel} onClose={() => setActivePanel(null)}
@@ -569,6 +569,7 @@ export default function Chat() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) sendMessage(e); }}
+            onFocus={() => setTimeout(() => messagesRef.current?.scrollTo({ top: messagesRef.current.scrollHeight, behavior: 'smooth' }), 300)}
             className={`flex-1 resize-none rounded-xl px-3 py-2 text-sm focus:outline-none ${theme.ring} max-h-32 ${s.inputCls}`}
           />
           {user?.role !== 'student' && (

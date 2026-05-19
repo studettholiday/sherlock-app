@@ -905,7 +905,7 @@ export default function ChatWindow({ lang, mobile = false, onClose = null }) {
       )}
 
       {/* Messages + active panel */}
-      <div ref={messagesRef} className={`${mobile ? 'flex-1' : 'h-[400px]'} overflow-y-auto px-4 py-4`} style={{ fontSize: 'clamp(13px, 3.5vw, 16px)', ...(mobile && isLandscape ? { maxHeight: '40vh' } : {}) }}>
+      <div ref={messagesRef} className={`${mobile ? 'flex-1' : 'h-[400px]'} overflow-y-auto px-4 py-4`} style={{ fontSize: 'clamp(13px, 3.5vw, 16px)', minHeight: 0, ...(mobile && isLandscape ? { maxHeight: '40dvh' } : {}) }}>
         {activePanel && (
           <div className="mb-4">
             <RolePanel role={role} panel={activePanel} onClose={() => setActivePanel(null)}
@@ -969,6 +969,7 @@ export default function ChatWindow({ lang, mobile = false, onClose = null }) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) sendMessage(e); }}
+          onFocus={() => setTimeout(() => messagesRef.current?.scrollTo({ top: messagesRef.current.scrollHeight, behavior: 'smooth' }), 300)}
           className={`flex-1 resize-none rounded-xl px-3 py-2 text-sm focus:outline-none ${theme.ring} max-h-32 ${s.inputCls}`}
         />
         {user?.role !== 'student' && (
