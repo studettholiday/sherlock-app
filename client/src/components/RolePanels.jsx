@@ -1438,6 +1438,20 @@ function TeachersPanel({ role, lang, allMembers, onMembersRefresh }) { return <M
 // ─── Teacher panels ───────────────────────────────────────────────────────────
 
 function MySchedulePanel({ lang }) {
+  const [schedule, setSchedule] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/school/my-schedule', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => { setSchedule(Array.isArray(data) ? data : []); })
+      .catch(() => setSchedule([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <p className="text-xs text-gray-500">იტვირთება...</p>;
+  if (!schedule.length) return <p className="text-xs text-gray-500">განრიგი ცარიელია</p>;
+
   return (
     <table className="w-full text-xs">
       <thead>
@@ -1445,14 +1459,16 @@ function MySchedulePanel({ lang }) {
           <th className="text-left pb-2 font-medium">{lang === 'GEO' ? 'დღე' : 'Day'}</th>
           <th className="text-left pb-2 font-medium">{lang === 'GEO' ? 'დრო' : 'Time'}</th>
           <th className="text-left pb-2 font-medium">{lang === 'GEO' ? 'ჯგუფი' : 'Group'}</th>
+          <th className="text-left pb-2 font-medium">{lang === 'GEO' ? 'საგანი' : 'Subject'}</th>
         </tr>
       </thead>
       <tbody>
-        {TEACHER_SCHEDULE.map((r, i) => (
+        {schedule.map((r, i) => (
           <tr key={i} className="border-t border-white/[0.05]">
-            <td className="py-1.5 text-gray-400">{r.day}</td>
-            <td className="py-1.5 text-gray-300 font-mono">{r.time}</td>
-            <td className="py-1.5 text-white">{r.group}</td>
+            <td className="py-1.5 text-gray-400">{GEO_DAYS[r.day_of_week] ?? r.day_of_week}</td>
+            <td className="py-1.5 text-gray-300 font-mono">{r.lesson_time}</td>
+            <td className="py-1.5 text-white">{r.group_name}</td>
+            <td className="py-1.5 text-gray-300">{r.subject_name}</td>
           </tr>
         ))}
       </tbody>
