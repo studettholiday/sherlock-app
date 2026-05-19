@@ -1744,7 +1744,7 @@ function StudentSchedulePanel({ lang }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('sherlock_token');
     fetch('/api/school/my-schedule', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => { setRows(d.schedule || []); setLoading(false); })
