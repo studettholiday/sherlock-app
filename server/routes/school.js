@@ -426,6 +426,19 @@ router.patch('/web-registrations/:id', authMiddleware, async (req, res) => {
       [status, req.params.id, req.user.schoolId]
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
+    if (status === 'approved') {
+      const approved = result.rows[0];
+      const groupRes = await pool.query('SELECT subject_id FROM groups WHERE id = $1', [approved.group_id]);
+      if (groupRes.rows.length) {
+        const subjectId = groupRes.rows[0].subject_id;
+        await pool.query(
+          `DELETE FROM web_registrations
+           WHERE user_id = $1 AND id != $2 AND status = 'approved'
+             AND group_id IN (SELECT id FROM groups WHERE subject_id = $3)`,
+          [approved.user_id, approved.id, subjectId]
+        );
+      }
+    }
     res.json({ registration: result.rows[0] });
   } catch (err) {
     console.error('[web-registrations] PATCH error:', err.message);
