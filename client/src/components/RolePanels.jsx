@@ -2150,8 +2150,7 @@ function StudentNotesPanel({ lang }) {
                   style={{ maxHeight: '200px' }}
                 >
                   {imgs[0] && (
-                    <img src={imgs[0]} alt="" style={{ width: '100%', maxHeight: '80px', objectFit: 'cover', display: 'block' }}
-                      onClick={e => { e.stopPropagation(); setPreviewImg(imgs[0]); }} />
+                    <img src={imgs[0]} alt="" style={{ width: '100%', maxHeight: '80px', objectFit: 'cover', display: 'block' }} />
                   )}
                   <div style={{ padding: '10px 12px' }}>
                     {n.title && <p style={{ fontSize: '13px', fontWeight: 600, color: 'white', marginBottom: '4px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{n.title}</p>}
@@ -2185,9 +2184,9 @@ function StudentPracticeDiaryPanel({ lang }) {
   const [goal, setGoal] = useState('');
   const [labelDraft, setLabelDraft] = useState('');
   const [images, setImages] = useState([]);
+  const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
-  const [expanded, setExpanded] = useState(null);
   const [previewImg, setPreviewImg] = useState(null);
   const imgInputRef = useRef(null);
 
@@ -2228,16 +2227,35 @@ function StudentPracticeDiaryPanel({ lang }) {
     reader.readAsDataURL(file);
   }
 
-  function resetForm() { setPracticed(''); setGoal(''); setMood('😊'); setLabelDraft(''); setImages([]); }
+  function resetForm() { setPracticed(''); setGoal(''); setMood('😊'); setLabelDraft(''); setImages([]); setEditing(null); }
+
+  function openEdit(e) {
+    setEditing(e);
+    setMood(e.mood || '😊');
+    setPracticed(e.practiced || '');
+    setGoal(e.goal || '');
+    setLabelDraft(e.label_id ? String(e.label_id) : '');
+    setImages(parseImages(e.image_url));
+    setShowCreate(true);
+  }
 
   async function saveEntry() {
     if (!practiced.trim()) return;
     setSaving(true);
-    await fetch('/api/school/notes/diary', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${tk()}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mood, practiced, goal: goal.trim() || null, label_id: labelDraft ? parseInt(labelDraft) : null, image_url: images.length ? JSON.stringify(images) : null }),
-    });
+    const body = { mood, practiced, goal: goal.trim() || null, label_id: labelDraft ? parseInt(labelDraft) : null, image_url: images.length ? JSON.stringify(images) : null };
+    if (editing) {
+      await fetch(`/api/school/notes/diary/${editing.id}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tk()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    } else {
+      await fetch('/api/school/notes/diary', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tk()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    }
     setSaving(false);
     await reload();
   }
@@ -2261,7 +2279,6 @@ function StudentPracticeDiaryPanel({ lang }) {
 
   async function del(id) {
     await fetch(`/api/school/notes/diary/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${tk()}` } });
-    setExpanded(null);
     await reload();
   }
 
@@ -2335,27 +2352,30 @@ function StudentPracticeDiaryPanel({ lang }) {
               title={lang === 'GEO' ? 'სურათის დამატება' : 'Add image'}>📷</button>
             <button onClick={save} disabled={!practiced.trim() || saving}
               className="flex-1 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
-              {saving ? '…' : (lang === 'GEO' ? 'შენახვა' : 'Save Entry')}
+              {saving ? '…' : editing ? (lang === 'GEO' ? 'განახლება' : 'Update') : (lang === 'GEO' ? 'შენახვა' : 'Save Entry')}
             </button>
+            {editing && (
+              <button onClick={async () => { await del(editing.id); setShowCreate(false); resetForm(); }}
+                className="rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 px-3 py-2 text-sm transition-colors">
+                {lang === 'GEO' ? '🗑' : '🗑'}
+              </button>
+            )}
           </div>
         </div>
       )}
       {filtered.length === 0
         ? <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'ჩანაწერები არ არის.' : 'No entries yet.'}</p>
         : (
-          <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px', padding: '4px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px', padding: '4px' }}>
               {filtered.map(e => {
                 const imgs = parseImages(e.image_url);
-                const isSelected = expanded === e.id;
                 return (
-                  <div key={e.id} onClick={() => setExpanded(isSelected ? null : e.id)}
+                  <div key={e.id} onClick={() => openEdit(e)}
                     className="cursor-pointer rounded-[10px] transition-colors overflow-hidden"
-                    style={{ border: `1px solid ${isSelected ? 'rgba(139,92,246,0.5)' : 'rgba(255,255,255,0.12)'}`, background: isSelected ? 'rgba(139,92,246,0.06)' : 'rgba(255,255,255,0.03)', maxHeight: '200px' }}
+                    style={{ border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.03)', maxHeight: '200px' }}
                   >
                     {imgs[0] && (
-                      <img src={imgs[0]} alt="" style={{ width: '100%', maxHeight: '80px', objectFit: 'cover', display: 'block' }}
-                        onClick={ev => { ev.stopPropagation(); setPreviewImg(imgs[0]); }} />
+                      <img src={imgs[0]} alt="" style={{ width: '100%', maxHeight: '80px', objectFit: 'cover', display: 'block' }} />
                     )}
                     <div style={{ padding: '10px 12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '5px' }}>
@@ -2370,34 +2390,6 @@ function StudentPracticeDiaryPanel({ lang }) {
                 );
               })}
             </div>
-            {expanded && (() => {
-              const entry = filtered.find(e => e.id === expanded);
-              if (!entry) return null;
-              const imgs = parseImages(entry.image_url);
-              return (
-                <div style={{ border: '1px solid rgba(139,92,246,0.3)', borderRadius: '10px', padding: '14px', background: 'rgba(139,92,246,0.04)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                    <span style={{ fontSize: '18px' }}>{entry.mood || '📝'}</span>
-                    {entry.label_color && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: entry.label_color }} />}
-                    <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginLeft: 'auto' }}>{new Date(entry.created_at).toLocaleDateString()}</span>
-                    <button onClick={() => setExpanded(null)} style={{ color: 'rgba(255,255,255,0.4)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', lineHeight: 1 }}>✕</button>
-                  </div>
-                  <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, marginBottom: '6px' }}>{entry.practiced}</p>
-                  {entry.goal && <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '8px' }}>→ {entry.goal}</p>}
-                  {imgs.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
-                      {imgs.map((src, i) => (
-                        <img key={i} src={src} alt="" style={{ maxHeight: '120px', borderRadius: '8px', objectFit: 'cover', cursor: 'zoom-in' }} onClick={() => setPreviewImg(src)} />
-                      ))}
-                    </div>
-                  )}
-                  <button onClick={() => del(entry.id)} style={{ fontSize: '12px', color: 'rgba(239,68,68,0.8)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                    {lang === 'GEO' ? '🗑 წაშლა' : '🗑 Delete'}
-                  </button>
-                </div>
-              );
-            })()}
-          </>
         )
       }
     </div>

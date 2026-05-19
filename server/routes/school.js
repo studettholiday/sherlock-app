@@ -702,6 +702,22 @@ router.post('/notes/diary', authMiddleware, async (req, res) => {
   }
 });
 
+router.patch('/notes/diary/:id', authMiddleware, async (req, res) => {
+  const { mood, practiced, goal, label_id, image_url } = req.body;
+  if (!practiced) return res.status(400).json({ error: 'practiced is required' });
+  try {
+    const result = await getPool().query(
+      'UPDATE student_diary SET mood = $1, practiced = $2, goal = $3, label_id = $4, image_url = $5 WHERE id = $6 AND user_id = $7 RETURNING *',
+      [mood || null, practiced, goal || null, label_id || null, image_url || null, req.params.id, req.user.userId]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
+    res.json({ entry: result.rows[0] });
+  } catch (err) {
+    console.error('[notes/diary] PATCH error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 router.delete('/notes/diary/:id', authMiddleware, async (req, res) => {
   try {
     await getPool().query('DELETE FROM student_diary WHERE id = $1 AND user_id = $2', [req.params.id, req.user.userId]);
