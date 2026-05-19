@@ -2089,7 +2089,7 @@ function StudentNotesPanel({ lang }) {
         <input value={titleDraft} onChange={e => setTitleDraft(e.target.value)}
           placeholder={lang === 'GEO' ? 'სათაური...' : 'Title…'} className={INPUT_SM} />
 
-        {/* Images above content */}
+        {/* Images strip */}
         {images.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {images.map((src, i) => (
@@ -2102,37 +2102,54 @@ function StudentNotesPanel({ lang }) {
           </div>
         )}
 
-        {/* Content area */}
-        {checklist ? (
-          <div className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 min-h-[120px] space-y-1.5">
-            {checklistLines.map((line, idx) => {
-              const checked = line.startsWith('[x] ');
-              const text = (checked || line.startsWith('[ ] ')) ? line.slice(4) : line;
-              return (
-                <div key={idx} className="flex items-center gap-2 group">
-                  <input type="checkbox" checked={checked} onChange={() => toggleItem(idx)}
-                    className="accent-violet-500 flex-shrink-0 cursor-pointer" />
-                  <span className={`flex-1 text-xs ${checked ? 'line-through text-gray-600' : 'text-white/80'}`}>{text}</span>
-                  <button onClick={() => deleteItem(idx)}
-                    className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 text-xs transition-opacity">✕</button>
-                </div>
-              );
-            })}
-            <div className="flex items-center gap-2 pt-1">
-              <input value={newItem} onChange={e => setNewItem(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addItem(); } }}
-                placeholder={lang === 'GEO' ? '+ დამატება...' : '+ Add item…'}
-                className="flex-1 bg-transparent text-xs text-white/60 placeholder-white/20 focus:outline-none focus:text-white/80" />
-              {newItem.trim() && (
-                <button onClick={addItem} className="text-xs text-violet-400 hover:text-violet-300">+</button>
-              )}
+        {/* Content + toolbar fused */}
+        <div>
+          {checklist ? (
+            <div className="rounded-t-xl rounded-b-none border border-b-0 border-white/[0.08] bg-white/[0.04] px-3 py-2 min-h-[120px] space-y-1.5">
+              {checklistLines.map((line, idx) => {
+                const checked = line.startsWith('[x] ');
+                const text = (checked || line.startsWith('[ ] ')) ? line.slice(4) : line;
+                return (
+                  <div key={idx} className="flex items-center gap-2 group">
+                    <input type="checkbox" checked={checked} onChange={() => toggleItem(idx)}
+                      className="accent-violet-500 flex-shrink-0 cursor-pointer" />
+                    <span className={`flex-1 text-xs ${checked ? 'line-through text-gray-600' : 'text-white/80'}`}>{text}</span>
+                    <button onClick={() => deleteItem(idx)}
+                      className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 text-xs transition-opacity">✕</button>
+                  </div>
+                );
+              })}
+              <div className="flex items-center gap-2 pt-1">
+                <input value={newItem} onChange={e => setNewItem(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addItem(); } }}
+                  placeholder={lang === 'GEO' ? '+ დამატება...' : '+ Add item…'}
+                  className="flex-1 bg-transparent text-xs text-white/60 placeholder-white/20 focus:outline-none focus:text-white/80" />
+                {newItem.trim() && (
+                  <button onClick={addItem} className="text-xs text-violet-400 hover:text-violet-300">+</button>
+                )}
+              </div>
             </div>
+          ) : (
+            <textarea rows={7} value={contentDraft} onChange={e => handleContentChange(e.target.value)}
+              placeholder={lang === 'GEO' ? 'შინაარსი...' : 'Content…'}
+              className="w-full rounded-t-xl rounded-b-none border border-b-0 border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-white/80 placeholder-white/20 focus:outline-none focus:border-white/25 resize-none" />
+          )}
+          <input ref={imgInputRef} type="file" accept="image/*" onChange={pickImage} className="hidden" />
+          <div className="flex items-center gap-1.5 px-2 py-1.5 border border-white/[0.08] rounded-b-xl bg-white/[0.04]">
+            <button onClick={() => imgInputRef.current?.click()}
+              className="rounded-lg border border-white/10 hover:bg-white/[0.08] px-2.5 py-1 text-sm transition-colors"
+              title={lang === 'GEO' ? 'სურათის დამატება' : 'Add image'}>📷</button>
+            <button onClick={toggleChecklist}
+              className={`rounded-lg border px-2.5 py-1 text-sm transition-colors ${checklist ? 'border-violet-500/50 bg-violet-500/10 text-violet-400' : 'border-white/10 hover:bg-white/[0.08]'}`}
+              title={lang === 'GEO' ? 'სია' : 'Checklist'}>☑️</button>
+            <button onClick={undo} disabled={!histState.canUndo}
+              className="rounded-lg border border-white/10 hover:bg-white/[0.08] disabled:opacity-30 px-2.5 py-1 text-sm transition-colors"
+              title="Undo (Ctrl+Z)">↩</button>
+            <button onClick={redo} disabled={!histState.canRedo}
+              className="rounded-lg border border-white/10 hover:bg-white/[0.08] disabled:opacity-30 px-2.5 py-1 text-sm transition-colors"
+              title="Redo (Ctrl+Y)">↪</button>
           </div>
-        ) : (
-          <textarea rows={7} value={contentDraft} onChange={e => handleContentChange(e.target.value)}
-            placeholder={lang === 'GEO' ? 'შინაარსი...' : 'Content…'}
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-white/80 placeholder-white/20 focus:outline-none focus:border-white/25 resize-none" />
-        )}
+        </div>
 
         {/* Label selector */}
         {labels.length > 0 && (
@@ -2143,29 +2160,15 @@ function StudentNotesPanel({ lang }) {
           </select>
         )}
 
-        {/* Bottom toolbar */}
-        <input ref={imgInputRef} type="file" accept="image/*" onChange={pickImage} className="hidden" />
-        <div className="flex items-center gap-2 pt-1 border-t border-white/[0.06]">
-          <button onClick={() => imgInputRef.current?.click()}
-            className="rounded-lg border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] px-2.5 py-1.5 text-sm transition-colors"
-            title={lang === 'GEO' ? 'სურათის დამატება' : 'Add image'}>📷</button>
-          <button onClick={toggleChecklist}
-            className={`rounded-lg border px-2.5 py-1.5 text-sm transition-colors ${checklist ? 'border-violet-500/50 bg-violet-500/10 text-violet-400' : 'border-white/10 bg-white/[0.04] hover:bg-white/[0.08]'}`}
-            title={lang === 'GEO' ? 'სია' : 'Checklist'}>☑️</button>
-          <button onClick={undo} disabled={!histState.canUndo}
-            className="rounded-lg border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-30 px-2.5 py-1.5 text-sm transition-colors"
-            title="Undo (Ctrl+Z)">↩</button>
-          <button onClick={redo} disabled={!histState.canRedo}
-            className="rounded-lg border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-30 px-2.5 py-1.5 text-sm transition-colors"
-            title="Redo (Ctrl+Y)">↪</button>
-          <div className="flex-1" />
+        {/* Save / Delete */}
+        <div className="flex gap-2">
           <button onClick={save} disabled={!contentDraft.trim() || saving}
-            className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-1.5 text-xs text-white font-medium transition-colors">
+            className="flex-1 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-xs text-white font-medium transition-colors">
             {saving ? '…' : (lang === 'GEO' ? 'შენახვა' : 'Save')}
           </button>
           {view === 'edit' && (
             <button onClick={() => del(editing.id)}
-              className="rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 px-3 py-1.5 text-xs transition-colors">
+              className="rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 px-3 py-2 text-xs transition-colors">
               {lang === 'GEO' ? 'წაშლა' : 'Delete'}
             </button>
           )}
