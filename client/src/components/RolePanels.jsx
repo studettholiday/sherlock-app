@@ -2220,7 +2220,6 @@ function StudentAddSubjectPanel({ lang }) {
 
 function StudentRemoveSubjectPanel({ lang }) {
   const [enrolled, setEnrolled] = useState([]);
-  const [fullSchedule, setFullSchedule] = useState([]);
   const [checked, setChecked] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -2230,17 +2229,14 @@ function StudentRemoveSubjectPanel({ lang }) {
     fetch('/api/school/my-schedule', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => {
-        const rows = d.schedule || [];
-        setFullSchedule(rows);
-        const seen = new Set();
-        const unique = [];
-        rows.forEach(s => {
-          if (!seen.has(s.group_id)) {
-            seen.add(s.group_id);
-            unique.push(s);
+        const groups = {};
+        (d.schedule || []).forEach(s => {
+          if (!groups[s.group_id]) {
+            groups[s.group_id] = { group_id: s.group_id, group_name: s.group_name, subject_name: s.subject_name, times: [] };
           }
+          groups[s.group_id].times.push({ day: s.day_of_week, time: s.lesson_time });
         });
-        setEnrolled(unique);
+        setEnrolled(Object.values(groups));
         setLoading(false);
       }).catch(() => setLoading(false));
   }, []);
@@ -2271,11 +2267,9 @@ function StudentRemoveSubjectPanel({ lang }) {
             <input type="checkbox" checked={checked.includes(s.group_id)} onChange={() => toggle(s.group_id)} className="accent-emerald-500 w-4 h-4 flex-shrink-0 mt-0.5" />
             <div className="min-w-0">
               <span className="text-sm text-white">{s.subject_name} — {s.group_name}</span>
-              <div className="text-xs text-gray-500 ml-1">
-                {fullSchedule.filter(sc => sc.group_id === s.group_id).map(sc => (
-                  <span key={sc.id}>{DAYS_GEO[sc.day_of_week]} · {sc.lesson_time}{'  '}</span>
-                ))}
-              </div>
+              {s.times.map((t, i) => (
+                <p key={i} className="text-xs text-gray-500 ml-1">{DAYS_GEO[t.day]} · {t.time}</p>
+              ))}
             </div>
           </label>
         ))}
