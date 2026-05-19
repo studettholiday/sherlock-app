@@ -355,6 +355,15 @@ router.post('/web-registrations', authMiddleware, async (req, res) => {
   }
   const pool = getPool();
   try {
+    for (const groupId of ids) {
+      const dup = await pool.query(
+        "SELECT id FROM web_registrations WHERE user_id = $1 AND group_id = $2 AND status = 'approved'",
+        [req.user.userId, groupId]
+      );
+      if (dup.rows.length) {
+        return res.status(409).json({ error: 'Already enrolled in this group' });
+      }
+    }
     await pool.query(
       "DELETE FROM web_registrations WHERE user_id = $1 AND status = 'pending'",
       [req.user.userId]
@@ -420,6 +429,28 @@ router.patch('/web-registrations/:id', authMiddleware, async (req, res) => {
     res.json({ registration: result.rows[0] });
   } catch (err) {
     console.error('[web-registrations] PATCH error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.delete('/web-registrations/:id', authMiddleware, async (req, res) => {
+  const pool = getPool();
+  try {
+    const reg = await pool.query(
+      'SELECT user_id FROM web_registrations WHERE id = $1 AND school_id = $2',
+      [req.params.id, req.user.schoolId]
+    );
+    if (!reg.rows.length) return res.status(404).json({ error: 'Not found' });
+    const isOwner = reg.rows[0].user_id === req.user.userId;
+    const isAdmin = ['admin', 'assistant'].includes(req.user.role);
+    if (!isOwner && !isAdmin) return res.status(403).json({ error: 'Forbidden' });
+    await pool.query(
+      'DELETE FROM web_registrations WHERE id = $1 AND school_id = $2',
+      [req.params.id, req.user.schoolId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[web-registrations] DELETE error:', err.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
