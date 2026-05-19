@@ -1998,7 +1998,7 @@ function StudentNotesPanel({ lang }) {
   }
 
   async function handleBack() {
-    if (hasChanges() && (!contentDraft.trim() ? titleDraft.trim() || images.length > 0 : true)) {
+    if (hasChanges() && (titleDraft.trim() || contentDraft.trim() || images.length > 0)) {
       await saveNote();
       setSavedFlash(true);
       await new Promise(r => setTimeout(r, 700));
