@@ -418,7 +418,16 @@ export default function Chat() {
 
         {/* Role switcher */}
         <div className={`flex items-center gap-1 px-2 py-1.5 sm:px-4 sm:py-2 border-b ${s.headerBorder} flex-shrink-0 overflow-x-auto`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          {ROLE_SWITCHER.map((r) => (
+          {(() => {
+            const userRole = user?.role;
+            return ROLE_SWITCHER.filter(r => {
+              if (!userRole || userRole === 'admin') return true;
+              if (userRole === 'assistant') return r.id === 'assistant' || r.id === 'student';
+              if (userRole === 'teacher') return r.id === 'teacher';
+              if (userRole === 'student') return r.id === 'student';
+              return true;
+            });
+          })().map((r) => (
             <button
               key={r.id}
               onClick={() => setRole(r.id)}

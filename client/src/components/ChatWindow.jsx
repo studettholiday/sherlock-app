@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { RolePanel, PANEL_ACTIVE_CLS, NotificationBell } from './RolePanels';
+import { useAuth } from '../AuthContext';
 
 const API_URL = '/api/chat';
 
@@ -233,6 +234,7 @@ const GROUP_OPEN_CLS = {
 };
 
 export default function ChatWindow({ lang, mobile = false, onClose = null }) {
+  const { user } = useAuth();
   const [role, setRole] = useState('admin');
   const [activePanel, setActivePanel] = useState(null);
   const [openGroup, setOpenGroup] = useState(null);
@@ -686,7 +688,17 @@ export default function ChatWindow({ lang, mobile = false, onClose = null }) {
 
       {/* Role switcher */}
       <div className={`flex items-center gap-1 ${mobile ? 'px-2 py-1 overflow-x-auto' : 'px-4 py-2'} border-b ${s.headerBorder} flex-shrink-0`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-        {ROLE_SWITCHER.map((r) => (
+        {(() => {
+          const userRole = user?.role;
+          const visibleRoleSwitcher = ROLE_SWITCHER.filter(r => {
+            if (!userRole || userRole === 'admin') return true;
+            if (userRole === 'assistant') return r.id === 'assistant' || r.id === 'student';
+            if (userRole === 'teacher') return r.id === 'teacher';
+            if (userRole === 'student') return r.id === 'student';
+            return true;
+          });
+          return visibleRoleSwitcher;
+        })().map((r) => (
           <button
             key={r.id}
             onClick={() => setRole(r.id)}
@@ -959,7 +971,7 @@ export default function ChatWindow({ lang, mobile = false, onClose = null }) {
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) sendMessage(e); }}
           className={`flex-1 resize-none rounded-xl px-3 py-2 text-sm focus:outline-none ${theme.ring} max-h-32 ${s.inputCls}`}
         />
-        {role !== 'student' && (
+        {user?.role !== 'student' && (
           <button
             type="button"
             title="Knowledge Library"
