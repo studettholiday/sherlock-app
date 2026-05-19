@@ -840,7 +840,7 @@ router.post('/absences', authMiddleware, async (req, res) => {
 router.get('/notifications', authMiddleware, async (req, res) => {
   try {
     const result = await getPool().query(
-      `SELECT * FROM notifications WHERE recipient_id = $1 AND created_at > NOW() - INTERVAL '3 days' ORDER BY created_at DESC`,
+      `SELECT * FROM notifications WHERE recipient_id = $1 AND read = FALSE ORDER BY created_at DESC LIMIT 50`,
       [req.user.userId]
     );
     res.json({ notifications: result.rows });
