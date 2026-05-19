@@ -719,7 +719,7 @@ function RightColumn({ members, onMembersRefresh }) {
         {user?.schoolName && <span className="text-xs ml-1" style={{ color: 'rgba(255,255,255,0.5)' }}>{user.schoolName}</span>}
 
         <div className="ml-auto flex items-center gap-2">
-          {user?.role === 'student' && <NotificationBell lang={lang} />}
+          <NotificationBell lang={lang} />
           {/* Edit button — visible when not on student tab */}
           {user?.role !== 'student' && (
             <div className="relative flex-shrink-0" ref={editBtnRef}>
