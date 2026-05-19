@@ -1442,6 +1442,7 @@ function MySchedulePanel({ lang }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('[MySchedulePanel] token:', localStorage.getItem('sherlock_token')?.slice(0,20));
     fetch('/api/school/my-schedule', { headers: { Authorization: 'Bearer ' + localStorage.getItem('sherlock_token') } })
       .then(r => r.json())
       .then(data => { setSchedule(Array.isArray(data) ? data : []); })
