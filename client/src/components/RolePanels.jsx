@@ -1779,12 +1779,23 @@ function StudentSchedulePanel({ lang }) {
 }
 
 function StudentEventsPanel() {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const token = localStorage.getItem('sherlock_token');
+    fetch('/api/school/events', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => { setEvents(d.events || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+  if (loading) return <p className="text-xs text-gray-500">Loading…</p>;
+  if (!events.length) return <p className="text-xs text-gray-500">No events yet.</p>;
   return (
     <div className="space-y-2">
-      {INIT_EVENTS.map(ev => (
+      {events.map(ev => (
         <div key={ev.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
           <p className="text-xs text-white font-medium">{ev.name}</p>
-          <p className="text-xs text-gray-500 mt-1">📅 {ev.date} · {ev.time}&nbsp;&nbsp;📍 {ev.place}</p>
+          <p className="text-xs text-gray-500 mt-1">📅 {ev.event_date} · {ev.event_time}  📍 {ev.place}</p>
         </div>
       ))}
     </div>
