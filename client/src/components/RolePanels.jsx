@@ -2165,26 +2165,31 @@ function StudentRemoveSubjectPanel({ lang }) {
     fetch('/api/school/my-schedule', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => {
-        const unique = [];
         const seen = new Set();
-        (d.schedule || []).forEach(s => { if (!seen.has(s.subject_name)) { seen.add(s.subject_name); unique.push(s); } });
+        const unique = [];
+        (d.schedule || []).forEach(s => {
+          if (!seen.has(s.subject_name)) {
+            seen.add(s.subject_name);
+            unique.push({ subject_name: s.subject_name, group_id: s.group_id });
+          }
+        });
         setEnrolled(unique);
         setLoading(false);
       }).catch(() => setLoading(false));
   }, []);
 
-  function toggle(id) { setChecked(cs => cs.includes(id) ? cs.filter(x => x !== id) : [...cs, id]); }
+  function toggle(name) { setChecked(cs => cs.includes(name) ? cs.filter(x => x !== name) : [...cs, name]); }
 
   async function submit() {
     if (!checked.length) return;
     const token = localStorage.getItem('sherlock_token');
+    const groupIds = enrolled.filter(s => checked.includes(s.subject_name)).map(s => s.group_id);
     await fetch('/api/school/web-registrations', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ group_ids: checked })
+      body: JSON.stringify({ group_ids: groupIds })
     });
-    const names = enrolled.filter(s => checked.includes(s.group_id)).map(s => s.subject_name).join(', ');
-    setPendingNames(names);
+    setPendingNames(checked.join(', '));
     setSent(true);
     setChecked([]);
   }
@@ -2195,8 +2200,8 @@ function StudentRemoveSubjectPanel({ lang }) {
       <p className="text-xs text-gray-500">{lang === 'GEO' ? 'აირჩიეთ წასაშლელი საგნები' : 'Select subjects to remove'}</p>
       <div className="space-y-2">
         {enrolled.map(s => (
-          <label key={s.group_id} className="flex items-center gap-3 cursor-pointer rounded-xl border border-white/10 px-3 py-2 hover:bg-white/[0.03] transition-colors">
-            <input type="checkbox" checked={checked.includes(s.group_id)} onChange={() => toggle(s.group_id)} className="accent-emerald-500 w-4 h-4 flex-shrink-0" />
+          <label key={s.subject_name} className="flex items-center gap-3 cursor-pointer rounded-xl border border-white/10 px-3 py-2 hover:bg-white/[0.03] transition-colors">
+            <input type="checkbox" checked={checked.includes(s.subject_name)} onChange={() => toggle(s.subject_name)} className="accent-emerald-500 w-4 h-4 flex-shrink-0" />
             <span className="text-sm text-white">{s.subject_name}</span>
           </label>
         ))}
