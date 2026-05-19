@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
+const { Pool } = require('pg');
 const chatRouter = require('./routes/chat');
 const dbRouter = require('./routes/db');
 const youtubeRoutes = require('./routes/youtube');
@@ -10,6 +12,20 @@ const authRouter = require('./routes/auth');
 const libraryRouter = require('./routes/library');
 const schoolRouter = require('./routes/school');
 const invitesRouter = require('./routes/invites');
+
+async function runMigrations() {
+  const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
+  try {
+    const sql = fs.readFileSync(path.join(__dirname, 'migrations/010_notes_labels_diary.sql'), 'utf8');
+    await pool.query(sql);
+    console.log('[startup] migration 010 complete');
+  } catch (e) {
+    console.error('[startup] migration 010 error:', e.message);
+  } finally {
+    await pool.end();
+  }
+}
+runMigrations();
 
 const app = express();
 const PORT = process.env.PORT || 3001;

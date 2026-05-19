@@ -543,6 +543,157 @@ router.delete('/web-registrations/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// --- Notes: Labels ---
+
+router.get('/notes/labels', authMiddleware, async (req, res) => {
+  try {
+    const result = await getPool().query(
+      'SELECT * FROM student_labels WHERE user_id = $1 AND school_id = $2 ORDER BY created_at ASC',
+      [req.user.userId, req.user.schoolId]
+    );
+    res.json({ labels: result.rows });
+  } catch (err) {
+    console.error('[notes/labels] GET error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/notes/labels', authMiddleware, async (req, res) => {
+  const { name, color } = req.body;
+  if (!name) return res.status(400).json({ error: 'name is required' });
+  try {
+    const result = await getPool().query(
+      "INSERT INTO student_labels (user_id, school_id, name, color) VALUES ($1, $2, $3, $4) RETURNING *",
+      [req.user.userId, req.user.schoolId, name, color || '#7C3AED']
+    );
+    res.json({ label: result.rows[0] });
+  } catch (err) {
+    console.error('[notes/labels] POST error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.delete('/notes/labels/:id', authMiddleware, async (req, res) => {
+  try {
+    await getPool().query(
+      'DELETE FROM student_labels WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.user.userId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[notes/labels] DELETE error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// --- Notes ---
+
+router.get('/notes', authMiddleware, async (req, res) => {
+  const { label_id, q } = req.query;
+  try {
+    let query = `SELECT n.*, l.name AS label_name, l.color AS label_color
+      FROM student_notes n
+      LEFT JOIN student_labels l ON n.label_id = l.id
+      WHERE n.user_id = $1 AND n.school_id = $2`;
+    const params = [req.user.userId, req.user.schoolId];
+    if (label_id) { params.push(label_id); query += ` AND n.label_id = $${params.length}`; }
+    if (q) { params.push(`%${q}%`); query += ` AND (n.title ILIKE $${params.length} OR n.content ILIKE $${params.length})`; }
+    query += ' ORDER BY n.updated_at DESC';
+    const result = await getPool().query(query, params);
+    res.json({ notes: result.rows });
+  } catch (err) {
+    console.error('[notes] GET error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/notes', authMiddleware, async (req, res) => {
+  const { title, content, label_id } = req.body;
+  if (!content) return res.status(400).json({ error: 'content is required' });
+  try {
+    const result = await getPool().query(
+      'INSERT INTO student_notes (user_id, school_id, title, content, label_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [req.user.userId, req.user.schoolId, title || null, content, label_id || null]
+    );
+    res.json({ note: result.rows[0] });
+  } catch (err) {
+    console.error('[notes] POST error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.patch('/notes/:id', authMiddleware, async (req, res) => {
+  const { title, content, label_id } = req.body;
+  if (!content) return res.status(400).json({ error: 'content is required' });
+  try {
+    const result = await getPool().query(
+      'UPDATE student_notes SET title = $1, content = $2, label_id = $3, updated_at = NOW() WHERE id = $4 AND user_id = $5 RETURNING *',
+      [title || null, content, label_id || null, req.params.id, req.user.userId]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
+    res.json({ note: result.rows[0] });
+  } catch (err) {
+    console.error('[notes] PATCH error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.delete('/notes/:id', authMiddleware, async (req, res) => {
+  try {
+    await getPool().query('DELETE FROM student_notes WHERE id = $1 AND user_id = $2', [req.params.id, req.user.userId]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[notes] DELETE error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// --- Notes: Diary ---
+
+router.get('/notes/diary', authMiddleware, async (req, res) => {
+  const { label_id, q } = req.query;
+  try {
+    let query = `SELECT d.*, l.name AS label_name, l.color AS label_color
+      FROM student_diary d
+      LEFT JOIN student_labels l ON d.label_id = l.id
+      WHERE d.user_id = $1 AND d.school_id = $2`;
+    const params = [req.user.userId, req.user.schoolId];
+    if (label_id) { params.push(label_id); query += ` AND d.label_id = $${params.length}`; }
+    if (q) { params.push(`%${q}%`); query += ` AND (d.practiced ILIKE $${params.length} OR d.goal ILIKE $${params.length})`; }
+    query += ' ORDER BY d.created_at DESC';
+    const result = await getPool().query(query, params);
+    res.json({ entries: result.rows });
+  } catch (err) {
+    console.error('[notes/diary] GET error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/notes/diary', authMiddleware, async (req, res) => {
+  const { mood, practiced, goal, label_id } = req.body;
+  if (!practiced) return res.status(400).json({ error: 'practiced is required' });
+  try {
+    const result = await getPool().query(
+      'INSERT INTO student_diary (user_id, school_id, mood, practiced, goal, label_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [req.user.userId, req.user.schoolId, mood || null, practiced, goal || null, label_id || null]
+    );
+    res.json({ entry: result.rows[0] });
+  } catch (err) {
+    console.error('[notes/diary] POST error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.delete('/notes/diary/:id', authMiddleware, async (req, res) => {
+  try {
+    await getPool().query('DELETE FROM student_diary WHERE id = $1 AND user_id = $2', [req.params.id, req.user.userId]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[notes/diary] DELETE error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // --- Notifications ---
 
 router.get('/notifications', authMiddleware, async (req, res) => {

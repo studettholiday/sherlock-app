@@ -144,6 +144,7 @@ const PANEL_TITLES = {
   'knowledge-library':     'Knowledge Library',
   'notes-box':             'Notes Box',
   'search':                'Search',
+  'labels':                'Labels',
   'ai-use':                'AI Power Settings',
 };
 
@@ -180,6 +181,7 @@ const GEO_PANEL_TITLES = {
   'knowledge-library':     'ცოდნის ბიბლიოთეკა',
   'notes-box':             'ჩანაწერების ყუთი',
   'search':                'ძებნა',
+  'labels':                'ლეიბლები',
   'ai-use':                'AI სიმძლავრის პარამეტრები',
 };
 
@@ -1858,72 +1860,404 @@ function StudentLibraryPanel() {
   );
 }
 
-function StudentNotesPanel({ lang }) {
-  const [notes, setNotes] = useState([
-    'Practice the G major scale daily',
-    'Bring a pick on Tuesday',
-  ]);
-  const [draft, setDraft] = useState('');
+const LABEL_COLORS = ['#7C3AED','#2563EB','#059669','#DC2626','#D97706','#DB2777','#0891B2','#65A30D'];
+const INPUT_SM = 'w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-white/80 placeholder-white/20 focus:outline-none focus:border-white/25';
 
-  function add() { if (draft.trim()) { setNotes(ns => [...ns, draft.trim()]); setDraft(''); } }
+function StudentNotesPanel({ lang }) {
+  const [notes, setNotes] = useState([]);
+  const [labels, setLabels] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQ, setSearchQ] = useState('');
+  const [labelFilter, setLabelFilter] = useState('');
+  const [view, setView] = useState('list');
+  const [editing, setEditing] = useState(null);
+  const [titleDraft, setTitleDraft] = useState('');
+  const [contentDraft, setContentDraft] = useState('');
+  const [labelDraft, setLabelDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const tk = () => localStorage.getItem('sherlock_token');
+
+  async function reload() {
+    const [nd, ld] = await Promise.all([
+      fetch('/api/school/notes', { headers: { Authorization: `Bearer ${tk()}` } }).then(r => r.json()),
+      fetch('/api/school/notes/labels', { headers: { Authorization: `Bearer ${tk()}` } }).then(r => r.json()),
+    ]);
+    setNotes(nd.notes || []);
+    setLabels(ld.labels || []);
+  }
+
+  useEffect(() => {
+    reload().then(() => setLoading(false)).catch(() => setLoading(false));
+  }, []);
+
+  const filtered = notes.filter(n => {
+    const q = searchQ.toLowerCase();
+    const matchQ = !q || (n.title || '').toLowerCase().includes(q) || n.content.toLowerCase().includes(q);
+    const matchL = !labelFilter || String(n.label_id) === labelFilter;
+    return matchQ && matchL;
+  });
+
+  function openNew() { setView('new'); setTitleDraft(''); setContentDraft(''); setLabelDraft(''); setEditing(null); }
+  function openEdit(n) { setView('edit'); setEditing(n); setTitleDraft(n.title || ''); setContentDraft(n.content || ''); setLabelDraft(n.label_id ? String(n.label_id) : ''); }
+  function backToList() { setView('list'); setEditing(null); }
+
+  async function save() {
+    if (!contentDraft.trim()) return;
+    setSaving(true);
+    const body = { title: titleDraft.trim() || null, content: contentDraft, label_id: labelDraft ? parseInt(labelDraft) : null };
+    if (view === 'new') {
+      await fetch('/api/school/notes', { method: 'POST', headers: { Authorization: `Bearer ${tk()}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    } else {
+      await fetch(`/api/school/notes/${editing.id}`, { method: 'PATCH', headers: { Authorization: `Bearer ${tk()}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    }
+    setSaving(false);
+    await reload();
+    backToList();
+  }
+
+  async function del(id) {
+    await fetch(`/api/school/notes/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${tk()}` } });
+    await reload();
+    backToList();
+  }
+
+  if (loading) return <p className="text-xs text-gray-500">Loading…</p>;
+
+  if (view === 'new' || view === 'edit') {
+    return (
+      <div className="space-y-3">
+        <button onClick={backToList} className="text-xs text-violet-400 hover:text-violet-300 transition-colors">← {lang === 'GEO' ? 'უკან' : 'Back'}</button>
+        <input value={titleDraft} onChange={e => setTitleDraft(e.target.value)}
+          placeholder={lang === 'GEO' ? 'სათაური...' : 'Title…'} className={INPUT_SM} />
+        <textarea rows={7} value={contentDraft} onChange={e => setContentDraft(e.target.value)}
+          placeholder={lang === 'GEO' ? 'შინაარსი...' : 'Content…'}
+          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-white/80 placeholder-white/20 focus:outline-none focus:border-white/25 resize-none" />
+        {labels.length > 0 && (
+          <select value={labelDraft} onChange={e => setLabelDraft(e.target.value)}
+            style={{ colorScheme: 'dark' }} className={INPUT_SM}>
+            <option value="">{lang === 'GEO' ? 'ლეიბლი (სურვილისამებრ)' : 'Label (optional)'}</option>
+            {labels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </select>
+        )}
+        <div className="flex gap-2">
+          <button onClick={save} disabled={!contentDraft.trim() || saving}
+            className="flex-1 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
+            {saving ? '…' : (lang === 'GEO' ? 'შენახვა' : 'Save')}
+          </button>
+          {view === 'edit' && (
+            <button onClick={() => del(editing.id)}
+              className="rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 px-4 py-2 text-sm transition-colors">
+              {lang === 'GEO' ? 'წაშლა' : 'Delete'}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-2">
-      <div className="space-y-1.5">
-        {notes.map((n, i) => (
-          <div key={i} className="flex items-start gap-2 rounded-xl border border-white/10 px-3 py-2">
-            <p className="flex-1 text-xs text-gray-300">{n}</p>
-            <button onClick={() => setNotes(ns => ns.filter((_, j) => j !== i))} className="text-gray-600 hover:text-red-400 text-xs flex-shrink-0">✕</button>
-          </div>
-        ))}
-      </div>
+    <div className="space-y-3">
       <div className="flex gap-2">
-        <input
-          value={draft}
-          onChange={e => setDraft(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') add(); }}
-          placeholder={lang === 'GEO' ? 'ჩანაწერის დამატება...' : 'Add a note…'}
-          className={`${FIELD} py-1.5`}
-        />
-        <button onClick={add} className="rounded-xl bg-violet-600 hover:bg-violet-500 px-3 py-1.5 text-sm text-white transition-colors">+</button>
+        <input value={searchQ} onChange={e => setSearchQ(e.target.value)}
+          placeholder={lang === 'GEO' ? 'ძებნა...' : 'Search…'} className={`${INPUT_SM} flex-1`} />
+        <button onClick={openNew}
+          className="rounded-xl bg-violet-600 hover:bg-violet-500 px-3 py-1.5 text-xs text-white font-medium transition-colors flex-shrink-0">
+          + {lang === 'GEO' ? 'ახალი' : 'New'}
+        </button>
       </div>
+      {labels.length > 0 && (
+        <select value={labelFilter} onChange={e => setLabelFilter(e.target.value)}
+          style={{ colorScheme: 'dark' }} className={INPUT_SM}>
+          <option value="">{lang === 'GEO' ? 'ყველა ლეიბლი' : 'All labels'}</option>
+          {labels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+        </select>
+      )}
+      {filtered.length === 0
+        ? <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'ჩანაწერები არ არის.' : 'No notes yet.'}</p>
+        : (
+          <div className="space-y-2">
+            {filtered.map(n => (
+              <div key={n.id} onClick={() => openEdit(n)}
+                className="cursor-pointer rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2.5 hover:bg-white/[0.05] transition-colors">
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      {n.label_color && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: n.label_color }} />}
+                      <p className="text-xs font-semibold text-white truncate">{n.title || (lang === 'GEO' ? 'სათაური არ არის' : 'Untitled')}</p>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5 truncate">{n.content.slice(0, 80)}</p>
+                  </div>
+                  <p className="text-[10px] text-gray-600 flex-shrink-0">{new Date(n.updated_at).toLocaleDateString()}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      }
     </div>
   );
 }
 
 function StudentPracticeDiaryPanel({ lang }) {
+  const [entries, setEntries] = useState([]);
+  const [labels, setLabels] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQ, setSearchQ] = useState('');
+  const [labelFilter, setLabelFilter] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
   const [mood, setMood] = useState('😊');
-  const [what, setWhat] = useState('');
+  const [practiced, setPracticed] = useState('');
   const [goal, setGoal] = useState('');
-  const [saved, setSaved] = useState(false);
+  const [labelDraft, setLabelDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [expanded, setExpanded] = useState(null);
 
-  function save() { if (what.trim()) { setSaved(true); setTimeout(() => setSaved(false), 3000); } }
+  const tk = () => localStorage.getItem('sherlock_token');
+
+  async function reload() {
+    const [dd, ld] = await Promise.all([
+      fetch('/api/school/notes/diary', { headers: { Authorization: `Bearer ${tk()}` } }).then(r => r.json()),
+      fetch('/api/school/notes/labels', { headers: { Authorization: `Bearer ${tk()}` } }).then(r => r.json()),
+    ]);
+    setEntries(dd.entries || []);
+    setLabels(ld.labels || []);
+  }
+
+  useEffect(() => {
+    reload().then(() => setLoading(false)).catch(() => setLoading(false));
+  }, []);
+
+  const filtered = entries.filter(e => {
+    const q = searchQ.toLowerCase();
+    const matchQ = !q || e.practiced.toLowerCase().includes(q) || (e.goal || '').toLowerCase().includes(q);
+    const matchL = !labelFilter || String(e.label_id) === labelFilter;
+    return matchQ && matchL;
+  });
+
+  async function save() {
+    if (!practiced.trim()) return;
+    setSaving(true);
+    await fetch('/api/school/notes/diary', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${tk()}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mood, practiced, goal: goal.trim() || null, label_id: labelDraft ? parseInt(labelDraft) : null }),
+    });
+    setSaving(false);
+    setShowCreate(false);
+    setPracticed(''); setGoal(''); setMood('😊'); setLabelDraft('');
+    await reload();
+  }
+
+  async function del(id) {
+    await fetch(`/api/school/notes/diary/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${tk()}` } });
+    setExpanded(null);
+    await reload();
+  }
+
+  if (loading) return <p className="text-xs text-gray-500">Loading…</p>;
 
   return (
     <div className="space-y-3">
-      <div>
-        <p className="text-xs text-gray-500 mb-1.5">{lang === 'GEO' ? 'დღევანდელი განწყობა' : "Today's mood"}</p>
-        <div className="flex gap-2">
-          {MOODS.map(m => (
-            <button
-              key={m}
-              onClick={() => setMood(m)}
-              className={`text-xl p-1.5 rounded-lg transition-colors ${mood === m ? 'bg-white/15 ring-1 ring-white/20' : 'hover:bg-white/[0.05]'}`}
-            >{m}</button>
+      <div className="flex gap-2">
+        <input value={searchQ} onChange={e => setSearchQ(e.target.value)}
+          placeholder={lang === 'GEO' ? 'ძებნა...' : 'Search…'} className={`${INPUT_SM} flex-1`} />
+        <button onClick={() => setShowCreate(c => !c)}
+          className="rounded-xl bg-violet-600 hover:bg-violet-500 px-3 py-1.5 text-xs text-white font-medium transition-colors flex-shrink-0">
+          + {lang === 'GEO' ? 'ახალი' : 'New'}
+        </button>
+      </div>
+      {labels.length > 0 && (
+        <select value={labelFilter} onChange={e => setLabelFilter(e.target.value)}
+          style={{ colorScheme: 'dark' }} className={INPUT_SM}>
+          <option value="">{lang === 'GEO' ? 'ყველა ლეიბლი' : 'All labels'}</option>
+          {labels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+        </select>
+      )}
+      {showCreate && (
+        <div className="rounded-xl border border-white/15 bg-white/[0.03] p-3 space-y-2.5">
+          <div className="flex gap-1.5">
+            {MOODS.map(m => (
+              <button key={m} onClick={() => setMood(m)}
+                className={`text-xl p-1 rounded-lg transition-colors ${mood === m ? 'bg-white/15 ring-1 ring-white/20' : 'hover:bg-white/[0.05]'}`}>{m}</button>
+            ))}
+          </div>
+          <textarea rows={2} value={practiced} onChange={e => setPracticed(e.target.value)}
+            placeholder={lang === 'GEO' ? 'რას ვარჯიშობდი?' : 'What did you practice?'}
+            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-white/80 placeholder-white/20 focus:outline-none resize-none" />
+          <textarea rows={2} value={goal} onChange={e => setGoal(e.target.value)}
+            placeholder={lang === 'GEO' ? 'ხვალინდელი მიზანი...' : "Tomorrow's goal…"}
+            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-white/80 placeholder-white/20 focus:outline-none resize-none" />
+          {labels.length > 0 && (
+            <select value={labelDraft} onChange={e => setLabelDraft(e.target.value)}
+              style={{ colorScheme: 'dark' }} className={INPUT_SM}>
+              <option value="">{lang === 'GEO' ? 'ლეიბლი (სურვილისამებრ)' : 'Label (optional)'}</option>
+              {labels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+          )}
+          <button onClick={save} disabled={!practiced.trim() || saving}
+            className="w-full rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
+            {saving ? '…' : (lang === 'GEO' ? 'შენახვა' : 'Save Entry')}
+          </button>
+        </div>
+      )}
+      {filtered.length === 0
+        ? <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'ჩანაწერები არ არის.' : 'No entries yet.'}</p>
+        : (
+          <div className="space-y-2">
+            {filtered.map(e => (
+              <div key={e.id} className="rounded-xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
+                <div onClick={() => setExpanded(expanded === e.id ? null : e.id)}
+                  className="cursor-pointer px-3 py-2.5 flex items-start gap-2 hover:bg-white/[0.03] transition-colors">
+                  <span className="text-lg flex-shrink-0">{e.mood || '📝'}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      {e.label_color && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: e.label_color }} />}
+                      <p className="text-xs text-gray-300 truncate">{e.practiced.slice(0, 70)}</p>
+                    </div>
+                    {e.goal && <p className="text-xs text-gray-600 mt-0.5 truncate">→ {e.goal.slice(0, 60)}</p>}
+                  </div>
+                  <p className="text-[10px] text-gray-600 flex-shrink-0">{new Date(e.created_at).toLocaleDateString()}</p>
+                </div>
+                {expanded === e.id && (
+                  <div className="px-3 pb-2.5 border-t border-white/[0.06] space-y-1 pt-2">
+                    <p className="text-xs text-gray-300">{e.practiced}</p>
+                    {e.goal && <p className="text-xs text-gray-500">→ {e.goal}</p>}
+                    <button onClick={() => del(e.id)} className="mt-1 text-xs text-red-400 hover:text-red-300 transition-colors">
+                      {lang === 'GEO' ? '🗑 წაშლა' : '🗑 Delete'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )
+      }
+    </div>
+  );
+}
+
+function StudentLabelsPanel({ lang }) {
+  const [labels, setLabels] = useState([]);
+  const [notes, setNotes] = useState([]);
+  const [diary, setDiary] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [newName, setNewName] = useState('');
+  const [newColor, setNewColor] = useState('#7C3AED');
+  const [creating, setCreating] = useState(false);
+  const [selected, setSelected] = useState(null);
+
+  const tk = () => localStorage.getItem('sherlock_token');
+
+  async function reloadLabels() {
+    const d = await fetch('/api/school/notes/labels', { headers: { Authorization: `Bearer ${tk()}` } }).then(r => r.json());
+    setLabels(d.labels || []);
+  }
+
+  useEffect(() => {
+    reloadLabels().then(() => setLoading(false)).catch(() => setLoading(false));
+  }, []);
+
+  async function create() {
+    if (!newName.trim()) return;
+    setCreating(true);
+    await fetch('/api/school/notes/labels', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${tk()}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newName.trim(), color: newColor }),
+    });
+    setNewName('');
+    setCreating(false);
+    await reloadLabels();
+  }
+
+  async function del(id) {
+    await fetch(`/api/school/notes/labels/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${tk()}` } });
+    if (selected === id) { setSelected(null); setNotes([]); setDiary([]); }
+    await reloadLabels();
+  }
+
+  async function selectLabel(id) {
+    if (selected === id) { setSelected(null); setNotes([]); setDiary([]); return; }
+    setSelected(id);
+    const [nd, dd] = await Promise.all([
+      fetch(`/api/school/notes?label_id=${id}`, { headers: { Authorization: `Bearer ${tk()}` } }).then(r => r.json()),
+      fetch(`/api/school/notes/diary?label_id=${id}`, { headers: { Authorization: `Bearer ${tk()}` } }).then(r => r.json()),
+    ]);
+    setNotes(nd.notes || []);
+    setDiary(dd.entries || []);
+  }
+
+  if (loading) return <p className="text-xs text-gray-500">Loading…</p>;
+
+  const selectedLabel = labels.find(l => l.id === selected);
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-xl border border-white/10 p-3 space-y-2.5">
+        <p className="text-xs text-gray-400 font-medium">+ {lang === 'GEO' ? 'ახალი ლეიბლი' : 'New Label'}</p>
+        <input value={newName} onChange={e => setNewName(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') create(); }}
+          placeholder={lang === 'GEO' ? 'ლეიბლის სახელი...' : 'Label name…'} className={INPUT_SM} />
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {LABEL_COLORS.map(c => (
+            <button key={c} onClick={() => setNewColor(c)}
+              className={`w-5 h-5 rounded-full transition-transform ${newColor === c ? 'ring-2 ring-white/60 scale-110' : 'hover:scale-105'}`}
+              style={{ background: c }} />
           ))}
         </div>
+        <button onClick={create} disabled={!newName.trim() || creating}
+          className="w-full rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-3 py-1.5 text-xs text-white font-medium transition-colors">
+          {creating ? '…' : (lang === 'GEO' ? 'შექმნა' : 'Create')}
+        </button>
       </div>
-      <textarea rows={2} value={what} onChange={e => setWhat(e.target.value)}
-        placeholder={lang === 'GEO' ? 'რას ვარჯიშობდი დღეს?' : 'What did you practice today?'} className={FIELD} />
-      <textarea rows={2} value={goal} onChange={e => setGoal(e.target.value)}
-        placeholder={lang === 'GEO' ? 'ხვალინდელი მიზანი...' : "Tomorrow's goal…"} className={FIELD} />
-      {saved
-        ? <p className="text-emerald-400 text-sm">{lang === 'GEO' ? '✅ ჩანაწერი შენახულია!' : '✅ Entry saved!'}</p>
-        : <button onClick={save} disabled={!what.trim()}
-            className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
-            {lang === 'GEO' ? 'ჩანაწერის შენახვა' : 'Save Entry'}
-          </button>
+      {labels.length === 0
+        ? <p className="text-xs text-gray-500 text-center py-2">{lang === 'GEO' ? 'ლეიბლები არ არის.' : 'No labels yet.'}</p>
+        : (
+          <div className="space-y-1.5">
+            {labels.map(l => (
+              <div key={l.id}
+                className={`rounded-xl border px-3 py-2 flex items-center gap-2.5 cursor-pointer transition-colors ${selected === l.id ? 'border-white/20 bg-white/[0.05]' : 'border-white/[0.08] hover:bg-white/[0.03]'}`}
+                onClick={() => selectLabel(l.id)}>
+                <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: l.color }} />
+                <span className="flex-1 text-xs text-white">{l.name}</span>
+                <button onClick={e => { e.stopPropagation(); del(l.id); }}
+                  className="text-gray-600 hover:text-red-400 text-xs flex-shrink-0 transition-colors">✕</button>
+              </div>
+            ))}
+          </div>
+        )
       }
+      {selected && selectedLabel && (
+        <div className="space-y-2 pt-1 border-t border-white/[0.06]">
+          <p className="text-xs text-gray-500 font-medium pt-1">
+            {lang === 'GEO' ? `„${selectedLabel.name}" ჩანაწერები` : `"${selectedLabel.name}" entries`}
+          </p>
+          {notes.length === 0 && diary.length === 0
+            ? <p className="text-xs text-gray-600 text-center py-2">{lang === 'GEO' ? 'ჩანაწერები არ არის.' : 'No entries with this label.'}</p>
+            : (
+              <>
+                {notes.map(n => (
+                  <div key={`n-${n.id}`} className="rounded-xl border border-white/[0.08] px-3 py-2">
+                    <p className="text-xs font-medium text-white">{n.title || (lang === 'GEO' ? 'სათაური არ არის' : 'Untitled')}</p>
+                    <p className="text-xs text-gray-500 truncate mt-0.5">{n.content.slice(0, 80)}</p>
+                    <p className="text-[10px] text-gray-600 mt-0.5">{new Date(n.updated_at).toLocaleDateString()}</p>
+                  </div>
+                ))}
+                {diary.map(e => (
+                  <div key={`d-${e.id}`} className="rounded-xl border border-white/[0.08] px-3 py-2 flex gap-2 items-start">
+                    <span className="text-base flex-shrink-0">{e.mood || '📝'}</span>
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-300 truncate">{e.practiced.slice(0, 70)}</p>
+                      <p className="text-[10px] text-gray-600 mt-0.5">{new Date(e.created_at).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )
+          }
+        </div>
+      )}
     </div>
   );
 }
@@ -2524,6 +2858,7 @@ function panelContent(role, panel, libraryProps, lang, allMembers, onMembersRefr
     case 'library':         return <StudentLibraryPanel />;
     case 'notes':           return <StudentNotesPanel lang={lang} />;
     case 'practice-diary':  return <StudentPracticeDiaryPanel lang={lang} />;
+    case 'labels':          return <StudentLabelsPanel lang={lang} />;
     case 'report-absence':        return <StudentReportAbsencePanel lang={lang} />;
     case 'report-event-absence':  return <StudentReportEventAbsencePanel lang={lang} />;
     case 'report-exam-absence':   return <StudentReportExamAbsencePanel lang={lang} />;
@@ -2536,8 +2871,6 @@ function panelContent(role, panel, libraryProps, lang, allMembers, onMembersRefr
     case 'view-events':     return <AdminViewEventsPanel />;
     case 'add-event':       return <AdminAddEventPanel role={role} lang={lang} />;
     case 'delete-event':    return <AdminDeleteEventPanel lang={lang} />;
-    case 'notes-box':       return <StudentNotesBoxPanel />;
-    case 'search':          return <StudentSearchPanel lang={lang} />;
     case 'ai-use':          return <AiUsePanel role={role} lang={lang} />;
     default:                return null;
   }
