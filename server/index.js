@@ -29,6 +29,29 @@ async function runMigrations() {
       ALTER TABLE student_diary ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
     `);
     console.log('[startup] migration 012 complete');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS absences (
+        id SERIAL PRIMARY KEY,
+        user_id INT REFERENCES users(id),
+        school_id INT REFERENCES schools(id),
+        group_id INT REFERENCES groups(id),
+        type VARCHAR(20) NOT NULL,
+        date DATE NOT NULL,
+        time VARCHAR(50),
+        reason TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS notifications (
+        id SERIAL PRIMARY KEY,
+        recipient_id INT REFERENCES users(id),
+        school_id INT REFERENCES schools(id),
+        type VARCHAR(50),
+        message TEXT NOT NULL,
+        read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+    console.log('[startup] migration 013 complete');
   } catch (e) {
     console.error('[startup] migration error:', e.message);
   } finally {

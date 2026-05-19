@@ -784,12 +784,62 @@ router.delete('/notes/trash/:id/permanent', authMiddleware, async (req, res) => 
   }
 });
 
+// --- Absences ---
+
+router.post('/absences', authMiddleware, async (req, res) => {
+  const { group_id, date, time, reason, type } = req.body;
+  if (!date || !reason || !type) return res.status(400).json({ error: 'date, reason, and type are required' });
+  if (!['lesson', 'event', 'exam'].includes(type)) return res.status(400).json({ error: 'Invalid type' });
+  const pool = getPool();
+  try {
+    const userRow = await pool.query('SELECT name FROM users WHERE id = $1', [req.user.userId]);
+    const studentName = userRow.rows[0]?.name || 'A student';
+
+    await pool.query(
+      'INSERT INTO absences (user_id, school_id, group_id, type, date, time, reason) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+      [req.user.userId, req.user.schoolId, group_id || null, type, date, time || null, reason]
+    );
+
+    let recipients = [];
+    let message = '';
+
+    if (type === 'lesson') {
+      let groupName = 'group';
+      if (group_id) {
+        const gr = await pool.query('SELECT name FROM groups WHERE id = $1', [group_id]);
+        groupName = gr.rows[0]?.name || groupName;
+      }
+      const timeStr = time ? ` at ${time}` : '';
+      message = `Student ${studentName} will miss ${groupName} on ${date}${timeStr}. Reason: ${reason}`;
+      const rows = await pool.query('SELECT id FROM users WHERE school_id = $1 AND role = $2', [req.user.schoolId, 'teacher']);
+      recipients = rows.rows.map(r => r.id);
+    } else {
+      const typeLabel = type === 'exam' ? 'exam' : 'event';
+      message = `Student ${studentName} will miss ${typeLabel} on ${date}. Reason: ${reason}`;
+      const rows = await pool.query('SELECT id FROM users WHERE school_id = $1 AND role = $2', [req.user.schoolId, 'assistant']);
+      recipients = rows.rows.map(r => r.id);
+    }
+
+    await Promise.all(recipients.map(recipientId =>
+      pool.query(
+        'INSERT INTO notifications (recipient_id, school_id, type, message) VALUES ($1,$2,$3,$4)',
+        [recipientId, req.user.schoolId, `absence_${type}`, message]
+      )
+    ));
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[absences] POST error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // --- Notifications ---
 
 router.get('/notifications', authMiddleware, async (req, res) => {
   try {
     const result = await getPool().query(
-      'SELECT * FROM notifications WHERE user_id = $1 AND read = FALSE ORDER BY created_at DESC',
+      `SELECT * FROM notifications WHERE recipient_id = $1 AND created_at > NOW() - INTERVAL '3 days' ORDER BY created_at DESC`,
       [req.user.userId]
     );
     res.json({ notifications: result.rows });
@@ -801,7 +851,7 @@ router.get('/notifications', authMiddleware, async (req, res) => {
 router.patch('/notifications/:id/read', authMiddleware, async (req, res) => {
   try {
     await getPool().query(
-      'UPDATE notifications SET read = TRUE WHERE id = $1 AND user_id = $2',
+      'UPDATE notifications SET read = TRUE WHERE id = $1 AND recipient_id = $2',
       [req.params.id, req.user.userId]
     );
     res.json({ success: true });

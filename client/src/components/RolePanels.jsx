@@ -2826,25 +2826,66 @@ function StudentTrashPanel({ lang }) {
 }
 
 function StudentReportAbsencePanel({ lang }) {
-  const [group, setGroup] = useState(STUDENT_GROUPS[0]);
+  const [groups, setGroups] = useState([]);
+  const [groupId, setGroupId] = useState('');
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
   const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [err, setErr] = useState('');
+  const tk = () => localStorage.getItem('sherlock_token');
 
-  function submit() { if (reason.trim()) { setSubmitted(true); setReason(''); setTimeout(() => setSubmitted(false), 3000); } }
+  useEffect(() => {
+    fetch('/api/school/my-schedule', { headers: { Authorization: `Bearer ${tk()}` } })
+      .then(r => r.json())
+      .then(d => {
+        const seen = new Set();
+        const unique = (d.schedule || []).filter(g => {
+          if (seen.has(g.group_id)) return false;
+          seen.add(g.group_id); return true;
+        });
+        setGroups(unique);
+        if (unique.length) setGroupId(String(unique[0].group_id));
+      })
+      .catch(() => {});
+  }, []);
+
+  async function submit() {
+    if (!date || !reason.trim()) return;
+    setSubmitting(true); setErr('');
+    try {
+      const res = await fetch('/api/school/absences', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tk()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group_id: groupId ? parseInt(groupId) : null, date, time: time || null, reason: reason.trim(), type: 'lesson' }),
+      });
+      if (!res.ok) { const d = await res.json(); setErr(d.error || 'Error'); return; }
+      setSubmitted(true); setDate(''); setTime(''); setReason('');
+      setTimeout(() => setSubmitted(false), 4000);
+    } catch { setErr('Network error'); }
+    finally { setSubmitting(false); }
+  }
 
   return (
     <div className="space-y-3">
-      <select value={group} onChange={e => setGroup(e.target.value)} style={{ colorScheme: 'dark' }}
-        className={`${FIELD} cursor-pointer`}>
-        {STUDENT_GROUPS.map(g => <option key={g}>{g}</option>)}
-      </select>
+      {groups.length > 0
+        ? <select value={groupId} onChange={e => setGroupId(e.target.value)} style={SELECT_DARK} className={`${FIELD} cursor-pointer`}>
+            {groups.map(g => <option key={g.group_id} value={g.group_id} style={OPTION_DARK}>{g.group_name}</option>)}
+          </select>
+        : <p className="text-xs text-white/40">{lang === 'GEO' ? 'ჯგუფები ვერ მოიძებნა' : 'No enrolled groups found'}</p>
+      }
+      <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ colorScheme: 'dark' }} className={FIELD} />
+      <input type="text" value={time} onChange={e => setTime(e.target.value)}
+        placeholder={lang === 'GEO' ? 'დრო (მაგ. 10:00)' : 'Time (e.g. 10:00 or Period 2)'} className={FIELD} />
       <textarea rows={3} value={reason} onChange={e => setReason(e.target.value)}
         placeholder={lang === 'GEO' ? 'გაცდენის მიზეზი...' : 'Reason for absence…'} className={FIELD} />
+      {err && <p className="text-red-400 text-xs">{err}</p>}
       {submitted
         ? <p className="text-emerald-400 text-sm">{lang === 'GEO' ? '✅ მასწავლებელს გაეგზავნა' : '✅ Sent to your teacher'}</p>
-        : <button onClick={submit} disabled={!reason.trim()}
+        : <button onClick={submit} disabled={submitting || !date || !reason.trim()}
             className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
-            {lang === 'GEO' ? 'გაცდენის შეტყობინება' : 'Report Absence'}
+            {submitting ? '…' : (lang === 'GEO' ? 'გაცდენის შეტყობინება' : 'Report Absence')}
           </button>
       }
     </div>
@@ -2852,25 +2893,40 @@ function StudentReportAbsencePanel({ lang }) {
 }
 
 function StudentReportEventAbsencePanel({ lang }) {
-  const [event, setEvent] = useState(INIT_EVENTS[0]?.name ?? '');
+  const [date, setDate] = useState('');
   const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [err, setErr] = useState('');
+  const tk = () => localStorage.getItem('sherlock_token');
 
-  function submit() { if (reason.trim()) { setSubmitted(true); setReason(''); setTimeout(() => setSubmitted(false), 3000); } }
+  async function submit() {
+    if (!date || !reason.trim()) return;
+    setSubmitting(true); setErr('');
+    try {
+      const res = await fetch('/api/school/absences', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tk()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, reason: reason.trim(), type: 'event' }),
+      });
+      if (!res.ok) { const d = await res.json(); setErr(d.error || 'Error'); return; }
+      setSubmitted(true); setDate(''); setReason('');
+      setTimeout(() => setSubmitted(false), 4000);
+    } catch { setErr('Network error'); }
+    finally { setSubmitting(false); }
+  }
 
   return (
     <div className="space-y-3">
-      <select value={event} onChange={e => setEvent(e.target.value)} style={{ colorScheme: 'dark' }}
-        className={`${FIELD} cursor-pointer`}>
-        {INIT_EVENTS.map(ev => <option key={ev.id}>{ev.name}</option>)}
-      </select>
+      <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ colorScheme: 'dark' }} className={FIELD} />
       <textarea rows={3} value={reason} onChange={e => setReason(e.target.value)}
         placeholder={lang === 'GEO' ? 'გაცდენის მიზეზი...' : 'Reason for absence…'} className={FIELD} />
+      {err && <p className="text-red-400 text-xs">{err}</p>}
       {submitted
         ? <p className="text-emerald-400 text-sm">{lang === 'GEO' ? '✅ ასისტენტს გაეგზავნა' : '✅ Sent to assistant'}</p>
-        : <button onClick={submit} disabled={!reason.trim()}
+        : <button onClick={submit} disabled={submitting || !date || !reason.trim()}
             className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
-            {lang === 'GEO' ? 'მოხსენების გაგზავნა' : 'Submit Report'}
+            {submitting ? '…' : (lang === 'GEO' ? 'მოხსენების გაგზავნა' : 'Submit Report')}
           </button>
       }
     </div>
@@ -2878,25 +2934,40 @@ function StudentReportEventAbsencePanel({ lang }) {
 }
 
 function StudentReportExamAbsencePanel({ lang }) {
-  const [subject, setSubject] = useState(STUDENT_ENROLLED[0]);
+  const [date, setDate] = useState('');
   const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [err, setErr] = useState('');
+  const tk = () => localStorage.getItem('sherlock_token');
 
-  function submit() { if (reason.trim()) { setSubmitted(true); setReason(''); setTimeout(() => setSubmitted(false), 3000); } }
+  async function submit() {
+    if (!date || !reason.trim()) return;
+    setSubmitting(true); setErr('');
+    try {
+      const res = await fetch('/api/school/absences', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tk()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, reason: reason.trim(), type: 'exam' }),
+      });
+      if (!res.ok) { const d = await res.json(); setErr(d.error || 'Error'); return; }
+      setSubmitted(true); setDate(''); setReason('');
+      setTimeout(() => setSubmitted(false), 4000);
+    } catch { setErr('Network error'); }
+    finally { setSubmitting(false); }
+  }
 
   return (
     <div className="space-y-3">
-      <select value={subject} onChange={e => setSubject(e.target.value)} style={{ colorScheme: 'dark' }}
-        className={`${FIELD} cursor-pointer`}>
-        {STUDENT_ENROLLED.map(s => <option key={s}>{s}</option>)}
-      </select>
+      <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ colorScheme: 'dark' }} className={FIELD} />
       <textarea rows={3} value={reason} onChange={e => setReason(e.target.value)}
         placeholder={lang === 'GEO' ? 'გაცდენის მიზეზი...' : 'Reason for absence…'} className={FIELD} />
+      {err && <p className="text-red-400 text-xs">{err}</p>}
       {submitted
         ? <p className="text-emerald-400 text-sm">{lang === 'GEO' ? '✅ ასისტენტს გაეგზავნა' : '✅ Sent to assistant'}</p>
-        : <button onClick={submit} disabled={!reason.trim()}
+        : <button onClick={submit} disabled={submitting || !date || !reason.trim()}
             className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
-            {lang === 'GEO' ? 'მოხსენების გაგზავნა' : 'Submit Report'}
+            {submitting ? '…' : (lang === 'GEO' ? 'მოხსენების გაგზავნა' : 'Submit Report')}
           </button>
       }
     </div>
@@ -3337,30 +3408,22 @@ export function NotificationBell({ lang }) {
   const [notifications, setNotifications] = useState([]);
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const tk = () => localStorage.getItem('sherlock_token');
 
-  useEffect(() => {
-    const token = localStorage.getItem('sherlock_token');
+  function fetchNotifications() {
+    const token = tk();
     if (!token) return;
     fetch('/api/school/notifications', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => setNotifications(d.notifications || []))
       .catch(() => {});
-  }, []);
+  }
 
   useEffect(() => {
-    if (!open || !notifications.length) return;
-    const token = localStorage.getItem('sherlock_token');
-    const timer = setTimeout(() => {
-      notifications.forEach(n => {
-        fetch(`/api/school/notifications/${n.id}/read`, {
-          method: 'PATCH',
-          headers: { Authorization: `Bearer ${token}` },
-        }).catch(() => {});
-      });
-      setNotifications([]);
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, [open]);
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     function handleClick(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
@@ -3368,28 +3431,43 @@ export function NotificationBell({ lang }) {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  function dismiss(id) {
+    fetch(`/api/school/notifications/${id}/read`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${tk()}` },
+    }).catch(() => {});
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  }
+
+  const unread = notifications.filter(n => !n.read);
+
   return (
     <div className="relative flex-shrink-0" ref={ref}>
       <button onClick={() => setOpen(o => !o)}
         className="relative text-xs px-2 py-1 rounded-lg border border-white/10 text-white/50 hover:text-white/80 hover:border-white/20 transition-colors">
         🔔
-        {notifications.length > 0 && (
+        {unread.length > 0 && (
           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none">
-            {notifications.length > 9 ? '9+' : notifications.length}
+            {unread.length > 9 ? '9+' : unread.length}
           </span>
         )}
       </button>
       {open && (
-        <div className="absolute right-0 mt-1 w-72 rounded-xl border border-white/15 bg-[#0f0f1a] shadow-2xl z-50 overflow-hidden">
-          <p className="text-xs font-semibold text-white/60 px-3 py-2 border-b border-white/[0.06]">
+        <div className="absolute right-0 mt-1 w-80 rounded-xl border border-white/15 bg-[#0f0f1a] shadow-2xl z-50 overflow-hidden" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+          <p className="text-xs font-semibold text-white/60 px-3 py-2 border-b border-white/[0.06] sticky top-0 bg-[#0f0f1a]">
             {lang === 'GEO' ? 'შეტყობინებები' : 'Notifications'}
           </p>
           {notifications.length === 0
             ? <p className="text-xs text-gray-500 px-3 py-3">{lang === 'GEO' ? 'ახალი შეტყობინება არ არის.' : 'No new notifications.'}</p>
             : notifications.map(n => (
-              <div key={n.id} className="px-3 py-2.5 border-b border-white/[0.04] last:border-0">
-                <p className="text-xs text-white/80 leading-relaxed">{n.message}</p>
-                <p className="text-[10px] text-gray-600 mt-0.5">{new Date(n.created_at).toLocaleString()}</p>
+              <div key={n.id} className="flex items-start gap-2 px-3 py-2.5 border-b border-white/[0.04] last:border-0">
+                <div className="flex-1 min-w-0">
+                  {!n.read && <span className="inline-block w-1.5 h-1.5 rounded-full bg-violet-400 mr-1.5 mb-0.5 align-middle flex-shrink-0" />}
+                  <p className="text-xs text-white/80 leading-relaxed inline">{n.message}</p>
+                  <p className="text-[10px] text-gray-600 mt-0.5">{new Date(n.created_at).toLocaleString()}</p>
+                </div>
+                <button onClick={() => dismiss(n.id)}
+                  className="flex-shrink-0 text-gray-600 hover:text-white/60 text-xs transition-colors mt-0.5 leading-none">✕</button>
               </div>
             ))
           }
