@@ -481,17 +481,22 @@ function PendingRegistrationsPanel({ lang }) {
   const [regs, setRegs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(null);
+  const [err, setErr] = useState('');
 
   async function load() {
     setLoading(true);
+    setErr('');
     const token = localStorage.getItem('sherlock_token');
     try {
       const res = await fetch('/api/school/web-registrations?status=pending', {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
+      if (!res.ok) { setErr(data.error || `HTTP ${res.status}`); setLoading(false); return; }
       setRegs(data.registrations || []);
-    } catch {}
+    } catch (e) {
+      setErr(e.message);
+    }
     setLoading(false);
   }
 
@@ -512,14 +517,24 @@ function PendingRegistrationsPanel({ lang }) {
   }
 
   if (loading) return <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
+  if (err) return (
+    <div className="text-center py-4 space-y-2">
+      <p className="text-xs text-red-400">Error: {err}</p>
+      <button onClick={load} className="text-xs text-violet-400 hover:text-violet-300">Retry</button>
+    </div>
+  );
   if (!regs.length) return (
-    <p className="text-xs text-gray-500 text-center py-4">
-      {lang === 'GEO' ? 'მოლოდინი მოთხოვნები არ არის.' : 'No pending requests.'}
-    </p>
+    <div className="text-center py-4 space-y-2">
+      <p className="text-xs text-gray-500">{lang === 'GEO' ? 'მოლოდინი მოთხოვნები არ არის.' : 'No pending requests.'}</p>
+      <button onClick={load} className="text-xs text-violet-400 hover:text-violet-300">↻ {lang === 'GEO' ? 'განახლება' : 'Refresh'}</button>
+    </div>
   );
 
   return (
     <div className="space-y-2">
+      <div className="flex justify-end">
+        <button onClick={load} className="text-xs text-violet-400 hover:text-violet-300">↻ {lang === 'GEO' ? 'განახლება' : 'Refresh'}</button>
+      </div>
       {regs.map(r => (
         <div key={r.id} className="rounded-xl border border-white/[0.08] p-3 space-y-1.5">
           <div className="flex items-start justify-between gap-2">
