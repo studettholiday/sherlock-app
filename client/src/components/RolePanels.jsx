@@ -2078,7 +2078,7 @@ function StudentNotesPanel({ lang }) {
       <div className="space-y-3">
         {previewImg && (
           <div onClick={() => setPreviewImg(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',cursor:'zoom-out'}}>
-            <img src={previewImg} style={{maxWidth:'90vw',maxHeight:'90vh',borderRadius:'8px',objectFit:'contain'}} onClick={e=>e.stopPropagation()} />
+            <img src={previewImg} style={{maxWidth:'90vw',maxHeight:'90vh',borderRadius:'8px',objectFit:'contain',cursor:'zoom-out'}} onClick={() => setPreviewImg(null)} />
             <button onClick={() => setPreviewImg(null)} style={{position:'absolute',top:20,right:20,background:'rgba(255,255,255,0.1)',border:'none',color:'white',fontSize:24,cursor:'pointer',borderRadius:'50%',width:40,height:40}}>✕</button>
           </div>
         )}
@@ -2181,7 +2181,7 @@ function StudentNotesPanel({ lang }) {
     <div className="space-y-3">
       {previewImg && (
         <div onClick={() => setPreviewImg(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',cursor:'zoom-out'}}>
-          <img src={previewImg} style={{maxWidth:'90vw',maxHeight:'90vh',borderRadius:'8px',objectFit:'contain'}} onClick={e=>e.stopPropagation()} />
+          <img src={previewImg} style={{maxWidth:'90vw',maxHeight:'90vh',borderRadius:'8px',objectFit:'contain',cursor:'zoom-out'}} onClick={() => setPreviewImg(null)} />
           <button onClick={() => setPreviewImg(null)} style={{position:'absolute',top:20,right:20,background:'rgba(255,255,255,0.1)',border:'none',color:'white',fontSize:24,cursor:'pointer',borderRadius:'50%',width:40,height:40}}>✕</button>
         </div>
       )}
@@ -2331,7 +2331,7 @@ function StudentPracticeDiaryPanel({ lang }) {
     <div className="space-y-3">
       {previewImg && (
         <div onClick={() => setPreviewImg(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',cursor:'zoom-out'}}>
-          <img src={previewImg} style={{maxWidth:'90vw',maxHeight:'90vh',borderRadius:'8px',objectFit:'contain'}} onClick={e=>e.stopPropagation()} />
+          <img src={previewImg} style={{maxWidth:'90vw',maxHeight:'90vh',borderRadius:'8px',objectFit:'contain',cursor:'zoom-out'}} onClick={() => setPreviewImg(null)} />
           <button onClick={() => setPreviewImg(null)} style={{position:'absolute',top:20,right:20,background:'rgba(255,255,255,0.1)',border:'none',color:'white',fontSize:24,cursor:'pointer',borderRadius:'50%',width:40,height:40}}>✕</button>
         </div>
       )}
