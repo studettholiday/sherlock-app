@@ -1887,6 +1887,7 @@ function StudentNotesPanel({ lang }) {
   const [checklist, setChecklist] = useState(false);
   const [newItem, setNewItem] = useState('');
   const [saving, setSaving] = useState(false);
+  const [previewImg, setPreviewImg] = useState(null);
   const imgInputRef = useRef(null);
 
   const tk = () => localStorage.getItem('sherlock_token');
@@ -1922,7 +1923,7 @@ function StudentNotesPanel({ lang }) {
     const isChecklist = (n.content || '').split('\n').some(l => l.startsWith('[ ] ') || l.startsWith('[x] '));
     setChecklist(isChecklist); setNewItem('');
   }
-  function backToList() { setView('list'); setEditing(null); setImages([]); setChecklist(false); }
+  function backToList() { setView('list'); setEditing(null); setImages([]); setChecklist(false); setPreviewImg(null); }
 
   function pickImage(e) {
     const file = e.target.files?.[0];
@@ -1991,6 +1992,12 @@ function StudentNotesPanel({ lang }) {
     const checklistLines = contentDraft.split('\n').filter(l => l.trim());
     return (
       <div className="space-y-3">
+        {previewImg && (
+          <div onClick={() => setPreviewImg(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',cursor:'zoom-out'}}>
+            <img src={previewImg} style={{maxWidth:'90vw',maxHeight:'90vh',borderRadius:'8px',objectFit:'contain'}} onClick={e=>e.stopPropagation()} />
+            <button onClick={() => setPreviewImg(null)} style={{position:'absolute',top:20,right:20,background:'rgba(255,255,255,0.1)',border:'none',color:'white',fontSize:24,cursor:'pointer',borderRadius:'50%',width:40,height:40}}>✕</button>
+          </div>
+        )}
         <button onClick={backToList} className="text-xs text-violet-400 hover:text-violet-300 transition-colors">← {lang === 'GEO' ? 'უკან' : 'Back'}</button>
         <input value={titleDraft} onChange={e => setTitleDraft(e.target.value)}
           placeholder={lang === 'GEO' ? 'სათაური...' : 'Title…'} className={INPUT_SM} />
@@ -2000,7 +2007,7 @@ function StudentNotesPanel({ lang }) {
           <div className="flex flex-wrap gap-2">
             {images.map((src, i) => (
               <div key={i} className="relative">
-                <img src={src} alt="" className="max-h-[120px] rounded-xl border border-white/10 object-cover" />
+                <img src={src} alt="" className="max-h-[120px] rounded-xl border border-white/10 object-cover cursor-zoom-in" onClick={() => setPreviewImg(src)} />
                 <button onClick={() => setImages(imgs => imgs.filter((_, j) => j !== i))}
                   className="absolute top-1 right-1 bg-black/70 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center hover:bg-black/90">✕</button>
               </div>
@@ -2076,6 +2083,12 @@ function StudentNotesPanel({ lang }) {
 
   return (
     <div className="space-y-3">
+      {previewImg && (
+        <div onClick={() => setPreviewImg(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',cursor:'zoom-out'}}>
+          <img src={previewImg} style={{maxWidth:'90vw',maxHeight:'90vh',borderRadius:'8px',objectFit:'contain'}} onClick={e=>e.stopPropagation()} />
+          <button onClick={() => setPreviewImg(null)} style={{position:'absolute',top:20,right:20,background:'rgba(255,255,255,0.1)',border:'none',color:'white',fontSize:24,cursor:'pointer',borderRadius:'50%',width:40,height:40}}>✕</button>
+        </div>
+      )}
       <div className="flex gap-2">
         <input value={searchQ} onChange={e => setSearchQ(e.target.value)}
           placeholder={lang === 'GEO' ? 'ძებნა...' : 'Search…'} className={`${INPUT_SM} flex-1`} />
@@ -2102,7 +2115,7 @@ function StudentNotesPanel({ lang }) {
                 <div key={n.id} onClick={() => openEdit(n)}
                   className="cursor-pointer rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2.5 hover:bg-white/[0.05] transition-colors">
                   <div className="flex items-start gap-2">
-                    {imgs[0] && <img src={imgs[0]} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-white/10" />}
+                    {imgs[0] && <img src={imgs[0]} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-white/10 cursor-zoom-in" onClick={e => { e.stopPropagation(); setPreviewImg(imgs[0]); }} />}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         {n.label_color && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: n.label_color }} />}
@@ -2138,6 +2151,7 @@ function StudentPracticeDiaryPanel({ lang }) {
   const [images, setImages] = useState([]);
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState(null);
+  const [previewImg, setPreviewImg] = useState(null);
   const imgInputRef = useRef(null);
 
   const tk = () => localStorage.getItem('sherlock_token');
@@ -2201,6 +2215,12 @@ function StudentPracticeDiaryPanel({ lang }) {
 
   return (
     <div className="space-y-3">
+      {previewImg && (
+        <div onClick={() => setPreviewImg(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',cursor:'zoom-out'}}>
+          <img src={previewImg} style={{maxWidth:'90vw',maxHeight:'90vh',borderRadius:'8px',objectFit:'contain'}} onClick={e=>e.stopPropagation()} />
+          <button onClick={() => setPreviewImg(null)} style={{position:'absolute',top:20,right:20,background:'rgba(255,255,255,0.1)',border:'none',color:'white',fontSize:24,cursor:'pointer',borderRadius:'50%',width:40,height:40}}>✕</button>
+        </div>
+      )}
       <div className="flex gap-2">
         <input value={searchQ} onChange={e => setSearchQ(e.target.value)}
           placeholder={lang === 'GEO' ? 'ძებნა...' : 'Search…'} className={`${INPUT_SM} flex-1`} />
@@ -2241,7 +2261,7 @@ function StudentPracticeDiaryPanel({ lang }) {
             <div className="flex flex-wrap gap-2">
               {images.map((src, i) => (
                 <div key={i} className="relative inline-block">
-                  <img src={src} alt="" className="h-20 w-20 rounded-xl border border-white/10 object-cover" />
+                  <img src={src} alt="" className="h-20 w-20 rounded-xl border border-white/10 object-cover cursor-zoom-in" onClick={() => setPreviewImg(src)} />
                   <button onClick={() => setImages(prev => prev.filter((_, j) => j !== i))}
                     className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center hover:bg-black/80">✕</button>
                 </div>
@@ -2290,7 +2310,7 @@ function StudentPracticeDiaryPanel({ lang }) {
                       {imgs.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                           {imgs.map((src, i) => (
-                            <img key={i} src={src} alt="" className="max-h-40 rounded-xl border border-white/10 object-cover" />
+                            <img key={i} src={src} alt="" className="max-h-40 rounded-xl border border-white/10 object-cover cursor-zoom-in" onClick={e => { e.stopPropagation(); setPreviewImg(src); }} />
                           ))}
                         </div>
                       )}
