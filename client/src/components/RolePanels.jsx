@@ -2230,13 +2230,14 @@ function StudentRemoveSubjectPanel({ lang }) {
     fetch('/api/school/my-schedule', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => {
-        setFullSchedule(d.schedule || []);
+        const rows = d.schedule || [];
+        setFullSchedule(rows);
         const seen = new Set();
         const unique = [];
-        (d.schedule || []).forEach(s => {
-          if (!seen.has(s.subject_name)) {
-            seen.add(s.subject_name);
-            unique.push({ subject_name: s.subject_name, group_id: s.group_id });
+        rows.forEach(s => {
+          if (!seen.has(s.group_id)) {
+            seen.add(s.group_id);
+            unique.push(s);
           }
         });
         setEnrolled(unique);
@@ -2244,35 +2245,37 @@ function StudentRemoveSubjectPanel({ lang }) {
       }).catch(() => setLoading(false));
   }, []);
 
-  function toggle(name) { setChecked(cs => cs.includes(name) ? cs.filter(x => x !== name) : [...cs, name]); }
+  function toggle(id) { setChecked(cs => cs.includes(id) ? cs.filter(x => x !== id) : [...cs, id]); }
 
   async function submit() {
     if (pendingRequests.length >= 3) return;
     if (!checked.length) return;
     const token = localStorage.getItem('sherlock_token');
-    const groupIds = enrolled.filter(s => checked.includes(s.subject_name)).map(s => s.group_id);
     await fetch('/api/school/web-registrations', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ group_ids: groupIds })
+      body: JSON.stringify({ group_ids: checked })
     });
-    setPendingRequests(prev => [...prev, ...checked]);
+    const names = enrolled.filter(s => checked.includes(s.group_id)).map(s => `${s.subject_name} — ${s.group_name}`);
+    setPendingRequests(prev => [...prev, ...names]);
     setChecked([]);
   }
 
   if (loading) return <p className="text-xs text-gray-500">Loading…</p>;
   return (
     <div className="space-y-3">
-      <p className="text-xs text-gray-500">{lang === 'GEO' ? 'აირჩიეთ წასაშლელი საგნები' : 'Select subjects to remove'}</p>
+      <p className="text-xs text-gray-500">{lang === 'GEO' ? 'აირჩიეთ წასაშლელი ჯგუფები' : 'Select groups to remove'}</p>
       <div className="space-y-2">
         {enrolled.map(s => (
-          <label key={s.subject_name} className="flex items-start gap-3 cursor-pointer rounded-xl border border-white/10 px-3 py-2 hover:bg-white/[0.03] transition-colors">
-            <input type="checkbox" checked={checked.includes(s.subject_name)} onChange={() => toggle(s.subject_name)} className="accent-emerald-500 w-4 h-4 flex-shrink-0 mt-0.5" />
+          <label key={s.group_id} className="flex items-start gap-3 cursor-pointer rounded-xl border border-white/10 px-3 py-2 hover:bg-white/[0.03] transition-colors">
+            <input type="checkbox" checked={checked.includes(s.group_id)} onChange={() => toggle(s.group_id)} className="accent-emerald-500 w-4 h-4 flex-shrink-0 mt-0.5" />
             <div className="min-w-0">
-              <p className="text-sm text-white">{s.subject_name}</p>
-              {fullSchedule.filter(r => r.subject_name === s.subject_name).map((r, i) => (
-                <p key={i} className="text-xs text-gray-400">{DAYS_GEO[r.day_of_week]} · {r.lesson_time} · {r.group_name}</p>
-              ))}
+              <span className="text-sm text-white">{s.subject_name} — {s.group_name}</span>
+              <div className="text-xs text-gray-500 ml-1">
+                {fullSchedule.filter(sc => sc.group_id === s.group_id).map(sc => (
+                  <span key={sc.id}>{DAYS_GEO[sc.day_of_week]} · {sc.lesson_time}{'  '}</span>
+                ))}
+              </div>
             </div>
           </label>
         ))}
