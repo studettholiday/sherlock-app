@@ -2040,6 +2040,7 @@ function StudentChangeGroupPanel({ lang }) {
 
   async function submit() {
     console.log('submit clicked');
+    if (pendingRequests.length >= 3) return;
     if (!toGroup) return;
     setErr('');
     const token = localStorage.getItem('sherlock_token');
@@ -2106,7 +2107,8 @@ function StudentChangeGroupPanel({ lang }) {
       {pendingRequests.map((name, i) => (
         <p key={i} className="text-yellow-400 text-xs">⏳ {lang === 'GEO' ? `განხილვაშია: ${name}` : `Pending: ${name}`}</p>
       ))}
-      <button onClick={submit} disabled={!toGroup || availableTo.length === 0}
+      {pendingRequests.length >= 3 && <p className="text-xs text-gray-500">{lang === 'GEO' ? 'მაქსიმუმ 3 მოთხოვნა სესიაში.' : 'Maximum 3 requests per session.'}</p>}
+      <button onClick={submit} disabled={pendingRequests.length >= 3 || !toGroup || availableTo.length === 0}
           className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
         {lang === 'GEO' ? 'მოთხოვნის გაგზავნა' : 'Submit Request'}
       </button>
@@ -2161,6 +2163,7 @@ function StudentAddSubjectPanel({ lang }) {
   const groupsForSubject = allGroups.filter(g => String(g.subject_id) === String(subject) && !myGroupIds.includes(g.id));
 
   async function submit() {
+    if (pendingRequests.length >= 3) return;
     if (!selectedGroup) return;
     const token = localStorage.getItem('sherlock_token');
     const res = await fetch('/api/school/web-registrations', {
@@ -2207,7 +2210,8 @@ function StudentAddSubjectPanel({ lang }) {
       {pendingRequests.map((name, i) => (
         <p key={i} className="text-yellow-400 text-xs">⏳ {lang === 'GEO' ? `განხილვაშია: ${name}` : `Pending: ${name}`}</p>
       ))}
-      <button onClick={submit} disabled={!selectedGroup} className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
+      {pendingRequests.length >= 3 && <p className="text-xs text-gray-500">{lang === 'GEO' ? 'მაქსიმუმ 3 მოთხოვნა სესიაში.' : 'Maximum 3 requests per session.'}</p>}
+      <button onClick={submit} disabled={pendingRequests.length >= 3 || !selectedGroup} className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
         {lang === 'GEO' ? 'მოთხოვნის გაგზავნა' : 'Submit Request'}
       </button>
     </div>
@@ -2243,6 +2247,7 @@ function StudentRemoveSubjectPanel({ lang }) {
   function toggle(name) { setChecked(cs => cs.includes(name) ? cs.filter(x => x !== name) : [...cs, name]); }
 
   async function submit() {
+    if (pendingRequests.length >= 3) return;
     if (!checked.length) return;
     const token = localStorage.getItem('sherlock_token');
     const groupIds = enrolled.filter(s => checked.includes(s.subject_name)).map(s => s.group_id);
@@ -2275,7 +2280,8 @@ function StudentRemoveSubjectPanel({ lang }) {
       {pendingRequests.map((name, i) => (
         <p key={i} className="text-yellow-400 text-xs">⏳ {lang === 'GEO' ? `განხილვაშია: ${name}` : `Pending: ${name}`}</p>
       ))}
-      <button onClick={submit} disabled={!checked.length} className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
+      {pendingRequests.length >= 3 && <p className="text-xs text-gray-500">{lang === 'GEO' ? 'მაქსიმუმ 3 მოთხოვნა სესიაში.' : 'Maximum 3 requests per session.'}</p>}
+      <button onClick={submit} disabled={pendingRequests.length >= 3 || !checked.length} className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
         {lang === 'GEO' ? 'მოთხოვნის გაგზავნა' : 'Submit Request'}
       </button>
     </div>
