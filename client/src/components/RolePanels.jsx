@@ -2585,7 +2585,7 @@ export function RolePanel({ role, panel, onClose, libraryProps, lang = 'EN', all
         <span className="text-sm font-medium text-white/80">{panelTitle}</span>
         <button onClick={onClose} className="text-white/30 hover:text-white/60 transition-colors text-sm leading-none">✕</button>
       </div>
-      <div className="p-4 overflow-y-auto flex-1">
+      <div key={panel} className="p-4 overflow-y-auto flex-1">
         {panelContent(role, panel, libraryProps, lang, allMembers, onMembersRefresh)}
       </div>
     </div>
