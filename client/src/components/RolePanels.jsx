@@ -2433,13 +2433,16 @@ export function NotificationBell({ lang }) {
   useEffect(() => {
     if (!open || !notifications.length) return;
     const token = localStorage.getItem('sherlock_token');
-    notifications.forEach(n => {
-      fetch(`/api/school/notifications/${n.id}/read`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      }).catch(() => {});
-    });
-    setNotifications([]);
+    const timer = setTimeout(() => {
+      notifications.forEach(n => {
+        fetch(`/api/school/notifications/${n.id}/read`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => {});
+      });
+      setNotifications([]);
+    }, 3000);
+    return () => clearTimeout(timer);
   }, [open]);
 
   useEffect(() => {
