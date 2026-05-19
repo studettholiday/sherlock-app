@@ -2098,8 +2098,7 @@ function StudentAddSubjectPanel({ lang }) {
   const [enrolled, setEnrolled] = useState([]);
   const [subject, setSubject] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('');
-  const [sent, setSent] = useState(false);
-  const [pendingSubject, setPendingSubject] = useState('');
+  const [pendingRequests, setPendingRequests] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -2144,9 +2143,10 @@ function StudentAddSubjectPanel({ lang }) {
       body: JSON.stringify({ group_id: selectedGroup, request_type: 'add' })
     });
     if (!res.ok) return;
-    const subj = subjects.find(s => String(s.id) === String(subject));
-    setPendingSubject(subj ? subj.name : subject);
-    setSent(true);
+    const group = allGroups.find(g => String(g.id) === String(selectedGroup));
+    setPendingRequests(prev => [...prev, group ? group.name : selectedGroup]);
+    const available = groupsForSubject.filter(g => String(g.id) !== String(selectedGroup));
+    setSelectedGroup(available.length ? available[0].id : '');
   }
 
   if (loading) return <p className="text-xs text-gray-500">Loading…</p>;
@@ -2174,12 +2174,12 @@ function StudentAddSubjectPanel({ lang }) {
           </select>
         </div>
       )}
-      {sent
-        ? <p className="text-yellow-400 text-sm">⏳ {lang === 'GEO' ? `მოთხოვნა განხილვაშია: ${pendingSubject}` : `Request pending: ${pendingSubject} — waiting for admin approval`}</p>
-        : <button onClick={submit} disabled={!selectedGroup} className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
-            {lang === 'GEO' ? 'მოთხოვნის გაგზავნა' : 'Submit Request'}
-          </button>
-      }
+      {pendingRequests.map((name, i) => (
+        <p key={i} className="text-yellow-400 text-xs">⏳ {lang === 'GEO' ? `განხილვაშია: ${name}` : `Pending: ${name}`}</p>
+      ))}
+      <button onClick={submit} disabled={!selectedGroup} className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
+        {lang === 'GEO' ? 'მოთხოვნის გაგზავნა' : 'Submit Request'}
+      </button>
     </div>
   );
 }
