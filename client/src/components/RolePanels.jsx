@@ -2038,7 +2038,7 @@ function StudentNotesPanel({ lang }) {
   }
 
   async function saveNote() {
-    if (!contentDraft.trim()) return;
+    if (!contentDraft.trim() && !titleDraft.trim() && images.length === 0) return;
     setSaving(true);
     const body = { title: titleDraft.trim() || null, content: contentDraft, label_id: labelDraft ? parseInt(labelDraft) : null, image_url: images.length ? JSON.stringify(images) : null };
     if (view === 'new') {
@@ -2056,7 +2056,7 @@ function StudentNotesPanel({ lang }) {
   }
 
   async function handleBack() {
-    if (hasChanges() && contentDraft.trim()) {
+    if (hasChanges() && (!contentDraft.trim() ? titleDraft.trim() || images.length > 0 : true)) {
       await saveNote();
       setSavedFlash(true);
       await new Promise(r => setTimeout(r, 700));
@@ -2162,7 +2162,7 @@ function StudentNotesPanel({ lang }) {
 
         {/* Save / Delete */}
         <div className="flex gap-2">
-          <button onClick={save} disabled={!contentDraft.trim() || saving}
+          <button onClick={save} disabled={(!contentDraft.trim() && !titleDraft.trim() && images.length === 0) || saving}
             className="flex-1 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-xs text-white font-medium transition-colors">
             {saving ? '…' : (lang === 'GEO' ? 'შენახვა' : 'Save')}
           </button>
