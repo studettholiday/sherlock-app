@@ -16,11 +16,16 @@ const invitesRouter = require('./routes/invites');
 async function runMigrations() {
   const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
   try {
-    const sql = fs.readFileSync(path.join(__dirname, 'migrations/010_notes_labels_diary.sql'), 'utf8');
-    await pool.query(sql);
+    const sql010 = fs.readFileSync(path.join(__dirname, 'migrations/010_notes_labels_diary.sql'), 'utf8');
+    await pool.query(sql010);
     console.log('[startup] migration 010 complete');
+    await pool.query(`
+      ALTER TABLE student_notes ADD COLUMN IF NOT EXISTS image_url TEXT;
+      ALTER TABLE student_diary ADD COLUMN IF NOT EXISTS image_url TEXT;
+    `);
+    console.log('[startup] migration 011 complete');
   } catch (e) {
-    console.error('[startup] migration 010 error:', e.message);
+    console.error('[startup] migration error:', e.message);
   } finally {
     await pool.end();
   }

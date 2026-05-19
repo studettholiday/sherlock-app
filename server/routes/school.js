@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
+const multer = require('multer');
 const authMiddleware = require('../middleware/auth');
+
+const imageUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 const getPool = () => new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
 
@@ -543,6 +546,21 @@ router.delete('/web-registrations/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// --- Notes: Image upload ---
+
+router.post('/notes/upload-image', authMiddleware, imageUpload.single('image'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  if (!req.file.mimetype.startsWith('image/')) return res.status(400).json({ error: 'File must be an image' });
+  try {
+    const b64 = req.file.buffer.toString('base64');
+    const dataUrl = `data:${req.file.mimetype};base64,${b64}`;
+    res.json({ url: dataUrl });
+  } catch (err) {
+    console.error('[notes/upload-image] error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // --- Notes: Labels ---
 
 router.get('/notes/labels', authMiddleware, async (req, res) => {
@@ -608,12 +626,12 @@ router.get('/notes', authMiddleware, async (req, res) => {
 });
 
 router.post('/notes', authMiddleware, async (req, res) => {
-  const { title, content, label_id } = req.body;
+  const { title, content, label_id, image_url } = req.body;
   if (!content) return res.status(400).json({ error: 'content is required' });
   try {
     const result = await getPool().query(
-      'INSERT INTO student_notes (user_id, school_id, title, content, label_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [req.user.userId, req.user.schoolId, title || null, content, label_id || null]
+      'INSERT INTO student_notes (user_id, school_id, title, content, label_id, image_url) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [req.user.userId, req.user.schoolId, title || null, content, label_id || null, image_url || null]
     );
     res.json({ note: result.rows[0] });
   } catch (err) {
@@ -623,12 +641,12 @@ router.post('/notes', authMiddleware, async (req, res) => {
 });
 
 router.patch('/notes/:id', authMiddleware, async (req, res) => {
-  const { title, content, label_id } = req.body;
+  const { title, content, label_id, image_url } = req.body;
   if (!content) return res.status(400).json({ error: 'content is required' });
   try {
     const result = await getPool().query(
-      'UPDATE student_notes SET title = $1, content = $2, label_id = $3, updated_at = NOW() WHERE id = $4 AND user_id = $5 RETURNING *',
-      [title || null, content, label_id || null, req.params.id, req.user.userId]
+      'UPDATE student_notes SET title = $1, content = $2, label_id = $3, image_url = $4, updated_at = NOW() WHERE id = $5 AND user_id = $6 RETURNING *',
+      [title || null, content, label_id || null, image_url || null, req.params.id, req.user.userId]
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
     res.json({ note: result.rows[0] });
@@ -670,12 +688,12 @@ router.get('/notes/diary', authMiddleware, async (req, res) => {
 });
 
 router.post('/notes/diary', authMiddleware, async (req, res) => {
-  const { mood, practiced, goal, label_id } = req.body;
+  const { mood, practiced, goal, label_id, image_url } = req.body;
   if (!practiced) return res.status(400).json({ error: 'practiced is required' });
   try {
     const result = await getPool().query(
-      'INSERT INTO student_diary (user_id, school_id, mood, practiced, goal, label_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [req.user.userId, req.user.schoolId, mood || null, practiced, goal || null, label_id || null]
+      'INSERT INTO student_diary (user_id, school_id, mood, practiced, goal, label_id, image_url) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [req.user.userId, req.user.schoolId, mood || null, practiced, goal || null, label_id || null, image_url || null]
     );
     res.json({ entry: result.rows[0] });
   } catch (err) {

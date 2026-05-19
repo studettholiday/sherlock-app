@@ -1863,6 +1863,9 @@ function StudentLibraryPanel() {
 const LABEL_COLORS = ['#7C3AED','#2563EB','#059669','#DC2626','#D97706','#DB2777','#0891B2','#65A30D'];
 const INPUT_SM = 'w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-white/80 placeholder-white/20 focus:outline-none focus:border-white/25';
 
+const SELECT_DARK = { colorScheme: 'dark', background: '#1a1a2e', color: 'white' };
+const OPTION_DARK = { background: '#1a1a2e', color: 'white' };
+
 function StudentNotesPanel({ lang }) {
   const [notes, setNotes] = useState([]);
   const [labels, setLabels] = useState([]);
@@ -1874,7 +1877,10 @@ function StudentNotesPanel({ lang }) {
   const [titleDraft, setTitleDraft] = useState('');
   const [contentDraft, setContentDraft] = useState('');
   const [labelDraft, setLabelDraft] = useState('');
+  const [imageDraft, setImageDraft] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const imgInputRef = useRef(null);
 
   const tk = () => localStorage.getItem('sherlock_token');
 
@@ -1898,14 +1904,27 @@ function StudentNotesPanel({ lang }) {
     return matchQ && matchL;
   });
 
-  function openNew() { setView('new'); setTitleDraft(''); setContentDraft(''); setLabelDraft(''); setEditing(null); }
-  function openEdit(n) { setView('edit'); setEditing(n); setTitleDraft(n.title || ''); setContentDraft(n.content || ''); setLabelDraft(n.label_id ? String(n.label_id) : ''); }
-  function backToList() { setView('list'); setEditing(null); }
+  function openNew() { setView('new'); setTitleDraft(''); setContentDraft(''); setLabelDraft(''); setImageDraft(null); setEditing(null); }
+  function openEdit(n) { setView('edit'); setEditing(n); setTitleDraft(n.title || ''); setContentDraft(n.content || ''); setLabelDraft(n.label_id ? String(n.label_id) : ''); setImageDraft(n.image_url || null); }
+  function backToList() { setView('list'); setEditing(null); setImageDraft(null); }
+
+  async function handleImagePick(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setUploading(true);
+    const form = new FormData();
+    form.append('image', file);
+    const res = await fetch('/api/school/notes/upload-image', { method: 'POST', headers: { Authorization: `Bearer ${tk()}` }, body: form });
+    const data = await res.json();
+    if (data.url) setImageDraft(data.url);
+    setUploading(false);
+  }
 
   async function save() {
     if (!contentDraft.trim()) return;
     setSaving(true);
-    const body = { title: titleDraft.trim() || null, content: contentDraft, label_id: labelDraft ? parseInt(labelDraft) : null };
+    const body = { title: titleDraft.trim() || null, content: contentDraft, label_id: labelDraft ? parseInt(labelDraft) : null, image_url: imageDraft || null };
     if (view === 'new') {
       await fetch('/api/school/notes', { method: 'POST', headers: { Authorization: `Bearer ${tk()}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     } else {
@@ -1935,15 +1954,28 @@ function StudentNotesPanel({ lang }) {
           className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-white/80 placeholder-white/20 focus:outline-none focus:border-white/25 resize-none" />
         {labels.length > 0 && (
           <select value={labelDraft} onChange={e => setLabelDraft(e.target.value)}
-            style={{ colorScheme: 'dark' }} className={INPUT_SM}>
-            <option value="">{lang === 'GEO' ? 'ლეიბლი (სურვილისამებრ)' : 'Label (optional)'}</option>
-            {labels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+            style={SELECT_DARK} className={INPUT_SM}>
+            <option value="" style={OPTION_DARK}>{lang === 'GEO' ? 'ლეიბლი (სურვილისამებრ)' : 'Label (optional)'}</option>
+            {labels.map(l => <option key={l.id} value={l.id} style={OPTION_DARK}>{l.name}</option>)}
           </select>
         )}
+        {imageDraft && (
+          <div className="relative inline-block">
+            <img src={imageDraft} alt="" className="max-h-40 rounded-xl border border-white/10 object-cover" />
+            <button onClick={() => setImageDraft(null)}
+              className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center hover:bg-black/80">✕</button>
+          </div>
+        )}
+        <input ref={imgInputRef} type="file" accept="image/*" onChange={handleImagePick} className="hidden" />
         <div className="flex gap-2">
           <button onClick={save} disabled={!contentDraft.trim() || saving}
             className="flex-1 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
             {saving ? '…' : (lang === 'GEO' ? 'შენახვა' : 'Save')}
+          </button>
+          <button onClick={() => imgInputRef.current?.click()} disabled={uploading}
+            className="rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] px-3 py-2 text-sm transition-colors disabled:opacity-40"
+            title={lang === 'GEO' ? 'სურათის დამატება' : 'Add image'}>
+            {uploading ? '…' : '📷'}
           </button>
           {view === 'edit' && (
             <button onClick={() => del(editing.id)}
@@ -1968,9 +2000,9 @@ function StudentNotesPanel({ lang }) {
       </div>
       {labels.length > 0 && (
         <select value={labelFilter} onChange={e => setLabelFilter(e.target.value)}
-          style={{ colorScheme: 'dark' }} className={INPUT_SM}>
-          <option value="">{lang === 'GEO' ? 'ყველა ლეიბლი' : 'All labels'}</option>
-          {labels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+          style={SELECT_DARK} className={INPUT_SM}>
+          <option value="" style={OPTION_DARK}>{lang === 'GEO' ? 'ყველა ლეიბლი' : 'All labels'}</option>
+          {labels.map(l => <option key={l.id} value={l.id} style={OPTION_DARK}>{l.name}</option>)}
         </select>
       )}
       {filtered.length === 0
@@ -1981,6 +2013,7 @@ function StudentNotesPanel({ lang }) {
               <div key={n.id} onClick={() => openEdit(n)}
                 className="cursor-pointer rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2.5 hover:bg-white/[0.05] transition-colors">
                 <div className="flex items-start gap-2">
+                  {n.image_url && <img src={n.image_url} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-white/10" />}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       {n.label_color && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: n.label_color }} />}
@@ -2010,8 +2043,11 @@ function StudentPracticeDiaryPanel({ lang }) {
   const [practiced, setPracticed] = useState('');
   const [goal, setGoal] = useState('');
   const [labelDraft, setLabelDraft] = useState('');
+  const [imageDraft, setImageDraft] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState(null);
+  const imgInputRef = useRef(null);
 
   const tk = () => localStorage.getItem('sherlock_token');
 
@@ -2035,17 +2071,30 @@ function StudentPracticeDiaryPanel({ lang }) {
     return matchQ && matchL;
   });
 
+  async function handleImagePick(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setUploading(true);
+    const form = new FormData();
+    form.append('image', file);
+    const res = await fetch('/api/school/notes/upload-image', { method: 'POST', headers: { Authorization: `Bearer ${tk()}` }, body: form });
+    const data = await res.json();
+    if (data.url) setImageDraft(data.url);
+    setUploading(false);
+  }
+
   async function save() {
     if (!practiced.trim()) return;
     setSaving(true);
     await fetch('/api/school/notes/diary', {
       method: 'POST',
       headers: { Authorization: `Bearer ${tk()}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mood, practiced, goal: goal.trim() || null, label_id: labelDraft ? parseInt(labelDraft) : null }),
+      body: JSON.stringify({ mood, practiced, goal: goal.trim() || null, label_id: labelDraft ? parseInt(labelDraft) : null, image_url: imageDraft || null }),
     });
     setSaving(false);
     setShowCreate(false);
-    setPracticed(''); setGoal(''); setMood('😊'); setLabelDraft('');
+    setPracticed(''); setGoal(''); setMood('😊'); setLabelDraft(''); setImageDraft(null);
     await reload();
   }
 
@@ -2069,9 +2118,9 @@ function StudentPracticeDiaryPanel({ lang }) {
       </div>
       {labels.length > 0 && (
         <select value={labelFilter} onChange={e => setLabelFilter(e.target.value)}
-          style={{ colorScheme: 'dark' }} className={INPUT_SM}>
-          <option value="">{lang === 'GEO' ? 'ყველა ლეიბლი' : 'All labels'}</option>
-          {labels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+          style={SELECT_DARK} className={INPUT_SM}>
+          <option value="" style={OPTION_DARK}>{lang === 'GEO' ? 'ყველა ლეიბლი' : 'All labels'}</option>
+          {labels.map(l => <option key={l.id} value={l.id} style={OPTION_DARK}>{l.name}</option>)}
         </select>
       )}
       {showCreate && (
@@ -2090,15 +2139,30 @@ function StudentPracticeDiaryPanel({ lang }) {
             className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-white/80 placeholder-white/20 focus:outline-none resize-none" />
           {labels.length > 0 && (
             <select value={labelDraft} onChange={e => setLabelDraft(e.target.value)}
-              style={{ colorScheme: 'dark' }} className={INPUT_SM}>
-              <option value="">{lang === 'GEO' ? 'ლეიბლი (სურვილისამებრ)' : 'Label (optional)'}</option>
-              {labels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+              style={SELECT_DARK} className={INPUT_SM}>
+              <option value="" style={OPTION_DARK}>{lang === 'GEO' ? 'ლეიბლი (სურვილისამებრ)' : 'Label (optional)'}</option>
+              {labels.map(l => <option key={l.id} value={l.id} style={OPTION_DARK}>{l.name}</option>)}
             </select>
           )}
-          <button onClick={save} disabled={!practiced.trim() || saving}
-            className="w-full rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
-            {saving ? '…' : (lang === 'GEO' ? 'შენახვა' : 'Save Entry')}
-          </button>
+          {imageDraft && (
+            <div className="relative inline-block">
+              <img src={imageDraft} alt="" className="max-h-32 rounded-xl border border-white/10 object-cover" />
+              <button onClick={() => setImageDraft(null)}
+                className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center hover:bg-black/80">✕</button>
+            </div>
+          )}
+          <input ref={imgInputRef} type="file" accept="image/*" onChange={handleImagePick} className="hidden" />
+          <div className="flex gap-2">
+            <button onClick={save} disabled={!practiced.trim() || saving}
+              className="flex-1 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
+              {saving ? '…' : (lang === 'GEO' ? 'შენახვა' : 'Save Entry')}
+            </button>
+            <button onClick={() => imgInputRef.current?.click()} disabled={uploading}
+              className="rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] px-3 py-2 text-sm transition-colors disabled:opacity-40"
+              title={lang === 'GEO' ? 'სურათის დამატება' : 'Add image'}>
+              {uploading ? '…' : '📷'}
+            </button>
+          </div>
         </div>
       )}
       {filtered.length === 0
@@ -2117,13 +2181,17 @@ function StudentPracticeDiaryPanel({ lang }) {
                     </div>
                     {e.goal && <p className="text-xs text-gray-600 mt-0.5 truncate">→ {e.goal.slice(0, 60)}</p>}
                   </div>
-                  <p className="text-[10px] text-gray-600 flex-shrink-0">{new Date(e.created_at).toLocaleDateString()}</p>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {e.image_url && <span className="text-[10px] text-gray-500">🖼</span>}
+                    <p className="text-[10px] text-gray-600">{new Date(e.created_at).toLocaleDateString()}</p>
+                  </div>
                 </div>
                 {expanded === e.id && (
-                  <div className="px-3 pb-2.5 border-t border-white/[0.06] space-y-1 pt-2">
+                  <div className="px-3 pb-2.5 border-t border-white/[0.06] space-y-2 pt-2">
                     <p className="text-xs text-gray-300">{e.practiced}</p>
                     {e.goal && <p className="text-xs text-gray-500">→ {e.goal}</p>}
-                    <button onClick={() => del(e.id)} className="mt-1 text-xs text-red-400 hover:text-red-300 transition-colors">
+                    {e.image_url && <img src={e.image_url} alt="" className="max-h-40 rounded-xl border border-white/10 object-cover" />}
+                    <button onClick={() => del(e.id)} className="text-xs text-red-400 hover:text-red-300 transition-colors">
                       {lang === 'GEO' ? '🗑 წაშლა' : '🗑 Delete'}
                     </button>
                   </div>
