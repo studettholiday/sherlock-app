@@ -152,7 +152,7 @@ const BUTTON_GROUPS = {
   student: [
     { id: 'schedule',  label: 'Schedule'   },
     { id: 'events',    label: 'Events'     },
-    { id: 'plan',      label: '📋 Plan',      children: [{ id: 'change-group', label: 'Change Group' }, { id: 'add-subject', label: 'Add Subject' }, { id: 'remove-subject', label: 'Remove Subject' }] },
+    { id: 'plan',      label: '📋 Plan',      children: [{ id: 'change-group', label: 'Change Group' }, { id: 'add-subject', label: 'Add Subject' }, { id: 'remove-subject', label: 'Remove Group' }] },
     { id: 'my-notes',  label: '📓 My Notes',  children: [{ id: 'notes', label: 'Notes' }, { id: 'practice-diary', label: 'Practice Diary' }, { id: 'notes-box', label: '📝 Notes Box' }, { id: 'search', label: '🔍 Search' }] },
     { id: 'report',    label: '⚠️ Report',    children: [{ id: 'report-absence', label: 'Lesson Absence' }, { id: 'report-event-absence', label: 'Report Event Absence' }, { id: 'report-exam-absence', label: 'Report Exam Absence' }] },
   ],
@@ -180,7 +180,7 @@ const GEO_BUTTON_GROUPS = {
   student: [
     { id: 'schedule', label: 'განრიგი' },
     { id: 'events',   label: 'ღონისძიებები' },
-    { id: 'plan',     label: '📋 გეგმა',            children: [{ id: 'change-group', label: 'ჯგუფის შეცვლა' }, { id: 'add-subject', label: 'საგნის დამატება' }, { id: 'remove-subject', label: 'საგნის წაშლა' }] },
+    { id: 'plan',     label: '📋 გეგმა',            children: [{ id: 'change-group', label: 'ჯგუფის შეცვლა' }, { id: 'add-subject', label: 'საგნის დამატება' }, { id: 'remove-subject', label: 'ჯგუფის წაშლა' }] },
     { id: 'my-notes', label: '📓 ჩემი ჩანაწერები',  children: [{ id: 'notes', label: 'გაკვეთილის ჩანაწერები' }, { id: 'practice-diary', label: 'პრაქტიკის დღიური' }, { id: 'notes-box', label: '📝 ჩანაწერების ყუთი' }, { id: 'search', label: '🔍 ძებნა' }] },
     { id: 'report',    label: '⚠️ გაცდენა',           children: [{ id: 'report-absence', label: 'გაკვეთილის გაცდენა' }, { id: 'report-event-absence', label: 'ღონისძიების გაცდენა' }, { id: 'report-exam-absence', label: 'გამოცდის გაცდენა' }] },
   ],
