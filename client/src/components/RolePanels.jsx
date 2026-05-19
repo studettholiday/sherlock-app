@@ -1889,11 +1889,15 @@ function StudentNotesPanel({ lang }) {
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
   const [trashMsg, setTrashMsg] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [previewImg, setPreviewImg] = useState(null);
   const imgInputRef = useRef(null);
   const origRef = useRef({ title: '', content: '', images: [] });
   const debounceRef = useRef(null);
   const trashRef = useRef(null);
+  const longPressRef = useRef(null);
+  const didLongPressRef = useRef(false);
 
   const tk = () => localStorage.getItem('sherlock_token');
 
@@ -2026,6 +2030,32 @@ function StudentNotesPanel({ lang }) {
     await reload();
   }
 
+  function startLongPress(id) {
+    didLongPressRef.current = false;
+    longPressRef.current = setTimeout(() => {
+      didLongPressRef.current = true;
+      setSelectionMode(true);
+      setSelectedIds([id]);
+    }, 500);
+  }
+  function cancelLongPress() {
+    if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; }
+  }
+  function toggleSelect(id) {
+    setSelectedIds(ids => ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id]);
+  }
+  function exitSelection() { setSelectionMode(false); setSelectedIds([]); }
+  async function deleteSelected() {
+    await Promise.all(selectedIds.map(id =>
+      fetch(`/api/school/notes/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${tk()}` } })
+    ));
+    trashRef.current = null;
+    exitSelection();
+    await reload();
+    setTrashMsg(true);
+    setTimeout(() => setTrashMsg(false), 5000);
+  }
+
   if (loading) return <p className="text-xs text-gray-500">Loading…</p>;
 
   if (view === 'new' || view === 'edit') {
@@ -2143,6 +2173,18 @@ function StudentNotesPanel({ lang }) {
           + {lang === 'GEO' ? 'ახალი' : 'New'}
         </button>
       </div>
+      {selectionMode && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 12px' }}>
+          <button onClick={exitSelection} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '14px', padding: '0 4px 0 0', lineHeight: 1 }}>✕</button>
+          <span style={{ fontSize: '13px', color: 'white', fontWeight: 600 }}>{selectedIds.length} {lang === 'GEO' ? 'არჩეული' : 'selected'}</span>
+          <button onClick={() => setSelectedIds(filtered.map(n => n.id))} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#a78bfa', cursor: 'pointer', fontSize: '12px', fontWeight: 600, padding: 0 }}>
+            {lang === 'GEO' ? 'ყველა' : 'Select All'}
+          </button>
+          <button onClick={deleteSelected} disabled={selectedIds.length === 0} style={{ background: 'none', border: 'none', color: selectedIds.length > 0 ? '#f87171' : 'rgba(255,255,255,0.3)', cursor: selectedIds.length > 0 ? 'pointer' : 'default', fontSize: '12px', fontWeight: 600, padding: 0 }}>
+            🗑 {lang === 'GEO' ? 'წაშლა' : 'Delete'}
+          </button>
+        </div>
+      )}
       {trashMsg && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', color: 'rgba(255,255,255,0.65)' }}>
           <span>{lang === 'GEO' ? 'კალათაში გადაიტანა' : 'Moved to Trash'}</span>
@@ -2164,13 +2206,30 @@ function StudentNotesPanel({ lang }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px', padding: '4px' }}>
             {filtered.map(n => {
               const imgs = parseImages(n.image_url);
+              const isSelected = selectedIds.includes(n.id);
               const hasChecklist = (n.content || '').split('\n').some(l => l.startsWith('[ ] ') || l.startsWith('[x] '));
               const contentPreview = (n.content || '').replace(/\[.\] /g, '');
               return (
-                <div key={n.id} onClick={() => openEdit(n)}
-                  className="cursor-pointer rounded-[10px] border border-white/[0.12] bg-white/[0.03] hover:bg-white/[0.06] transition-colors overflow-hidden"
-                  style={{ maxHeight: '200px' }}
+                <div key={n.id}
+                  onClick={() => {
+                    if (didLongPressRef.current) { didLongPressRef.current = false; return; }
+                    if (selectionMode) { toggleSelect(n.id); return; }
+                    openEdit(n);
+                  }}
+                  onMouseDown={() => startLongPress(n.id)}
+                  onMouseUp={cancelLongPress}
+                  onMouseLeave={cancelLongPress}
+                  onTouchStart={() => startLongPress(n.id)}
+                  onTouchEnd={cancelLongPress}
+                  onContextMenu={e => e.preventDefault()}
+                  className="cursor-pointer rounded-[10px] transition-colors overflow-hidden relative select-none"
+                  style={{ maxHeight: '200px', border: selectionMode ? (isSelected ? '1.5px solid rgba(139,92,246,0.6)' : '1px solid rgba(255,255,255,0.18)') : '1px solid rgba(255,255,255,0.12)', background: isSelected ? 'rgba(139,92,246,0.08)' : 'rgba(255,255,255,0.03)' }}
                 >
+                  {selectionMode && (
+                    <div style={{ position: 'absolute', top: '6px', left: '6px', zIndex: 2, width: '20px', height: '20px', borderRadius: '50%', background: isSelected ? '#22c55e' : 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', border: isSelected ? 'none' : '1.5px solid rgba(255,255,255,0.3)', color: 'white', fontWeight: 700 }}>
+                      {isSelected && '✓'}
+                    </div>
+                  )}
                   {imgs[0] && (
                     <img src={imgs[0]} alt="" style={{ width: '100%', maxHeight: '80px', objectFit: 'cover', display: 'block', pointerEvents: 'none' }} />
                   )}
@@ -2210,9 +2269,13 @@ function StudentPracticeDiaryPanel({ lang }) {
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
   const [trashMsg, setTrashMsg] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [previewImg, setPreviewImg] = useState(null);
   const imgInputRef = useRef(null);
   const trashRef = useRef(null);
+  const longPressRef = useRef(null);
+  const didLongPressRef = useRef(false);
 
   const tk = () => localStorage.getItem('sherlock_token');
 
@@ -2318,6 +2381,32 @@ function StudentPracticeDiaryPanel({ lang }) {
     await reload();
   }
 
+  function startLongPress(id) {
+    didLongPressRef.current = false;
+    longPressRef.current = setTimeout(() => {
+      didLongPressRef.current = true;
+      setSelectionMode(true);
+      setSelectedIds([id]);
+    }, 500);
+  }
+  function cancelLongPress() {
+    if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; }
+  }
+  function toggleSelect(id) {
+    setSelectedIds(ids => ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id]);
+  }
+  function exitSelection() { setSelectionMode(false); setSelectedIds([]); }
+  async function deleteSelected() {
+    await Promise.all(selectedIds.map(id =>
+      fetch(`/api/school/notes/diary/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${tk()}` } })
+    ));
+    trashRef.current = null;
+    exitSelection();
+    await reload();
+    setTrashMsg(true);
+    setTimeout(() => setTrashMsg(false), 5000);
+  }
+
   if (loading) return <p className="text-xs text-gray-500">Loading…</p>;
 
   return (
@@ -2338,6 +2427,18 @@ function StudentPracticeDiaryPanel({ lang }) {
           </button>
         )}
       </div>
+      {selectionMode && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 12px' }}>
+          <button onClick={exitSelection} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '14px', padding: '0 4px 0 0', lineHeight: 1 }}>✕</button>
+          <span style={{ fontSize: '13px', color: 'white', fontWeight: 600 }}>{selectedIds.length} {lang === 'GEO' ? 'არჩეული' : 'selected'}</span>
+          <button onClick={() => setSelectedIds(filtered.map(e => e.id))} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#a78bfa', cursor: 'pointer', fontSize: '12px', fontWeight: 600, padding: 0 }}>
+            {lang === 'GEO' ? 'ყველა' : 'Select All'}
+          </button>
+          <button onClick={deleteSelected} disabled={selectedIds.length === 0} style={{ background: 'none', border: 'none', color: selectedIds.length > 0 ? '#f87171' : 'rgba(255,255,255,0.3)', cursor: selectedIds.length > 0 ? 'pointer' : 'default', fontSize: '12px', fontWeight: 600, padding: 0 }}>
+            🗑 {lang === 'GEO' ? 'წაშლა' : 'Delete'}
+          </button>
+        </div>
+      )}
       {trashMsg && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', color: 'rgba(255,255,255,0.65)' }}>
           <span>{lang === 'GEO' ? 'კალათაში გადაიტანა' : 'Moved to Trash'}</span>
@@ -2413,11 +2514,28 @@ function StudentPracticeDiaryPanel({ lang }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px', padding: '4px' }}>
               {filtered.map(e => {
                 const imgs = parseImages(e.image_url);
+                const isSelected = selectedIds.includes(e.id);
                 return (
-                  <div key={e.id} onClick={() => openEdit(e)}
-                    className="cursor-pointer rounded-[10px] transition-colors overflow-hidden"
-                    style={{ border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.03)', maxHeight: '200px' }}
+                  <div key={e.id}
+                    onClick={() => {
+                      if (didLongPressRef.current) { didLongPressRef.current = false; return; }
+                      if (selectionMode) { toggleSelect(e.id); return; }
+                      openEdit(e);
+                    }}
+                    onMouseDown={() => startLongPress(e.id)}
+                    onMouseUp={cancelLongPress}
+                    onMouseLeave={cancelLongPress}
+                    onTouchStart={() => startLongPress(e.id)}
+                    onTouchEnd={cancelLongPress}
+                    onContextMenu={ev => ev.preventDefault()}
+                    className="cursor-pointer rounded-[10px] transition-colors overflow-hidden relative select-none"
+                    style={{ maxHeight: '200px', border: selectionMode ? (isSelected ? '1.5px solid rgba(139,92,246,0.6)' : '1px solid rgba(255,255,255,0.18)') : '1px solid rgba(255,255,255,0.12)', background: isSelected ? 'rgba(139,92,246,0.08)' : 'rgba(255,255,255,0.03)' }}
                   >
+                    {selectionMode && (
+                      <div style={{ position: 'absolute', top: '6px', left: '6px', zIndex: 2, width: '20px', height: '20px', borderRadius: '50%', background: isSelected ? '#22c55e' : 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', border: isSelected ? 'none' : '1.5px solid rgba(255,255,255,0.3)', color: 'white', fontWeight: 700 }}>
+                        {isSelected && '✓'}
+                      </div>
+                    )}
                     {imgs[0] && (
                       <img src={imgs[0]} alt="" style={{ width: '100%', maxHeight: '80px', objectFit: 'cover', display: 'block', pointerEvents: 'none' }} />
                     )}
