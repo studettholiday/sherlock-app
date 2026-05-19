@@ -2002,6 +2002,7 @@ function StudentChangeGroupPanel({ lang }) {
   const [fromGroup, setFromGroup] = useState(null);
   const [toGroup, setToGroup] = useState('');
   const [sent, setSent] = useState(false);
+  const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -2036,6 +2037,7 @@ function StudentChangeGroupPanel({ lang }) {
   async function submit() {
     console.log('submit clicked');
     if (!toGroup) return;
+    setErr('');
     const token = localStorage.getItem('sherlock_token');
     console.log('before fetch /api/school/web-registrations', { group_id: toGroup, token: token ? 'present' : 'missing' });
     const res = await fetch('/api/school/web-registrations', {
@@ -2044,6 +2046,11 @@ function StudentChangeGroupPanel({ lang }) {
       body: JSON.stringify({ group_id: toGroup })
     });
     console.log('after fetch status:', res.status);
+    if (!res.ok) {
+      const data = await res.json();
+      setErr(data.error || `Error ${res.status}`);
+      return;
+    }
     setSent(true);
     setTimeout(() => setSent(false), 3000);
   }
@@ -2070,6 +2077,7 @@ function StudentChangeGroupPanel({ lang }) {
             </select>
         }
       </div>
+      {err && <p className="text-red-400 text-xs">{err}</p>}
       {sent
         ? <p className="text-emerald-400 text-sm">✅ {lang === 'GEO' ? 'მოთხოვნა გაიგზავნა' : 'Request sent'}</p>
         : <button onClick={submit} disabled={!toGroup || availableTo.length === 0}
