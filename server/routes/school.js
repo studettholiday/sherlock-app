@@ -344,10 +344,14 @@ router.delete('/events/:id', authMiddleware, async (req, res) => {
 // --- Web Registrations ---
 
 router.post('/web-registrations', authMiddleware, async (req, res) => {
+  console.log('[web-reg] body:', req.body);
+  console.log('[web-reg] user:', { userId: req.user.userId, role: req.user.role, schoolId: req.user.schoolId });
   if (req.user.role !== 'student') return res.status(403).json({ error: 'Forbidden' });
-  const { group_ids } = req.body;
-  if (!Array.isArray(group_ids) || group_ids.length === 0) {
-    return res.status(400).json({ error: 'group_ids is required' });
+  const { group_id, group_ids } = req.body;
+  const ids = group_ids || (group_id ? [group_id] : null);
+  if (!Array.isArray(ids) || ids.length === 0) {
+    console.log('[web-reg] rejected: no valid group_id(s)');
+    return res.status(400).json({ error: 'group_id or group_ids is required' });
   }
   const pool = getPool();
   try {
@@ -355,12 +359,13 @@ router.post('/web-registrations', authMiddleware, async (req, res) => {
       "DELETE FROM web_registrations WHERE user_id = $1 AND status = 'pending'",
       [req.user.userId]
     );
-    for (const groupId of group_ids) {
+    for (const groupId of ids) {
       await pool.query(
         'INSERT INTO web_registrations (user_id, group_id, school_id, status) VALUES ($1, $2, $3, $4)',
         [req.user.userId, groupId, req.user.schoolId, 'pending']
       );
     }
+    console.log('[web-reg] inserted', ids.length, 'registration(s) for user', req.user.userId);
     res.json({ success: true });
   } catch (err) {
     console.error('[web-registrations] POST error:', err.message);

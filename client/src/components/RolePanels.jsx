@@ -2144,13 +2144,11 @@ function StudentRemoveSubjectPanel({ lang }) {
   async function submit() {
     if (!checked.length) return;
     const token = localStorage.getItem('sherlock_token');
-    await Promise.all(checked.map(group_id =>
-      fetch(`/api/school/web-registrations`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ group_id, action: 'remove' })
-      })
-    ));
+    await fetch('/api/school/web-registrations', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ group_ids: checked })
+    });
     setSent(true);
     setChecked([]);
     setTimeout(() => setSent(false), 3000);
