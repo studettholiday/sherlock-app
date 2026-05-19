@@ -2171,6 +2171,7 @@ function StudentAddSubjectPanel({ lang }) {
     if (!res.ok) return;
     const group = allGroups.find(g => String(g.id) === String(selectedGroup));
     setPendingRequests(prev => [...prev, group ? group.name : selectedGroup]);
+    setMyGroupIds(prev => [...prev, parseInt(selectedGroup)]);
     const available = groupsForSubject.filter(g => String(g.id) !== String(selectedGroup));
     setSelectedGroup(available.length ? available[0].id : '');
   }
