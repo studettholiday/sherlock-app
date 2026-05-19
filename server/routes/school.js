@@ -490,7 +490,7 @@ router.patch('/web-registrations/:id', authMiddleware, async (req, res) => {
           [req.params.id]
         );
         await pool.query(
-          'INSERT INTO notifications (user_id, school_id, message) VALUES ($1, $2, $3)',
+          'INSERT INTO notifications (recipient_id, school_id, message) VALUES ($1, $2, $3)',
           [reg.user_id, reg.school_id, `✅ Your request to leave ${groupLabel} has been approved!`]
         );
         return res.json({ ok: true });
@@ -504,7 +504,7 @@ router.patch('/web-registrations/:id', authMiddleware, async (req, res) => {
           );
         }
         await pool.query(
-          'INSERT INTO notifications (user_id, school_id, message) VALUES ($1, $2, $3)',
+          'INSERT INTO notifications (recipient_id, school_id, message) VALUES ($1, $2, $3)',
           [reg.user_id, reg.school_id, `✅ Your request to join ${groupLabel} has been approved!`]
         );
       }
@@ -513,7 +513,7 @@ router.patch('/web-registrations/:id', authMiddleware, async (req, res) => {
         ? `❌ Your request to leave ${groupLabel} was not approved.`
         : `❌ Your request to join ${groupLabel} was not approved.`;
       await pool.query(
-        'INSERT INTO notifications (user_id, school_id, message) VALUES ($1, $2, $3)',
+        'INSERT INTO notifications (recipient_id, school_id, message) VALUES ($1, $2, $3)',
         [reg.user_id, reg.school_id, leaveMsg]
       );
     }
