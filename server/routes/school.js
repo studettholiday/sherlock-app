@@ -479,13 +479,18 @@ router.patch('/web-registrations/:id', authMiddleware, async (req, res) => {
     if (status === 'approved') {
       if (reg.request_type === 'remove') {
         await pool.query(
-          "DELETE FROM web_registrations WHERE user_id = $1 AND group_id = $2 AND status = 'approved' AND request_type != 'remove'",
+          "DELETE FROM web_registrations WHERE user_id = $1 AND group_id = $2 AND status = 'approved'",
           [reg.user_id, reg.group_id]
+        );
+        await pool.query(
+          'DELETE FROM web_registrations WHERE id = $1',
+          [req.params.id]
         );
         await pool.query(
           'INSERT INTO notifications (user_id, school_id, message) VALUES ($1, $2, $3)',
           [reg.user_id, reg.school_id, `✅ Your request to leave ${groupLabel} has been approved!`]
         );
+        return res.json({ ok: true });
       } else {
         if (reg.request_type === 'change' && groupInfo.subject_id) {
           await pool.query(
@@ -569,13 +574,13 @@ router.patch('/notifications/:id/read', authMiddleware, async (req, res) => {
 router.get('/my-schedule', authMiddleware, async (req, res) => {
   try {
     const result = await getPool().query(
-      `SELECT s.id, s.day_of_week, s.lesson_time, g.id AS group_id, g.name AS group_name, g.subject_id, sub.name AS subject_name
+      `SELECT DISTINCT ON (s.id) s.id, s.day_of_week, s.lesson_time, g.id AS group_id, g.name AS group_name, sub.id AS subject_id, sub.name AS subject_name
        FROM web_registrations wr
        JOIN groups g ON wr.group_id = g.id
-       LEFT JOIN subjects sub ON g.subject_id = sub.id
        JOIN schedule s ON s.group_id = g.id
-       WHERE wr.user_id = $1 AND wr.status = 'approved' AND wr.school_id = $2
-       ORDER BY s.day_of_week, s.lesson_time`,
+       JOIN subjects sub ON g.subject_id = sub.id
+       WHERE wr.user_id = $1 AND wr.school_id = $2 AND wr.status = 'approved'
+       ORDER BY s.id`,
       [req.user.userId, req.user.schoolId]
     );
     res.json({ schedule: result.rows });
