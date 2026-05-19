@@ -571,7 +571,7 @@ export default function ChatWindow({ lang, mobile = false, onClose = null }) {
         )}
 
         <div className="ml-auto flex items-center gap-2">
-          {user?.role === 'student' && <NotificationBell lang={lang} />}
+          <NotificationBell lang={lang} />
           {user?.role !== 'student' && (
             <div className="relative flex-shrink-0" ref={editBtnRef}>
               <button

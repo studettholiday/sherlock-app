@@ -811,14 +811,15 @@ router.post('/absences', authMiddleware, async (req, res) => {
       }
       const timeStr = time ? ` at ${time}` : '';
       message = `Student ${studentName} will miss ${groupName} on ${date}${timeStr}. Reason: ${reason}`;
-      const rows = await pool.query('SELECT id FROM users WHERE school_id = $1 AND role = $2', [req.user.schoolId, 'teacher']);
-      recipients = rows.rows.map(r => r.id);
     } else {
       const typeLabel = type === 'exam' ? 'exam' : 'event';
       message = `Student ${studentName} will miss ${typeLabel} on ${date}. Reason: ${reason}`;
-      const rows = await pool.query('SELECT id FROM users WHERE school_id = $1 AND role = $2', [req.user.schoolId, 'assistant']);
-      recipients = rows.rows.map(r => r.id);
     }
+    const rows = await pool.query(
+      `SELECT id FROM users WHERE school_id = $1 AND role IN ('teacher', 'assistant')`,
+      [req.user.schoolId]
+    );
+    recipients = rows.rows.map(r => r.id);
 
     await Promise.all(recipients.map(recipientId =>
       pool.query(
