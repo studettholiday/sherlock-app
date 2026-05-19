@@ -2044,7 +2044,7 @@ function StudentChangeGroupPanel({ lang }) {
     const res = await fetch('/api/school/web-registrations', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ group_id: toGroup })
+      body: JSON.stringify({ group_id: toGroup, request_type: 'change' })
     });
     console.log('after fetch status:', res.status);
     if (!res.ok) {
@@ -2093,8 +2093,10 @@ function StudentChangeGroupPanel({ lang }) {
 
 function StudentAddSubjectPanel({ lang }) {
   const [subjects, setSubjects] = useState([]);
+  const [allGroups, setAllGroups] = useState([]);
   const [enrolled, setEnrolled] = useState([]);
   const [subject, setSubject] = useState('');
+  const [selectedGroup, setSelectedGroup] = useState('');
   const [sent, setSent] = useState(false);
   const [pendingSubject, setPendingSubject] = useState('');
   const [loading, setLoading] = useState(true);
@@ -2103,26 +2105,42 @@ function StudentAddSubjectPanel({ lang }) {
     const token = localStorage.getItem('sherlock_token');
     Promise.all([
       fetch('/api/school/subjects', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      fetch('/api/school/groups',   { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
       fetch('/api/school/my-schedule', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
-    ]).then(([sd, sc]) => {
-      const allSubjects = sd.subjects || [];
+    ]).then(([sd, gd, sc]) => {
+      const available = sd.subjects || [];
+      const groups = gd.groups || [];
       const mySubjectNames = [...new Set((sc.schedule || []).map(s => s.subject_name))];
       setEnrolled(mySubjectNames);
-      const available = allSubjects.filter(s => !mySubjectNames.includes(s.name));
       setSubjects(available);
-      if (available.length) setSubject(available[0].id);
+      setAllGroups(groups);
+      if (available.length) {
+        const firstSubjectId = available[0].id;
+        setSubject(firstSubjectId);
+        const firstGroups = groups.filter(g => g.subject_id === firstSubjectId);
+        if (firstGroups.length) setSelectedGroup(firstGroups[0].id);
+      }
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
 
+  function onSubjectChange(subjectId) {
+    setSubject(subjectId);
+    const groupsForSubject = allGroups.filter(g => String(g.subject_id) === String(subjectId));
+    setSelectedGroup(groupsForSubject.length ? groupsForSubject[0].id : '');
+  }
+
+  const groupsForSubject = allGroups.filter(g => String(g.subject_id) === String(subject));
+
   async function submit() {
-    if (!subject) return;
+    if (!selectedGroup) return;
     const token = localStorage.getItem('sherlock_token');
-    await fetch('/api/school/web-registrations', {
+    const res = await fetch('/api/school/web-registrations', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ group_id: subject })
+      body: JSON.stringify({ group_id: selectedGroup, request_type: 'add' })
     });
+    if (!res.ok) return;
     const subj = subjects.find(s => String(s.id) === String(subject));
     setPendingSubject(subj ? subj.name : subject);
     setSent(true);
@@ -2131,21 +2149,31 @@ function StudentAddSubjectPanel({ lang }) {
   if (loading) return <p className="text-xs text-gray-500">Loading…</p>;
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
-        <p className="text-xs text-gray-500 mb-1">{lang === 'GEO' ? 'ამჟამად ჩარიცხული' : 'Currently enrolled'}</p>
-        <div className="flex flex-wrap gap-1.5">
-          {enrolled.map(s => <span key={s} className="text-xs bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full">{s}</span>)}
+      {enrolled.length > 0 && (
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
+          <p className="text-xs text-gray-500 mb-1">{lang === 'GEO' ? 'ამჟამად ჩარიცხული' : 'Currently enrolled'}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {enrolled.map(s => <span key={s} className="text-xs bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full">{s}</span>)}
+          </div>
         </div>
-      </div>
+      )}
       <div>
-        <p className="text-xs text-gray-500 mb-1.5">{lang === 'GEO' ? 'დასამატებელი საგანი' : 'Subject to add'}</p>
-        <select value={subject} onChange={e => setSubject(e.target.value)} style={{ colorScheme: 'dark', background: '#1a1a2e', color: 'white' }} className={`${FIELD} cursor-pointer`}>
+        <p className="text-xs text-gray-500 mb-1.5">{lang === 'GEO' ? 'საგანი' : 'Subject'}</p>
+        <select value={subject} onChange={e => onSubjectChange(e.target.value)} style={{ colorScheme: 'dark', background: '#1a1a2e', color: 'white' }} className={`${FIELD} cursor-pointer`}>
           {subjects.map(s => <option key={s.id} value={s.id} style={{ background: '#1a1a2e', color: 'white' }}>{s.name}</option>)}
         </select>
       </div>
+      {groupsForSubject.length > 0 && (
+        <div>
+          <p className="text-xs text-gray-500 mb-1.5">{lang === 'GEO' ? 'ჯგუფი' : 'Group'}</p>
+          <select value={selectedGroup} onChange={e => setSelectedGroup(e.target.value)} style={{ colorScheme: 'dark', background: '#1a1a2e', color: 'white' }} className={`${FIELD} cursor-pointer`}>
+            {groupsForSubject.map(g => <option key={g.id} value={g.id} style={{ background: '#1a1a2e', color: 'white' }}>{g.name}</option>)}
+          </select>
+        </div>
+      )}
       {sent
         ? <p className="text-yellow-400 text-sm">⏳ {lang === 'GEO' ? `მოთხოვნა განხილვაშია: ${pendingSubject}` : `Request pending: ${pendingSubject} — waiting for admin approval`}</p>
-        : <button onClick={submit} disabled={!subject} className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
+        : <button onClick={submit} disabled={!selectedGroup} className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
             {lang === 'GEO' ? 'მოთხოვნის გაგზავნა' : 'Submit Request'}
           </button>
       }

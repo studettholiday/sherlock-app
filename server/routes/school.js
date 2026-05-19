@@ -347,8 +347,9 @@ router.post('/web-registrations', authMiddleware, async (req, res) => {
   console.log('[web-reg] body:', req.body);
   console.log('[web-reg] user:', { userId: req.user.userId, role: req.user.role, schoolId: req.user.schoolId });
   if (req.user.role !== 'student') return res.status(403).json({ error: 'Forbidden' });
-  const { group_id, group_ids } = req.body;
+  const { group_id, group_ids, request_type } = req.body;
   const ids = group_ids || (group_id ? [group_id] : null);
+  const reqType = request_type || 'add';
   if (!Array.isArray(ids) || ids.length === 0) {
     console.log('[web-reg] rejected: no valid group_id(s)');
     return res.status(400).json({ error: 'group_id or group_ids is required' });
@@ -370,8 +371,8 @@ router.post('/web-registrations', authMiddleware, async (req, res) => {
     );
     for (const groupId of ids) {
       await pool.query(
-        'INSERT INTO web_registrations (user_id, group_id, school_id, status) VALUES ($1, $2, $3, $4)',
-        [req.user.userId, groupId, req.user.schoolId, 'pending']
+        'INSERT INTO web_registrations (user_id, group_id, school_id, status, request_type) VALUES ($1, $2, $3, $4, $5)',
+        [req.user.userId, groupId, req.user.schoolId, 'pending', reqType]
       );
     }
     console.log('[web-reg] inserted', ids.length, 'registration(s) for user', req.user.userId);
@@ -392,7 +393,7 @@ router.get('/web-registrations', authMiddleware, async (req, res) => {
   }
   try {
     const result = await getPool().query(
-      `SELECT wr.id, wr.status, wr.created_at,
+      `SELECT wr.id, wr.status, wr.created_at, wr.request_type,
               u.name AS user_name, u.email AS user_email,
               g.name AS group_name, s.name AS subject_name,
               COALESCE(
@@ -426,7 +427,7 @@ router.patch('/web-registrations/:id', authMiddleware, async (req, res) => {
       [status, req.params.id, req.user.schoolId]
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
-    if (status === 'approved') {
+    if (status === 'approved' && result.rows[0].request_type === 'change') {
       const approved = result.rows[0];
       const groupRes = await pool.query('SELECT subject_id FROM groups WHERE id = $1', [approved.group_id]);
       if (groupRes.rows.length) {
