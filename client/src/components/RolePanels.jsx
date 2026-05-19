@@ -1438,41 +1438,48 @@ function TeachersPanel({ role, lang, allMembers, onMembersRefresh }) { return <M
 // ─── Teacher panels ───────────────────────────────────────────────────────────
 
 function MySchedulePanel({ lang }) {
-  const [schedule, setSchedule] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [rows, setRows] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const DAYS_GEO = {0:'ორშაბათი',1:'სამშაბათი',2:'ოთხშაბათი',3:'ხუთშაბათი',4:'პარასკევი',5:'შაბათი',6:'კვირა'};
+  const DAYS_EN = {0:'Monday',1:'Tuesday',2:'Wednesday',3:'Thursday',4:'Friday',5:'Saturday',6:'Sunday'};
 
-  useEffect(() => {
-    console.log('[MySchedulePanel] token:', localStorage.getItem('sherlock_token')?.slice(0,20));
-    fetch('/api/school/my-schedule', { headers: { Authorization: 'Bearer ' + localStorage.getItem('sherlock_token') } })
-      .then(r => r.json())
-      .then(data => { setSchedule(Array.isArray(data) ? data : []); })
-      .catch(() => setSchedule([]))
-      .finally(() => setLoading(false));
+  React.useEffect(() => {
+    let attempts = 0;
+    const tryFetch = () => {
+      const token = localStorage.getItem('sherlock_token');
+      if (!token && attempts < 10) {
+        attempts++;
+        setTimeout(tryFetch, 500);
+        return;
+      }
+      if (!token) { setLoading(false); return; }
+      fetch('/api/school/my-schedule', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(d => { setRows(d.schedule || []); setLoading(false); })
+        .catch(() => setLoading(false));
+    };
+    tryFetch();
   }, []);
 
-  if (loading) return <p className="text-xs text-gray-500">იტვირთება...</p>;
-  if (!schedule.length) return <p className="text-xs text-gray-500">განრიგი ცარიელია</p>;
+  if (loading) return React.createElement('p', {className: 'text-xs text-gray-500'}, 'Loading...');
+  if (!rows.length) return React.createElement('p', {className: 'text-xs text-gray-500'}, lang === 'GEO' ? 'განრიგი ცარიელია.' : 'No schedule yet.');
 
   return (
     <table className="w-full text-xs">
-      <thead>
-        <tr className="text-gray-500">
-          <th className="text-left pb-2 font-medium">{lang === 'GEO' ? 'დღე' : 'Day'}</th>
-          <th className="text-left pb-2 font-medium">{lang === 'GEO' ? 'დრო' : 'Time'}</th>
-          <th className="text-left pb-2 font-medium">{lang === 'GEO' ? 'ჯგუფი' : 'Group'}</th>
-          <th className="text-left pb-2 font-medium">{lang === 'GEO' ? 'საგანი' : 'Subject'}</th>
+      <thead><tr className="text-gray-500">
+        <th className="text-left pb-2 font-medium">{lang === 'GEO' ? 'დღე' : 'Day'}</th>
+        <th className="text-left pb-2 font-medium">{lang === 'GEO' ? 'დრო' : 'Time'}</th>
+        <th className="text-left pb-2 font-medium">{lang === 'GEO' ? 'საგანი' : 'Subject'}</th>
+        <th className="text-left pb-2 font-medium">{lang === 'GEO' ? 'ჯგუფი' : 'Group'}</th>
+      </tr></thead>
+      <tbody>{rows.map((r, i) => (
+        <tr key={i} className="border-t border-white/[0.05]">
+          <td className="py-1.5 text-gray-400">{lang === 'GEO' ? DAYS_GEO[r.day_of_week] : DAYS_EN[r.day_of_week]}</td>
+          <td className="py-1.5 text-gray-300 font-mono">{r.lesson_time}</td>
+          <td className="py-1.5 text-gray-400">{r.subject_name}</td>
+          <td className="py-1.5 text-white">{r.group_name}</td>
         </tr>
-      </thead>
-      <tbody>
-        {schedule.map((r, i) => (
-          <tr key={i} className="border-t border-white/[0.05]">
-            <td className="py-1.5 text-gray-400">{GEO_DAYS[r.day_of_week] ?? r.day_of_week}</td>
-            <td className="py-1.5 text-gray-300 font-mono">{r.lesson_time}</td>
-            <td className="py-1.5 text-white">{r.group_name}</td>
-            <td className="py-1.5 text-gray-300">{r.subject_name}</td>
-          </tr>
-        ))}
-      </tbody>
+      ))}</tbody>
     </table>
   );
 }
