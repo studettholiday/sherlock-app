@@ -117,7 +117,13 @@ function MessageBubble({ message, theme }) {
           ? `${theme.userBubble} rounded-br-sm`
           : `${s.assistantBubble} rounded-bl-sm`
       }`}>
-        {isUser ? message.content : <ReactMarkdown>{message.content}</ReactMarkdown>}
+        {isUser ? message.content : (
+          <ReactMarkdown components={{
+            a: ({ href, children }) => href?.startsWith('/api/library/download/')
+              ? <a href={href} download style={{ color: '#a78bfa', textDecoration: 'underline', cursor: 'pointer' }}>{children}</a>
+              : <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: '#a78bfa', textDecoration: 'underline' }}>{children}</a>
+          }}>{message.content}</ReactMarkdown>
+        )}
       </div>
     </div>
   );

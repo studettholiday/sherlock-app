@@ -32,10 +32,10 @@ function checkRateLimit(userId) {
 async function getLibraryContext(schoolId) {
   try {
     const result = await pool.query(
-      'SELECT filename, content FROM library_files WHERE school_id = $1 AND content IS NOT NULL',
+      'SELECT id, filename, content FROM library_files WHERE school_id = $1 AND content IS NOT NULL',
       [schoolId]
     );
-    return result.rows.map(f => ({ filename: f.filename, content: f.content }));
+    return result.rows.map(f => ({ id: f.id, filename: f.filename, content: f.content }));
   } catch (err) {
     console.error('Library fetch error:', err.message);
     return [];
@@ -68,6 +68,8 @@ function buildSystemPrompt(user, mode, libraryFiles, language) {
   }
 
   if (libraryFiles.length > 0) {
+    const fileList = libraryFiles.map(f => `  - ${f.filename} (ID: ${f.id})`).join('\n');
+    prompt += '\n\nAvailable library files:\n' + fileList + '\nIf the user asks to download or get a specific file, include [DOWNLOAD:id:filename] in your response, replacing id and filename with the actual values from the list above.';
     const combined = libraryFiles
       .map(f => `=== ${f.filename} ===\n${f.content}`)
       .join('\n\n')
@@ -148,7 +150,10 @@ router.post('/', authMiddleware, async (req, res) => {
       return res.status(500).json({ error: data.error?.message || 'AI error' });
     }
 
-    const reply = data.content?.[0]?.text || 'No response.';
+    const rawReply = data.content?.[0]?.text || 'No response.';
+    const reply = rawReply.replace(/\[DOWNLOAD:(\d+):([^\]]+)\]/g, (match, id, name) => {
+      return `[📄 ${name}](/api/library/download/${id})`;
+    });
     res.json({ message: reply });
 
   } catch (err) {

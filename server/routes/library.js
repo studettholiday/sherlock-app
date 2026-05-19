@@ -107,4 +107,23 @@ router.get('/context', authMiddleware, async (req, res) => {
   }
 });
 
+// Download file content as text
+router.get('/download/:id', authMiddleware, async (req, res) => {
+  try {
+    const result = await getPool().query(
+      'SELECT filename, content, mime_type FROM library_files WHERE id = $1 AND school_id = $2',
+      [req.params.id, req.user.schoolId]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
+    const file = result.rows[0];
+    if (!file.content) return res.status(404).json({ error: 'No content available' });
+    res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.send(file.content);
+  } catch (err) {
+    console.error('[library/download] error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;
