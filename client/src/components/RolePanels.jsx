@@ -541,9 +541,12 @@ function PendingRegistrationsPanel({ lang }) {
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="text-xs font-semibold text-white truncate">{r.user_name || r.user_email}</p>
-              <p className="text-xs text-gray-400 truncate">
+              <p className="text-xs text-gray-400 truncate flex items-center gap-1.5 flex-wrap">
                 {r.subject_name && <span className="text-violet-400">{r.subject_name} — </span>}
                 {r.group_name}
+                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 ${r.request_type === 'remove' ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                  {r.request_type === 'remove' ? (lang === 'GEO' ? 'წაშლა' : 'Remove') : (lang === 'GEO' ? 'დამატება' : 'Add')}
+                </span>
               </p>
               {r.schedule_times?.length > 0 && (
                 <p className="text-xs text-gray-500 mt-0.5">{formatScheduleTimes(r.schedule_times)}</p>
@@ -2247,11 +2250,14 @@ function StudentRemoveSubjectPanel({ lang }) {
     if (pendingRequests.length >= 3) return;
     if (!checked.length) return;
     const token = localStorage.getItem('sherlock_token');
-    await fetch('/api/school/web-registrations', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ group_ids: checked })
-    });
+    for (const groupId of checked) {
+      if (pendingRequests.length >= 3) break;
+      await fetch('/api/school/web-registrations/remove-request', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group_id: groupId })
+      });
+    }
     const names = enrolled.filter(s => checked.includes(s.group_id)).map(s => `${s.subject_name} — ${s.group_name}`);
     setPendingRequests(prev => [...prev, ...names]);
     setChecked([]);

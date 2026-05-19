@@ -394,6 +394,33 @@ router.post('/web-registrations', authMiddleware, async (req, res) => {
   }
 });
 
+router.post('/web-registrations/remove-request', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'student') return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const { group_id } = req.body;
+    if (!group_id) return res.status(400).json({ error: 'group_id is required' });
+    const pool = getPool();
+    const countRes = await pool.query(
+      "SELECT COUNT(*) FROM web_registrations WHERE user_id = $1 AND status = 'pending'",
+      [req.user.userId]
+    );
+    if (parseInt(countRes.rows[0].count, 10) >= 3) return res.status(429).json({ error: 'Maximum 3 pending requests allowed' });
+    const pendingDup = await pool.query(
+      "SELECT id FROM web_registrations WHERE user_id = $1 AND group_id = $2 AND status = 'pending' AND request_type = 'remove'",
+      [req.user.userId, group_id]
+    );
+    if (pendingDup.rows.length) return res.status(409).json({ error: 'Removal request already pending for this group' });
+    await pool.query(
+      "INSERT INTO web_registrations (user_id, group_id, school_id, status, request_type) VALUES ($1, $2, $3, 'pending', 'remove')",
+      [req.user.userId, group_id, req.user.schoolId]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[web-registrations/remove-request] error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 router.get('/web-registrations', authMiddleware, async (req, res) => {
   if (!['admin', 'assistant'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
   const params = [req.user.schoolId];
@@ -450,22 +477,36 @@ router.patch('/web-registrations/:id', authMiddleware, async (req, res) => {
       : `group #${reg.group_id}`;
 
     if (status === 'approved') {
-      if (reg.request_type === 'change' && groupInfo.subject_id) {
+      if (reg.request_type === 'remove') {
         await pool.query(
-          `DELETE FROM web_registrations
-           WHERE user_id = $1 AND id != $2 AND status = 'approved'
-             AND group_id IN (SELECT id FROM groups WHERE subject_id = $3)`,
-          [reg.user_id, reg.id, groupInfo.subject_id]
+          "DELETE FROM web_registrations WHERE user_id = $1 AND group_id = $2 AND status = 'approved' AND request_type != 'remove'",
+          [reg.user_id, reg.group_id]
+        );
+        await pool.query(
+          'INSERT INTO notifications (user_id, school_id, message) VALUES ($1, $2, $3)',
+          [reg.user_id, reg.school_id, `✅ Your request to leave ${groupLabel} has been approved!`]
+        );
+      } else {
+        if (reg.request_type === 'change' && groupInfo.subject_id) {
+          await pool.query(
+            `DELETE FROM web_registrations
+             WHERE user_id = $1 AND id != $2 AND status = 'approved'
+               AND group_id IN (SELECT id FROM groups WHERE subject_id = $3)`,
+            [reg.user_id, reg.id, groupInfo.subject_id]
+          );
+        }
+        await pool.query(
+          'INSERT INTO notifications (user_id, school_id, message) VALUES ($1, $2, $3)',
+          [reg.user_id, reg.school_id, `✅ Your request to join ${groupLabel} has been approved!`]
         );
       }
-      await pool.query(
-        'INSERT INTO notifications (user_id, school_id, message) VALUES ($1, $2, $3)',
-        [reg.user_id, reg.school_id, `✅ Your request to join ${groupLabel} has been approved!`]
-      );
     } else {
+      const leaveMsg = reg.request_type === 'remove'
+        ? `❌ Your request to leave ${groupLabel} was not approved.`
+        : `❌ Your request to join ${groupLabel} was not approved.`;
       await pool.query(
         'INSERT INTO notifications (user_id, school_id, message) VALUES ($1, $2, $3)',
-        [reg.user_id, reg.school_id, `❌ Your request to join ${groupLabel} was not approved.`]
+        [reg.user_id, reg.school_id, leaveMsg]
       );
     }
     res.json({ registration: reg });
