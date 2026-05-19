@@ -349,7 +349,7 @@ export default function Dashboard() {
         })()}
 
         {/* Knowledge Library */}
-        <div style={{ marginBottom: '44px' }}>
+        {user?.role !== 'student' && <div style={{ marginBottom: '44px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
               <h2 style={{ fontSize: '18px', fontWeight: '700', margin: 0, letterSpacing: '-0.01em' }}>📚 Knowledge Library</h2>
               <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)' }}>
@@ -396,9 +396,10 @@ export default function Dashboard() {
               </div>
             )}
           </div>
+        }
 
         {/* Members */}
-        <div>
+        {user?.role !== 'student' && <div>
           <h2 style={{ fontSize: '18px', fontWeight: '700', margin: '0 0 16px 0', letterSpacing: '-0.01em' }}>
             Members <span style={{ fontSize: 14, fontWeight: 500, color: COLORS.muted }}>({members.length})</span>
           </h2>
@@ -424,7 +425,7 @@ export default function Dashboard() {
               ))
             )}
           </div>
-        </div>
+        </div>}
       </div>
     </div>
   );

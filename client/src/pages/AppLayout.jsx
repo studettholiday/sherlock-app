@@ -1020,7 +1020,10 @@ export default function AppLayout() {
     return () => window.removeEventListener('resize', h);
   }, []);
 
-  if (!isDesktop) return <Dashboard />;
+  if (!isDesktop) {
+    if (user?.role === 'student') { window.location.replace('/chat'); return null; }
+    return <Dashboard />;
+  }
 
   return (
     <div style={{
