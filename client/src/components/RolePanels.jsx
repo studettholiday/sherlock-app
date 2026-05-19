@@ -2243,6 +2243,7 @@ function StudentPracticeDiaryPanel({ lang }) {
   const [labelDraft, setLabelDraft] = useState('');
   const [images, setImages] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
   const [expanded, setExpanded] = useState(null);
   const [previewImg, setPreviewImg] = useState(null);
   const imgInputRef = useRef(null);
@@ -2284,7 +2285,9 @@ function StudentPracticeDiaryPanel({ lang }) {
     reader.readAsDataURL(file);
   }
 
-  async function save() {
+  function resetForm() { setPracticed(''); setGoal(''); setMood('😊'); setLabelDraft(''); setImages([]); }
+
+  async function saveEntry() {
     if (!practiced.trim()) return;
     setSaving(true);
     await fetch('/api/school/notes/diary', {
@@ -2293,9 +2296,24 @@ function StudentPracticeDiaryPanel({ lang }) {
       body: JSON.stringify({ mood, practiced, goal: goal.trim() || null, label_id: labelDraft ? parseInt(labelDraft) : null, image_url: images.length ? JSON.stringify(images) : null }),
     });
     setSaving(false);
-    setShowCreate(false);
-    setPracticed(''); setGoal(''); setMood('😊'); setLabelDraft(''); setImages([]);
     await reload();
+  }
+
+  async function save() {
+    await saveEntry();
+    setShowCreate(false);
+    resetForm();
+  }
+
+  async function handleBack() {
+    if (practiced.trim()) {
+      await saveEntry();
+      setSavedFlash(true);
+      await new Promise(r => setTimeout(r, 700));
+    }
+    setShowCreate(false);
+    resetForm();
+    setSavedFlash(false);
   }
 
   async function del(id) {
@@ -2317,10 +2335,12 @@ function StudentPracticeDiaryPanel({ lang }) {
       <div className="flex gap-2">
         <input value={searchQ} onChange={e => setSearchQ(e.target.value)}
           placeholder={lang === 'GEO' ? 'ძებნა...' : 'Search…'} className={`${INPUT_SM} flex-1`} />
-        <button onClick={() => setShowCreate(c => !c)}
-          className="rounded-xl bg-violet-600 hover:bg-violet-500 px-3 py-1.5 text-xs text-white font-medium transition-colors flex-shrink-0">
-          + {lang === 'GEO' ? 'ახალი' : 'New'}
-        </button>
+        {!showCreate && (
+          <button onClick={() => setShowCreate(true)}
+            className="rounded-xl bg-violet-600 hover:bg-violet-500 px-3 py-1.5 text-xs text-white font-medium transition-colors flex-shrink-0">
+            + {lang === 'GEO' ? 'ახალი' : 'New'}
+          </button>
+        )}
       </div>
       {labels.length > 0 && (
         <select value={labelFilter} onChange={e => setLabelFilter(e.target.value)}
@@ -2331,6 +2351,10 @@ function StudentPracticeDiaryPanel({ lang }) {
       )}
       {showCreate && (
         <div className="rounded-xl border border-white/15 bg-white/[0.03] p-3 space-y-2.5">
+          <div className="flex items-center gap-2">
+            <button onClick={handleBack} className="text-xs text-violet-400 hover:text-violet-300 transition-colors">← {lang === 'GEO' ? 'უკან' : 'Back'}</button>
+            {savedFlash && <span className="text-xs text-green-400">✓ {lang === 'GEO' ? 'შენახულია' : 'Saved'}</span>}
+          </div>
           <div className="flex gap-1.5">
             {MOODS.map(m => (
               <button key={m} onClick={() => setMood(m)}
