@@ -996,6 +996,7 @@ function RightColumn({ members, onMembersRefresh }) {
 
 /* ── AppLayout ───────────────────────────────────────────────────────────────── */
 export default function AppLayout() {
+  const { user } = useAuth();
   const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768);
   const [members, setMembers] = useState([]);
   const [membersLoading, setMembersLoading] = useState(true);
@@ -1047,9 +1048,13 @@ export default function AppLayout() {
 
       {/* Two columns */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative', zIndex: 1 }}>
-        <LeftColumn members={members} membersLoading={membersLoading} onMembersRefresh={fetchMembers} />
-        {/* Divider */}
-        <div style={{ width: 1, flexShrink: 0, background: 'rgba(255,255,255,0.08)' }} />
+        {user?.role !== 'student' && (
+          <>
+            <LeftColumn members={members} membersLoading={membersLoading} onMembersRefresh={fetchMembers} />
+            {/* Divider */}
+            <div style={{ width: 1, flexShrink: 0, background: 'rgba(255,255,255,0.08)' }} />
+          </>
+        )}
         <RightColumn members={members} onMembersRefresh={fetchMembers} />
       </div>
     </div>
