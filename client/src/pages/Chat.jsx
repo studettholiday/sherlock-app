@@ -208,7 +208,7 @@ const ACCENT_COLORS = {
 };
 
 export default function Chat() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const lang = localStorage.getItem('sherlock_lang') === 'ka' ? 'GEO' : 'EN';
 
   const defaultRole = user?.role || 'admin';
@@ -415,10 +415,14 @@ export default function Chat() {
 
           <div className="ml-auto flex items-center gap-2">
             {user?.role === 'student' && <NotificationBell lang={lang} />}
-            <a href="/dashboard"
-              className="text-xs text-white/40 no-underline px-2.5 py-1.5 sm:px-3.5 rounded-xl border border-white/10 transition-colors hover:bg-white/[0.08] hover:text-white/70 whitespace-nowrap">
-              {lang === 'GEO' ? '← დაფა' : '← Dashboard'}
-            </a>
+            {user?.role === 'admin'
+              ? <a href="/dashboard" className="text-xs text-white/40 no-underline px-2.5 py-1.5 sm:px-3.5 rounded-xl border border-white/10 transition-colors hover:bg-white/[0.08] hover:text-white/70 whitespace-nowrap">
+                  {lang === 'GEO' ? '← დაფა' : '← Dashboard'}
+                </a>
+              : <button onClick={logout} className="text-xs text-white/40 px-2.5 py-1.5 sm:px-3.5 rounded-xl border border-white/10 transition-colors hover:bg-white/[0.08] hover:text-white/70 whitespace-nowrap bg-transparent cursor-pointer">
+                  {lang === 'GEO' ? 'გასვლა' : 'Sign out'}
+                </button>
+            }
           </div>
         </header>
 
