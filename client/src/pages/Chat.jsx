@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../AuthContext';
-import { RolePanel, PANEL_ACTIVE_CLS } from '../components/RolePanels';
+import { RolePanel, PANEL_ACTIVE_CLS, NotificationBell } from '../components/RolePanels';
 
 const THEMES = {
   admin: {
@@ -408,6 +408,7 @@ export default function Chat() {
           )}
 
           <div className="ml-auto flex items-center gap-2">
+            {role === 'student' && <NotificationBell lang={lang} />}
             <a href="/dashboard"
               className="text-xs text-white/40 no-underline px-2.5 py-1.5 sm:px-3.5 rounded-xl border border-white/10 transition-colors hover:bg-white/[0.08] hover:text-white/70 whitespace-nowrap">
               {lang === 'GEO' ? '← დაფა' : '← Dashboard'}
