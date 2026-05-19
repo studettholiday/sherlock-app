@@ -466,6 +466,7 @@ function MembersPanel({ role, lang, roleFilter, allMembers, onMembersRefresh }) 
 }
 
 const GEO_SCHED_DAYS = ['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვი'];
+const DAYS_GEO = {0:'ორშაბათი',1:'სამშაბათი',2:'ოთხშაბათი',3:'ხუთშაბათი',4:'პარასკევი',5:'შაბათი',6:'კვირა'};
 
 function formatScheduleTimes(times) {
   if (!times || times.length === 0) return '';
@@ -2107,6 +2108,7 @@ function StudentChangeGroupPanel({ lang }) {
 function StudentAddSubjectPanel({ lang }) {
   const [subjects, setSubjects] = useState([]);
   const [allGroups, setAllGroups] = useState([]);
+  const [allSchedule, setAllSchedule] = useState([]);
   const [myGroupIds, setMyGroupIds] = useState([]);
   const [enrolled, setEnrolled] = useState([]);
   const [subject, setSubject] = useState('');
@@ -2117,10 +2119,11 @@ function StudentAddSubjectPanel({ lang }) {
   useEffect(() => {
     const token = localStorage.getItem('sherlock_token');
     Promise.all([
-      fetch('/api/school/subjects', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-      fetch('/api/school/groups',   { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-      fetch('/api/school/my-schedule', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
-    ]).then(([sd, gd, sc]) => {
+      fetch('/api/school/subjects',    { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      fetch('/api/school/groups',      { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      fetch('/api/school/my-schedule', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      fetch('/api/school/schedule',    { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+    ]).then(([sd, gd, sc, sched]) => {
       const available = sd.subjects || [];
       const groups = gd.groups || [];
       const enrolledGroupIds = (sc.schedule || []).map(s => s.group_id);
@@ -2129,6 +2132,7 @@ function StudentAddSubjectPanel({ lang }) {
       setEnrolled(mySubjectNames);
       setSubjects(available);
       setAllGroups(groups);
+      setAllSchedule(sched.schedule || []);
       if (available.length) {
         const firstSubjectId = available[0].id;
         setSubject(firstSubjectId);
@@ -2185,6 +2189,9 @@ function StudentAddSubjectPanel({ lang }) {
           <select value={selectedGroup} onChange={e => setSelectedGroup(e.target.value)} style={{ colorScheme: 'dark', background: '#1a1a2e', color: 'white' }} className={`${FIELD} cursor-pointer`}>
             {groupsForSubject.map(g => <option key={g.id} value={g.id} style={{ background: '#1a1a2e', color: 'white' }}>{g.name}</option>)}
           </select>
+          {selectedGroup && allSchedule.filter(s => String(s.group_id) === String(selectedGroup)).map((s, i) => (
+            <p key={i} className="text-xs text-gray-400 mt-1">{DAYS_GEO[s.day_of_week]} · {s.lesson_time}</p>
+          ))}
         </div>
       )}
       {pendingRequests.map((name, i) => (
@@ -2199,6 +2206,7 @@ function StudentAddSubjectPanel({ lang }) {
 
 function StudentRemoveSubjectPanel({ lang }) {
   const [enrolled, setEnrolled] = useState([]);
+  const [fullSchedule, setFullSchedule] = useState([]);
   const [checked, setChecked] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -2208,6 +2216,7 @@ function StudentRemoveSubjectPanel({ lang }) {
     fetch('/api/school/my-schedule', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => {
+        setFullSchedule(d.schedule || []);
         const seen = new Set();
         const unique = [];
         (d.schedule || []).forEach(s => {
@@ -2242,9 +2251,14 @@ function StudentRemoveSubjectPanel({ lang }) {
       <p className="text-xs text-gray-500">{lang === 'GEO' ? 'აირჩიეთ წასაშლელი საგნები' : 'Select subjects to remove'}</p>
       <div className="space-y-2">
         {enrolled.map(s => (
-          <label key={s.subject_name} className="flex items-center gap-3 cursor-pointer rounded-xl border border-white/10 px-3 py-2 hover:bg-white/[0.03] transition-colors">
-            <input type="checkbox" checked={checked.includes(s.subject_name)} onChange={() => toggle(s.subject_name)} className="accent-emerald-500 w-4 h-4 flex-shrink-0" />
-            <span className="text-sm text-white">{s.subject_name}</span>
+          <label key={s.subject_name} className="flex items-start gap-3 cursor-pointer rounded-xl border border-white/10 px-3 py-2 hover:bg-white/[0.03] transition-colors">
+            <input type="checkbox" checked={checked.includes(s.subject_name)} onChange={() => toggle(s.subject_name)} className="accent-emerald-500 w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-sm text-white">{s.subject_name}</p>
+              {fullSchedule.filter(r => r.subject_name === s.subject_name).map((r, i) => (
+                <p key={i} className="text-xs text-gray-400">{DAYS_GEO[r.day_of_week]} · {r.lesson_time} · {r.group_name}</p>
+              ))}
+            </div>
           </label>
         ))}
       </div>
