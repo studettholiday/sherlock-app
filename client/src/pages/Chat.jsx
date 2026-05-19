@@ -395,7 +395,7 @@ export default function Chat() {
         style={{ background: `radial-gradient(ellipse 80% 35% at 50% 0%, ${accentColor}22, transparent)` }} />
 
       {/* Chat card fills remaining height */}
-      <div className={`relative flex flex-col flex-1 ${s.wrap}`}>
+      <div className={`relative flex flex-col flex-1 overflow-hidden ${s.wrap}`}>
 
         {/* Per-role ambient glow */}
         <div
@@ -414,7 +414,7 @@ export default function Chat() {
           )}
 
           <div className="ml-auto flex items-center gap-2">
-            {role === 'student' && <NotificationBell lang={lang} />}
+            {user?.role === 'student' && <NotificationBell lang={lang} />}
             <a href="/dashboard"
               className="text-xs text-white/40 no-underline px-2.5 py-1.5 sm:px-3.5 rounded-xl border border-white/10 transition-colors hover:bg-white/[0.08] hover:text-white/70 whitespace-nowrap">
               {lang === 'GEO' ? '← დაფა' : '← Dashboard'}
