@@ -1967,7 +1967,8 @@ function StudentReportExamAbsencePanel({ lang }) {
 function StudentChangeGroupPanel({ lang }) {
   const [groups, setGroups] = useState([]);
   const [currentGroups, setCurrentGroups] = useState([]);
-  const [newGroup, setNewGroup] = useState('');
+  const [fromGroup, setFromGroup] = useState('');
+  const [toGroup, setToGroup] = useState('');
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -1978,21 +1979,24 @@ function StudentChangeGroupPanel({ lang }) {
       fetch('/api/school/my-schedule', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
     ]).then(([gd, sd]) => {
       const allGroups = gd.groups || [];
-      const myGroupIds = (sd.schedule || []).map(s => s.group_id);
-      setCurrentGroups((sd.schedule || []).map(s => s.group_name));
-      setGroups(allGroups.filter(g => !myGroupIds.includes(g.id)));
-      if (allGroups.length) setNewGroup(allGroups[0].id);
+      const myGroups = sd.schedule || [];
+      const myGroupIds = myGroups.map(s => s.group_id);
+      setCurrentGroups(myGroups);
+      if (myGroups.length) setFromGroup(myGroups[0].group_id);
+      const available = allGroups.filter(g => !myGroupIds.includes(g.id));
+      setGroups(available);
+      if (available.length) setToGroup(available[0].id);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
 
   async function submit() {
-    if (!newGroup) return;
+    if (!toGroup) return;
     const token = localStorage.getItem('sherlock_token');
     await fetch('/api/school/web-registrations', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ group_id: newGroup })
+      body: JSON.stringify({ group_id: toGroup })
     });
     setSent(true);
     setTimeout(() => setSent(false), 3000);
@@ -2001,19 +2005,26 @@ function StudentChangeGroupPanel({ lang }) {
   if (loading) return <p className="text-xs text-gray-500">Loading…</p>;
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
-        <p className="text-xs text-gray-500">{lang === 'GEO' ? 'მიმდინარე ჯგუფები' : 'Current groups'}</p>
-        {currentGroups.map(g => <p key={g} className="text-sm text-white font-medium mt-0.5">{g}</p>)}
+      <div>
+        <p className="text-xs text-gray-500 mb-1.5">{lang === 'GEO' ? 'გადასვლა ამ ჯგუფიდან' : 'Transfer from'}</p>
+        <select value={fromGroup} onChange={e => setFromGroup(e.target.value)}
+          style={{ colorScheme: 'dark', background: '#1a1a2e', color: 'white' }}
+          className={`${FIELD} cursor-pointer`}>
+          {currentGroups.map(g => <option key={g.group_id} value={g.group_id} style={{ background: '#1a1a2e', color: 'white' }}>{g.group_name}</option>)}
+        </select>
       </div>
       <div>
-        <p className="text-xs text-gray-500 mb-1.5">{lang === 'GEO' ? 'გადასვლის მოთხოვნა' : 'Request transfer to'}</p>
-        <select value={newGroup} onChange={e => setNewGroup(e.target.value)} style={{ colorScheme: 'dark' }} className={`${FIELD} cursor-pointer`}>
-          {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+        <p className="text-xs text-gray-500 mb-1.5">{lang === 'GEO' ? 'გადასვლა ამ ჯგუფში' : 'Transfer to'}</p>
+        <select value={toGroup} onChange={e => setToGroup(e.target.value)}
+          style={{ colorScheme: 'dark', background: '#1a1a2e', color: 'white' }}
+          className={`${FIELD} cursor-pointer`}>
+          {groups.map(g => <option key={g.id} value={g.id} style={{ background: '#1a1a2e', color: 'white' }}>{g.name}</option>)}
         </select>
       </div>
       {sent
         ? <p className="text-emerald-400 text-sm">✅ {lang === 'GEO' ? 'მოთხოვნა გაიგზავნა' : 'Request sent'}</p>
-        : <button onClick={submit} className="rounded-xl bg-violet-600 hover:bg-violet-500 px-4 py-2 text-sm text-white font-medium transition-colors">
+        : <button onClick={submit} disabled={!toGroup}
+            className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
             {lang === 'GEO' ? 'მოთხოვნის გაგზავნა' : 'Submit Request'}
           </button>
       }
@@ -2067,8 +2078,8 @@ function StudentAddSubjectPanel({ lang }) {
       </div>
       <div>
         <p className="text-xs text-gray-500 mb-1.5">{lang === 'GEO' ? 'დასამატებელი საგანი' : 'Subject to add'}</p>
-        <select value={subject} onChange={e => setSubject(e.target.value)} style={{ colorScheme: 'dark' }} className={`${FIELD} cursor-pointer`}>
-          {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+        <select value={subject} onChange={e => setSubject(e.target.value)} style={{ colorScheme: 'dark', background: '#1a1a2e', color: 'white' }} className={`${FIELD} cursor-pointer`}>
+          {subjects.map(s => <option key={s.id} value={s.id} style={{ background: '#1a1a2e', color: 'white' }}>{s.name}</option>)}
         </select>
       </div>
       {sent
