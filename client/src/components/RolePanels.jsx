@@ -2172,7 +2172,7 @@ function StudentNotesPanel({ lang }) {
                   style={{ maxHeight: '200px' }}
                 >
                   {imgs[0] && (
-                    <img src={imgs[0]} alt="" style={{ width: '100%', maxHeight: '80px', objectFit: 'cover', display: 'block' }} />
+                    <img src={imgs[0]} alt="" style={{ width: '100%', maxHeight: '80px', objectFit: 'cover', display: 'block', pointerEvents: 'none' }} />
                   )}
                   <div style={{ padding: '10px 12px' }}>
                     {n.title && <p style={{ fontSize: '13px', fontWeight: 600, color: 'white', marginBottom: '4px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{n.title}</p>}
@@ -2419,7 +2419,7 @@ function StudentPracticeDiaryPanel({ lang }) {
                     style={{ border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.03)', maxHeight: '200px' }}
                   >
                     {imgs[0] && (
-                      <img src={imgs[0]} alt="" style={{ width: '100%', maxHeight: '80px', objectFit: 'cover', display: 'block' }} />
+                      <img src={imgs[0]} alt="" style={{ width: '100%', maxHeight: '80px', objectFit: 'cover', display: 'block', pointerEvents: 'none' }} />
                     )}
                     <div style={{ padding: '10px 12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '5px' }}>
