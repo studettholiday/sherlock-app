@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 // ─── Fake data ────────────────────────────────────────────────────────────────
 
@@ -2412,6 +2412,71 @@ function AiUsePanel({ role, lang }) {
         <p className="text-xs font-medium text-emerald-400">
           ✓ {geo ? `დაყენებულია: ${confirmed.toUpperCase()}` : `Set to ${confirmed.toUpperCase()}`}
         </p>
+      )}
+    </div>
+  );
+}
+
+// ─── Notification Bell ────────────────────────────────────────────────────────
+
+export function NotificationBell({ lang }) {
+  const [notifications, setNotifications] = useState([]);
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('sherlock_token');
+    if (!token) return;
+    fetch('/api/school/notifications', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => setNotifications(d.notifications || []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!open || !notifications.length) return;
+    const token = localStorage.getItem('sherlock_token');
+    notifications.forEach(n => {
+      fetch(`/api/school/notifications/${n.id}/read`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {});
+    });
+    setNotifications([]);
+  }, [open]);
+
+  useEffect(() => {
+    function handleClick(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  return (
+    <div className="relative flex-shrink-0" ref={ref}>
+      <button onClick={() => setOpen(o => !o)}
+        className="relative text-xs px-2 py-1 rounded-lg border border-white/10 text-white/50 hover:text-white/80 hover:border-white/20 transition-colors">
+        🔔
+        {notifications.length > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none">
+            {notifications.length > 9 ? '9+' : notifications.length}
+          </span>
+        )}
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-1 w-72 rounded-xl border border-white/15 bg-[#0f0f1a] shadow-2xl z-50 overflow-hidden">
+          <p className="text-xs font-semibold text-white/60 px-3 py-2 border-b border-white/[0.06]">
+            {lang === 'GEO' ? 'შეტყობინებები' : 'Notifications'}
+          </p>
+          {notifications.length === 0
+            ? <p className="text-xs text-gray-500 px-3 py-3">{lang === 'GEO' ? 'ახალი შეტყობინება არ არის.' : 'No new notifications.'}</p>
+            : notifications.map(n => (
+              <div key={n.id} className="px-3 py-2.5 border-b border-white/[0.04] last:border-0">
+                <p className="text-xs text-white/80 leading-relaxed">{n.message}</p>
+                <p className="text-[10px] text-gray-600 mt-0.5">{new Date(n.created_at).toLocaleString()}</p>
+              </div>
+            ))
+          }
+        </div>
       )}
     </div>
   );

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../AuthContext';
-import { RolePanel, PANEL_ACTIVE_CLS } from '../components/RolePanels';
+import { RolePanel, PANEL_ACTIVE_CLS, NotificationBell } from '../components/RolePanels';
 import Dashboard from './Dashboard';
 
 /* ── Dashboard palette ─────────────────────────────────────────────────────── */
@@ -717,6 +717,7 @@ function RightColumn({ members, onMembersRefresh }) {
         {user?.schoolName && <span className="text-xs ml-1" style={{ color: 'rgba(255,255,255,0.5)' }}>{user.schoolName}</span>}
 
         <div className="ml-auto flex items-center gap-2">
+          {role === 'student' && <NotificationBell lang={lang} />}
           {/* Edit button — visible when not on student tab */}
           {role !== 'student' && (
             <div className="relative flex-shrink-0" ref={editBtnRef}>

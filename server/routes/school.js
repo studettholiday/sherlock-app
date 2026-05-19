@@ -438,20 +438,37 @@ router.patch('/web-registrations/:id', authMiddleware, async (req, res) => {
       [status, req.params.id, req.user.schoolId]
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
-    if (status === 'approved' && result.rows[0].request_type === 'change') {
-      const approved = result.rows[0];
-      const groupRes = await pool.query('SELECT subject_id FROM groups WHERE id = $1', [approved.group_id]);
-      if (groupRes.rows.length) {
-        const subjectId = groupRes.rows[0].subject_id;
+    const reg = result.rows[0];
+    const groupInfoRes = await pool.query(
+      `SELECT g.name AS group_name, s.name AS subject_name, g.subject_id
+       FROM groups g LEFT JOIN subjects s ON g.subject_id = s.id WHERE g.id = $1`,
+      [reg.group_id]
+    );
+    const groupInfo = groupInfoRes.rows[0] || {};
+    const groupLabel = groupInfo.group_name
+      ? `${groupInfo.group_name}${groupInfo.subject_name ? ` (${groupInfo.subject_name})` : ''}`
+      : `group #${reg.group_id}`;
+
+    if (status === 'approved') {
+      if (reg.request_type === 'change' && groupInfo.subject_id) {
         await pool.query(
           `DELETE FROM web_registrations
            WHERE user_id = $1 AND id != $2 AND status = 'approved'
              AND group_id IN (SELECT id FROM groups WHERE subject_id = $3)`,
-          [approved.user_id, approved.id, subjectId]
+          [reg.user_id, reg.id, groupInfo.subject_id]
         );
       }
+      await pool.query(
+        'INSERT INTO notifications (user_id, school_id, message) VALUES ($1, $2, $3)',
+        [reg.user_id, reg.school_id, `✅ Your request to join ${groupLabel} has been approved!`]
+      );
+    } else {
+      await pool.query(
+        'INSERT INTO notifications (user_id, school_id, message) VALUES ($1, $2, $3)',
+        [reg.user_id, reg.school_id, `❌ Your request to join ${groupLabel} was not approved.`]
+      );
     }
-    res.json({ registration: result.rows[0] });
+    res.json({ registration: reg });
   } catch (err) {
     console.error('[web-registrations] PATCH error:', err.message);
     res.status(500).json({ error: 'Server error' });
@@ -476,6 +493,32 @@ router.delete('/web-registrations/:id', authMiddleware, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('[web-registrations] DELETE error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// --- Notifications ---
+
+router.get('/notifications', authMiddleware, async (req, res) => {
+  try {
+    const result = await getPool().query(
+      'SELECT * FROM notifications WHERE user_id = $1 AND read = FALSE ORDER BY created_at DESC',
+      [req.user.userId]
+    );
+    res.json({ notifications: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.patch('/notifications/:id/read', authMiddleware, async (req, res) => {
+  try {
+    await getPool().query(
+      'UPDATE notifications SET read = TRUE WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.user.userId]
+    );
+    res.json({ success: true });
+  } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
 });
