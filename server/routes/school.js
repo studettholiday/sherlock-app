@@ -627,11 +627,11 @@ router.get('/notes', authMiddleware, async (req, res) => {
 
 router.post('/notes', authMiddleware, async (req, res) => {
   const { title, content, label_id, image_url } = req.body;
-  if (!content) return res.status(400).json({ error: 'content is required' });
+  if (!title && !content && !image_url) return res.status(400).json({ error: 'Note must have title, content, or image' });
   try {
     const result = await getPool().query(
       'INSERT INTO student_notes (user_id, school_id, title, content, label_id, image_url) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [req.user.userId, req.user.schoolId, title || null, content, label_id || null, image_url || null]
+      [req.user.userId, req.user.schoolId, title || null, content || '', label_id || null, image_url || null]
     );
     res.json({ note: result.rows[0] });
   } catch (err) {
@@ -642,11 +642,11 @@ router.post('/notes', authMiddleware, async (req, res) => {
 
 router.patch('/notes/:id', authMiddleware, async (req, res) => {
   const { title, content, label_id, image_url } = req.body;
-  if (!content) return res.status(400).json({ error: 'content is required' });
+  if (!title && !content && !image_url) return res.status(400).json({ error: 'Note must have title, content, or image' });
   try {
     const result = await getPool().query(
       'UPDATE student_notes SET title = $1, content = $2, label_id = $3, image_url = $4, updated_at = NOW() WHERE id = $5 AND user_id = $6 RETURNING *',
-      [title || null, content, label_id || null, image_url || null, req.params.id, req.user.userId]
+      [title || null, content || '', label_id || null, image_url || null, req.params.id, req.user.userId]
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
     res.json({ note: result.rows[0] });
