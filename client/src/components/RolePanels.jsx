@@ -2002,6 +2002,7 @@ function StudentChangeGroupPanel({ lang }) {
   const [fromGroup, setFromGroup] = useState(null);
   const [toGroup, setToGroup] = useState('');
   const [sent, setSent] = useState(false);
+  const [pendingGroup, setPendingGroup] = useState('');
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -2051,8 +2052,9 @@ function StudentChangeGroupPanel({ lang }) {
       setErr(data.error || `Error ${res.status}`);
       return;
     }
+    const group = availableTo.find(g => String(g.id) === String(toGroup));
+    setPendingGroup(group ? group.name : toGroup);
     setSent(true);
-    setTimeout(() => setSent(false), 3000);
   }
 
   if (loading) return <p className="text-xs text-gray-500">Loading…</p>;
@@ -2079,7 +2081,7 @@ function StudentChangeGroupPanel({ lang }) {
       </div>
       {err && <p className="text-red-400 text-xs">{err}</p>}
       {sent
-        ? <p className="text-emerald-400 text-sm">✅ {lang === 'GEO' ? 'მოთხოვნა გაიგზავნა' : 'Request sent'}</p>
+        ? <p className="text-yellow-400 text-sm">⏳ {lang === 'GEO' ? `მოთხოვნა განხილვაშია: ${pendingGroup}` : `Request pending: ${pendingGroup} — waiting for admin approval`}</p>
         : <button onClick={submit} disabled={!toGroup || availableTo.length === 0}
             className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
             {lang === 'GEO' ? 'მოთხოვნის გაგზავნა' : 'Submit Request'}
@@ -2094,6 +2096,7 @@ function StudentAddSubjectPanel({ lang }) {
   const [enrolled, setEnrolled] = useState([]);
   const [subject, setSubject] = useState('');
   const [sent, setSent] = useState(false);
+  const [pendingSubject, setPendingSubject] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -2120,8 +2123,9 @@ function StudentAddSubjectPanel({ lang }) {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ group_id: subject })
     });
+    const subj = subjects.find(s => String(s.id) === String(subject));
+    setPendingSubject(subj ? subj.name : subject);
     setSent(true);
-    setTimeout(() => setSent(false), 3000);
   }
 
   if (loading) return <p className="text-xs text-gray-500">Loading…</p>;
@@ -2140,7 +2144,7 @@ function StudentAddSubjectPanel({ lang }) {
         </select>
       </div>
       {sent
-        ? <p className="text-emerald-400 text-sm">✅ {lang === 'GEO' ? 'მოთხოვნა გაიგზავნა' : 'Request sent'}</p>
+        ? <p className="text-yellow-400 text-sm">⏳ {lang === 'GEO' ? `მოთხოვნა განხილვაშია: ${pendingSubject}` : `Request pending: ${pendingSubject} — waiting for admin approval`}</p>
         : <button onClick={submit} disabled={!subject} className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
             {lang === 'GEO' ? 'მოთხოვნის გაგზავნა' : 'Submit Request'}
           </button>
