@@ -2020,7 +2020,15 @@ function StudentChangeGroupPanel({ lang }) {
       const groups = gd.groups || [];
       const myGroups = sd.schedule || [];
       setAllGroups(groups);
-      setCurrentGroups(myGroups);
+      const uniqueGroups = [];
+      const seenIds = new Set();
+      myGroups.forEach(g => {
+        if (!seenIds.has(g.group_id)) {
+          seenIds.add(g.group_id);
+          uniqueGroups.push(g);
+        }
+      });
+      setCurrentGroups(uniqueGroups);
       setAllSchedule(sched.schedule || []);
       if (myGroups.length) {
         const first = myGroups[0];
