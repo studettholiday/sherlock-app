@@ -1891,6 +1891,8 @@ function StudentNotesPanel({ lang }) {
   const [trashMsg, setTrashMsg] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [labelPopup, setLabelPopup] = useState(false);
+  const [labelConfirmMsg, setLabelConfirmMsg] = useState('');
   const [previewImg, setPreviewImg] = useState(null);
   const imgInputRef = useRef(null);
   const origRef = useRef({ title: '', content: '', images: [] });
@@ -2044,7 +2046,7 @@ function StudentNotesPanel({ lang }) {
   function toggleSelect(id) {
     setSelectedIds(ids => ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id]);
   }
-  function exitSelection() { setSelectionMode(false); setSelectedIds([]); }
+  function exitSelection() { setSelectionMode(false); setSelectedIds([]); setLabelPopup(false); }
   async function deleteSelected() {
     await Promise.all(selectedIds.map(id =>
       fetch(`/api/school/notes/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${tk()}` } })
@@ -2054,6 +2056,22 @@ function StudentNotesPanel({ lang }) {
     await reload();
     setTrashMsg(true);
     setTimeout(() => setTrashMsg(false), 5000);
+  }
+  async function assignLabel(labelId, labelName) {
+    await Promise.all(selectedIds.map(id =>
+      fetch(`/api/school/notes/${id}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tk()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label_id: labelId })
+      })
+    ));
+    exitSelection();
+    await reload();
+    const msg = labelName
+      ? `${lang === 'GEO' ? 'ლეიბლი დაემატა:' : 'Added to'} ${labelName}`
+      : (lang === 'GEO' ? 'ლეიბლი მოხსნილია' : 'Label removed');
+    setLabelConfirmMsg(msg);
+    setTimeout(() => setLabelConfirmMsg(''), 3000);
   }
 
   if (loading) return <p className="text-xs text-gray-500">Loading…</p>;
@@ -2174,15 +2192,39 @@ function StudentNotesPanel({ lang }) {
         </button>
       </div>
       {selectionMode && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 12px' }}>
-          <button onClick={exitSelection} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '14px', padding: '0 4px 0 0', lineHeight: 1 }}>✕</button>
-          <span style={{ fontSize: '13px', color: 'white', fontWeight: 600 }}>{selectedIds.length} {lang === 'GEO' ? 'არჩეული' : 'selected'}</span>
-          <button onClick={() => setSelectedIds(filtered.map(n => n.id))} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#a78bfa', cursor: 'pointer', fontSize: '12px', fontWeight: 600, padding: 0 }}>
-            {lang === 'GEO' ? 'ყველა' : 'Select All'}
-          </button>
-          <button onClick={deleteSelected} disabled={selectedIds.length === 0} style={{ background: 'none', border: 'none', color: selectedIds.length > 0 ? '#f87171' : 'rgba(255,255,255,0.3)', cursor: selectedIds.length > 0 ? 'pointer' : 'default', fontSize: '12px', fontWeight: 600, padding: 0 }}>
-            🗑 {lang === 'GEO' ? 'წაშლა' : 'Delete'}
-          </button>
+        <div style={{ position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 12px' }}>
+            <button onClick={exitSelection} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '14px', padding: '0 4px 0 0', lineHeight: 1 }}>✕</button>
+            <span style={{ fontSize: '13px', color: 'white', fontWeight: 600 }}>{selectedIds.length} {lang === 'GEO' ? 'არჩეული' : 'selected'}</span>
+            <button onClick={() => setSelectedIds(filtered.map(n => n.id))} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#a78bfa', cursor: 'pointer', fontSize: '12px', fontWeight: 600, padding: 0 }}>
+              {lang === 'GEO' ? 'ყველა' : 'Select All'}
+            </button>
+            <button onClick={() => setLabelPopup(v => !v)} disabled={selectedIds.length === 0} style={{ background: 'none', border: 'none', color: selectedIds.length > 0 ? '#fbbf24' : 'rgba(255,255,255,0.3)', cursor: selectedIds.length > 0 ? 'pointer' : 'default', fontSize: '12px', fontWeight: 600, padding: 0 }}>
+              🏷 {lang === 'GEO' ? 'ლეიბლი' : 'Label'}
+            </button>
+            <button onClick={deleteSelected} disabled={selectedIds.length === 0} style={{ background: 'none', border: 'none', color: selectedIds.length > 0 ? '#f87171' : 'rgba(255,255,255,0.3)', cursor: selectedIds.length > 0 ? 'pointer' : 'default', fontSize: '12px', fontWeight: 600, padding: 0 }}>
+              🗑 {lang === 'GEO' ? 'წაშლა' : 'Delete'}
+            </button>
+          </div>
+          {labelPopup && (
+            <div style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', overflow: 'hidden', zIndex: 50, minWidth: '160px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+              <button onClick={() => assignLabel(null, null)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', fontSize: '12px' }}>
+                ✕ {lang === 'GEO' ? 'ლეიბლის მოხსნა' : 'Remove label'}
+              </button>
+              {labels.map(l => (
+                <button key={l.id} onClick={() => assignLabel(l.id, l.name)} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '12px' }}>
+                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: l.color, flexShrink: 0 }} />
+                  {l.name}
+                </button>
+              ))}
+              {labels.length === 0 && <p style={{ padding: '8px 12px', fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: 0 }}>{lang === 'GEO' ? 'ლეიბლები არ არის' : 'No labels'}</p>}
+            </div>
+          )}
+        </div>
+      )}
+      {labelConfirmMsg && (
+        <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.65)', background: 'rgba(255,255,255,0.08)', borderRadius: '8px', padding: '8px 12px' }}>
+          {labelConfirmMsg}
         </div>
       )}
       {trashMsg && (
@@ -2271,6 +2313,8 @@ function StudentPracticeDiaryPanel({ lang }) {
   const [trashMsg, setTrashMsg] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [labelPopup, setLabelPopup] = useState(false);
+  const [labelConfirmMsg, setLabelConfirmMsg] = useState('');
   const [previewImg, setPreviewImg] = useState(null);
   const imgInputRef = useRef(null);
   const trashRef = useRef(null);
@@ -2395,7 +2439,7 @@ function StudentPracticeDiaryPanel({ lang }) {
   function toggleSelect(id) {
     setSelectedIds(ids => ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id]);
   }
-  function exitSelection() { setSelectionMode(false); setSelectedIds([]); }
+  function exitSelection() { setSelectionMode(false); setSelectedIds([]); setLabelPopup(false); }
   async function deleteSelected() {
     await Promise.all(selectedIds.map(id =>
       fetch(`/api/school/notes/diary/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${tk()}` } })
@@ -2405,6 +2449,22 @@ function StudentPracticeDiaryPanel({ lang }) {
     await reload();
     setTrashMsg(true);
     setTimeout(() => setTrashMsg(false), 5000);
+  }
+  async function assignLabel(labelId, labelName) {
+    await Promise.all(selectedIds.map(id =>
+      fetch(`/api/school/notes/diary/${id}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${tk()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label_id: labelId })
+      })
+    ));
+    exitSelection();
+    await reload();
+    const msg = labelName
+      ? `${lang === 'GEO' ? 'ლეიბლი დაემატა:' : 'Added to'} ${labelName}`
+      : (lang === 'GEO' ? 'ლეიბლი მოხსნილია' : 'Label removed');
+    setLabelConfirmMsg(msg);
+    setTimeout(() => setLabelConfirmMsg(''), 3000);
   }
 
   if (loading) return <p className="text-xs text-gray-500">Loading…</p>;
@@ -2428,15 +2488,39 @@ function StudentPracticeDiaryPanel({ lang }) {
         )}
       </div>
       {selectionMode && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 12px' }}>
-          <button onClick={exitSelection} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '14px', padding: '0 4px 0 0', lineHeight: 1 }}>✕</button>
-          <span style={{ fontSize: '13px', color: 'white', fontWeight: 600 }}>{selectedIds.length} {lang === 'GEO' ? 'არჩეული' : 'selected'}</span>
-          <button onClick={() => setSelectedIds(filtered.map(e => e.id))} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#a78bfa', cursor: 'pointer', fontSize: '12px', fontWeight: 600, padding: 0 }}>
-            {lang === 'GEO' ? 'ყველა' : 'Select All'}
-          </button>
-          <button onClick={deleteSelected} disabled={selectedIds.length === 0} style={{ background: 'none', border: 'none', color: selectedIds.length > 0 ? '#f87171' : 'rgba(255,255,255,0.3)', cursor: selectedIds.length > 0 ? 'pointer' : 'default', fontSize: '12px', fontWeight: 600, padding: 0 }}>
-            🗑 {lang === 'GEO' ? 'წაშლა' : 'Delete'}
-          </button>
+        <div style={{ position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 12px' }}>
+            <button onClick={exitSelection} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '14px', padding: '0 4px 0 0', lineHeight: 1 }}>✕</button>
+            <span style={{ fontSize: '13px', color: 'white', fontWeight: 600 }}>{selectedIds.length} {lang === 'GEO' ? 'არჩეული' : 'selected'}</span>
+            <button onClick={() => setSelectedIds(filtered.map(e => e.id))} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#a78bfa', cursor: 'pointer', fontSize: '12px', fontWeight: 600, padding: 0 }}>
+              {lang === 'GEO' ? 'ყველა' : 'Select All'}
+            </button>
+            <button onClick={() => setLabelPopup(v => !v)} disabled={selectedIds.length === 0} style={{ background: 'none', border: 'none', color: selectedIds.length > 0 ? '#fbbf24' : 'rgba(255,255,255,0.3)', cursor: selectedIds.length > 0 ? 'pointer' : 'default', fontSize: '12px', fontWeight: 600, padding: 0 }}>
+              🏷 {lang === 'GEO' ? 'ლეიბლი' : 'Label'}
+            </button>
+            <button onClick={deleteSelected} disabled={selectedIds.length === 0} style={{ background: 'none', border: 'none', color: selectedIds.length > 0 ? '#f87171' : 'rgba(255,255,255,0.3)', cursor: selectedIds.length > 0 ? 'pointer' : 'default', fontSize: '12px', fontWeight: 600, padding: 0 }}>
+              🗑 {lang === 'GEO' ? 'წაშლა' : 'Delete'}
+            </button>
+          </div>
+          {labelPopup && (
+            <div style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', overflow: 'hidden', zIndex: 50, minWidth: '160px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+              <button onClick={() => assignLabel(null, null)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'none', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', fontSize: '12px' }}>
+                ✕ {lang === 'GEO' ? 'ლეიბლის მოხსნა' : 'Remove label'}
+              </button>
+              {labels.map(l => (
+                <button key={l.id} onClick={() => assignLabel(l.id, l.name)} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '12px' }}>
+                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: l.color, flexShrink: 0 }} />
+                  {l.name}
+                </button>
+              ))}
+              {labels.length === 0 && <p style={{ padding: '8px 12px', fontSize: '12px', color: 'rgba(255,255,255,0.35)', margin: 0 }}>{lang === 'GEO' ? 'ლეიბლები არ არის' : 'No labels'}</p>}
+            </div>
+          )}
+        </div>
+      )}
+      {labelConfirmMsg && (
+        <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.65)', background: 'rgba(255,255,255,0.08)', borderRadius: '8px', padding: '8px 12px' }}>
+          {labelConfirmMsg}
         </div>
       )}
       {trashMsg && (
