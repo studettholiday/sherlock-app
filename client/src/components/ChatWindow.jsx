@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { RolePanel, PANEL_ACTIVE_CLS } from './RolePanels';
+import { RolePanel, PANEL_ACTIVE_CLS, NotificationBell } from './RolePanels';
 
 const API_URL = '/api/chat';
 
@@ -563,6 +563,7 @@ export default function ChatWindow({ lang, mobile = false, onClose = null }) {
         )}
 
         <div className="ml-auto flex items-center gap-2">
+          {role === 'student' && <NotificationBell lang={lang} />}
           {role !== 'student' && (
             <div className="relative flex-shrink-0" ref={editBtnRef}>
               <button
