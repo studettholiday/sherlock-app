@@ -178,13 +178,13 @@ router.patch('/subjects/:id', authMiddleware, async (req, res) => {
 router.get('/groups', authMiddleware, async (req, res) => {
   try {
     const { subject_id } = req.query;
-    let query = 'SELECT * FROM groups WHERE school_id = $1';
+    let query = 'SELECT g.*, s.name AS subject_name FROM groups g LEFT JOIN subjects s ON g.subject_id = s.id WHERE g.school_id = $1';
     const params = [req.user.schoolId];
     if (subject_id) {
-      query += ' AND subject_id = $2';
+      query += ' AND g.subject_id = $2';
       params.push(subject_id);
     }
-    query += ' ORDER BY name ASC';
+    query += ' ORDER BY g.name ASC';
     const result = await getPool().query(query, params);
     res.json({ groups: result.rows });
   } catch (err) {
