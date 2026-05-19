@@ -2053,8 +2053,21 @@ function StudentChangeGroupPanel({ lang }) {
     }
     const group = availableTo.find(g => String(g.id) === String(toGroup));
     setPendingRequests(prev => [...prev, group ? group.name : toGroup]);
-    const next = availableTo.find(g => String(g.id) !== String(toGroup));
-    setToGroup(next ? next.id : '');
+
+    const newCurrentGroups = currentGroups.filter(g => g.group_id !== fromGroup.group_id);
+    const newAllGroups = allGroups.filter(g => g.id !== parseInt(toGroup));
+    setCurrentGroups(newCurrentGroups);
+    setAllGroups(newAllGroups);
+
+    if (newCurrentGroups.length) {
+      const nextFrom = newCurrentGroups[0];
+      setFromGroup(nextFrom);
+      const nextAvailable = newAllGroups.filter(g => g.subject_id === nextFrom.subject_id && g.id !== nextFrom.group_id);
+      setToGroup(nextAvailable.length ? nextAvailable[0].id : '');
+    } else {
+      setFromGroup(null);
+      setToGroup('');
+    }
   }
 
   if (loading) return <p className="text-xs text-gray-500">Loading…</p>;
