@@ -1866,6 +1866,12 @@ const INPUT_SM = 'w-full rounded-xl border border-white/[0.08] bg-white/[0.04] p
 const SELECT_DARK = { colorScheme: 'dark', background: '#1a1a2e', color: 'white' };
 const OPTION_DARK = { background: '#1a1a2e', color: 'white' };
 
+function parseImages(raw) {
+  if (!raw) return [];
+  try { const p = JSON.parse(raw); return Array.isArray(p) ? p : [raw]; }
+  catch { return [raw]; }
+}
+
 function StudentNotesPanel({ lang }) {
   const [notes, setNotes] = useState([]);
   const [labels, setLabels] = useState([]);
@@ -1877,8 +1883,9 @@ function StudentNotesPanel({ lang }) {
   const [titleDraft, setTitleDraft] = useState('');
   const [contentDraft, setContentDraft] = useState('');
   const [labelDraft, setLabelDraft] = useState('');
-  const [imageDraft, setImageDraft] = useState(null);
-  const [uploading, setUploading] = useState(false);
+  const [images, setImages] = useState([]);
+  const [checklist, setChecklist] = useState(false);
+  const [newItem, setNewItem] = useState('');
   const [saving, setSaving] = useState(false);
   const imgInputRef = useRef(null);
 
@@ -1893,9 +1900,7 @@ function StudentNotesPanel({ lang }) {
     setLabels(ld.labels || []);
   }
 
-  useEffect(() => {
-    reload().then(() => setLoading(false)).catch(() => setLoading(false));
-  }, []);
+  useEffect(() => { reload().then(() => setLoading(false)).catch(() => setLoading(false)); }, []);
 
   const filtered = notes.filter(n => {
     const q = searchQ.toLowerCase();
@@ -1904,27 +1909,66 @@ function StudentNotesPanel({ lang }) {
     return matchQ && matchL;
   });
 
-  function openNew() { setView('new'); setTitleDraft(''); setContentDraft(''); setLabelDraft(''); setImageDraft(null); setEditing(null); }
-  function openEdit(n) { setView('edit'); setEditing(n); setTitleDraft(n.title || ''); setContentDraft(n.content || ''); setLabelDraft(n.label_id ? String(n.label_id) : ''); setImageDraft(n.image_url || null); }
-  function backToList() { setView('list'); setEditing(null); setImageDraft(null); }
+  function openNew() {
+    setView('new'); setEditing(null);
+    setTitleDraft(''); setContentDraft(''); setLabelDraft('');
+    setImages([]); setChecklist(false); setNewItem('');
+  }
+  function openEdit(n) {
+    setView('edit'); setEditing(n);
+    setTitleDraft(n.title || ''); setContentDraft(n.content || '');
+    setLabelDraft(n.label_id ? String(n.label_id) : '');
+    setImages(parseImages(n.image_url));
+    const isChecklist = (n.content || '').split('\n').some(l => l.startsWith('[ ] ') || l.startsWith('[x] '));
+    setChecklist(isChecklist); setNewItem('');
+  }
+  function backToList() { setView('list'); setEditing(null); setImages([]); setChecklist(false); }
 
-  async function handleImagePick(e) {
+  function pickImage(e) {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
-    setUploading(true);
-    const form = new FormData();
-    form.append('image', file);
-    const res = await fetch('/api/school/notes/upload-image', { method: 'POST', headers: { Authorization: `Bearer ${tk()}` }, body: form });
-    const data = await res.json();
-    if (data.url) setImageDraft(data.url);
-    setUploading(false);
+    const reader = new FileReader();
+    reader.onload = ev => setImages(prev => [...prev, ev.target.result]);
+    reader.readAsDataURL(file);
+  }
+
+  function toggleChecklist() {
+    if (!checklist) {
+      const lines = contentDraft.split('\n');
+      const converted = lines.map(l => {
+        if (!l.trim()) return l;
+        if (l.startsWith('[ ] ') || l.startsWith('[x] ')) return l;
+        return '[ ] ' + l;
+      });
+      setContentDraft(converted.join('\n'));
+    }
+    setChecklist(c => !c);
+  }
+
+  function toggleItem(idx) {
+    const lines = contentDraft.split('\n');
+    const l = lines[idx];
+    lines[idx] = l.startsWith('[x] ') ? '[ ] ' + l.slice(4) : l.startsWith('[ ] ') ? '[x] ' + l.slice(4) : l;
+    setContentDraft(lines.join('\n'));
+  }
+
+  function deleteItem(idx) {
+    const lines = contentDraft.split('\n');
+    lines.splice(idx, 1);
+    setContentDraft(lines.join('\n'));
+  }
+
+  function addItem() {
+    if (!newItem.trim()) return;
+    setContentDraft(prev => (prev && !prev.endsWith('\n') ? prev + '\n' : prev) + '[ ] ' + newItem.trim());
+    setNewItem('');
   }
 
   async function save() {
     if (!contentDraft.trim()) return;
     setSaving(true);
-    const body = { title: titleDraft.trim() || null, content: contentDraft, label_id: labelDraft ? parseInt(labelDraft) : null, image_url: imageDraft || null };
+    const body = { title: titleDraft.trim() || null, content: contentDraft, label_id: labelDraft ? parseInt(labelDraft) : null, image_url: images.length ? JSON.stringify(images) : null };
     if (view === 'new') {
       await fetch('/api/school/notes', { method: 'POST', headers: { Authorization: `Bearer ${tk()}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     } else {
@@ -1944,14 +1988,59 @@ function StudentNotesPanel({ lang }) {
   if (loading) return <p className="text-xs text-gray-500">Loading…</p>;
 
   if (view === 'new' || view === 'edit') {
+    const checklistLines = contentDraft.split('\n').filter(l => l.trim());
     return (
       <div className="space-y-3">
         <button onClick={backToList} className="text-xs text-violet-400 hover:text-violet-300 transition-colors">← {lang === 'GEO' ? 'უკან' : 'Back'}</button>
         <input value={titleDraft} onChange={e => setTitleDraft(e.target.value)}
           placeholder={lang === 'GEO' ? 'სათაური...' : 'Title…'} className={INPUT_SM} />
-        <textarea rows={7} value={contentDraft} onChange={e => setContentDraft(e.target.value)}
-          placeholder={lang === 'GEO' ? 'შინაარსი...' : 'Content…'}
-          className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-white/80 placeholder-white/20 focus:outline-none focus:border-white/25 resize-none" />
+
+        {/* Images above content */}
+        {images.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {images.map((src, i) => (
+              <div key={i} className="relative">
+                <img src={src} alt="" className="max-h-[120px] rounded-xl border border-white/10 object-cover" />
+                <button onClick={() => setImages(imgs => imgs.filter((_, j) => j !== i))}
+                  className="absolute top-1 right-1 bg-black/70 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center hover:bg-black/90">✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Content area */}
+        {checklist ? (
+          <div className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 min-h-[120px] space-y-1.5">
+            {checklistLines.map((line, idx) => {
+              const checked = line.startsWith('[x] ');
+              const text = (checked || line.startsWith('[ ] ')) ? line.slice(4) : line;
+              return (
+                <div key={idx} className="flex items-center gap-2 group">
+                  <input type="checkbox" checked={checked} onChange={() => toggleItem(idx)}
+                    className="accent-violet-500 flex-shrink-0 cursor-pointer" />
+                  <span className={`flex-1 text-xs ${checked ? 'line-through text-gray-600' : 'text-white/80'}`}>{text}</span>
+                  <button onClick={() => deleteItem(idx)}
+                    className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 text-xs transition-opacity">✕</button>
+                </div>
+              );
+            })}
+            <div className="flex items-center gap-2 pt-1">
+              <input value={newItem} onChange={e => setNewItem(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addItem(); } }}
+                placeholder={lang === 'GEO' ? '+ დამატება...' : '+ Add item…'}
+                className="flex-1 bg-transparent text-xs text-white/60 placeholder-white/20 focus:outline-none focus:text-white/80" />
+              {newItem.trim() && (
+                <button onClick={addItem} className="text-xs text-violet-400 hover:text-violet-300">+</button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <textarea rows={7} value={contentDraft} onChange={e => setContentDraft(e.target.value)}
+            placeholder={lang === 'GEO' ? 'შინაარსი...' : 'Content…'}
+            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-white/80 placeholder-white/20 focus:outline-none focus:border-white/25 resize-none" />
+        )}
+
+        {/* Label selector */}
         {labels.length > 0 && (
           <select value={labelDraft} onChange={e => setLabelDraft(e.target.value)}
             style={SELECT_DARK} className={INPUT_SM}>
@@ -1959,27 +2048,24 @@ function StudentNotesPanel({ lang }) {
             {labels.map(l => <option key={l.id} value={l.id} style={OPTION_DARK}>{l.name}</option>)}
           </select>
         )}
-        {imageDraft && (
-          <div className="relative inline-block">
-            <img src={imageDraft} alt="" className="max-h-40 rounded-xl border border-white/10 object-cover" />
-            <button onClick={() => setImageDraft(null)}
-              className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center hover:bg-black/80">✕</button>
-          </div>
-        )}
-        <input ref={imgInputRef} type="file" accept="image/*" onChange={handleImagePick} className="hidden" />
-        <div className="flex gap-2">
+
+        {/* Bottom toolbar */}
+        <input ref={imgInputRef} type="file" accept="image/*" onChange={pickImage} className="hidden" />
+        <div className="flex items-center gap-2 pt-1 border-t border-white/[0.06]">
+          <button onClick={() => imgInputRef.current?.click()}
+            className="rounded-lg border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] px-2.5 py-1.5 text-sm transition-colors"
+            title={lang === 'GEO' ? 'სურათის დამატება' : 'Add image'}>📷</button>
+          <button onClick={toggleChecklist}
+            className={`rounded-lg border px-2.5 py-1.5 text-sm transition-colors ${checklist ? 'border-violet-500/50 bg-violet-500/10 text-violet-400' : 'border-white/10 bg-white/[0.04] hover:bg-white/[0.08]'}`}
+            title={lang === 'GEO' ? 'სია' : 'Checklist'}>☑️</button>
+          <div className="flex-1" />
           <button onClick={save} disabled={!contentDraft.trim() || saving}
-            className="flex-1 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
+            className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-1.5 text-xs text-white font-medium transition-colors">
             {saving ? '…' : (lang === 'GEO' ? 'შენახვა' : 'Save')}
-          </button>
-          <button onClick={() => imgInputRef.current?.click()} disabled={uploading}
-            className="rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] px-3 py-2 text-sm transition-colors disabled:opacity-40"
-            title={lang === 'GEO' ? 'სურათის დამატება' : 'Add image'}>
-            {uploading ? '…' : '📷'}
           </button>
           {view === 'edit' && (
             <button onClick={() => del(editing.id)}
-              className="rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 px-4 py-2 text-sm transition-colors">
+              className="rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 px-3 py-1.5 text-xs transition-colors">
               {lang === 'GEO' ? 'წაშლა' : 'Delete'}
             </button>
           )}
@@ -2009,22 +2095,28 @@ function StudentNotesPanel({ lang }) {
         ? <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'ჩანაწერები არ არის.' : 'No notes yet.'}</p>
         : (
           <div className="space-y-2">
-            {filtered.map(n => (
-              <div key={n.id} onClick={() => openEdit(n)}
-                className="cursor-pointer rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2.5 hover:bg-white/[0.05] transition-colors">
-                <div className="flex items-start gap-2">
-                  {n.image_url && <img src={n.image_url} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-white/10" />}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      {n.label_color && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: n.label_color }} />}
-                      <p className="text-xs font-semibold text-white truncate">{n.title || (lang === 'GEO' ? 'სათაური არ არის' : 'Untitled')}</p>
+            {filtered.map(n => {
+              const imgs = parseImages(n.image_url);
+              const hasChecklist = (n.content || '').split('\n').some(l => l.startsWith('[ ] ') || l.startsWith('[x] '));
+              return (
+                <div key={n.id} onClick={() => openEdit(n)}
+                  className="cursor-pointer rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2.5 hover:bg-white/[0.05] transition-colors">
+                  <div className="flex items-start gap-2">
+                    {imgs[0] && <img src={imgs[0]} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-white/10" />}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        {n.label_color && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: n.label_color }} />}
+                        {hasChecklist && <span className="text-[10px] text-gray-500">☑</span>}
+                        {imgs.length > 1 && <span className="text-[10px] text-gray-500">🖼 ×{imgs.length}</span>}
+                        <p className="text-xs font-semibold text-white truncate">{n.title || (lang === 'GEO' ? 'სათაური არ არის' : 'Untitled')}</p>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5 truncate">{n.content.replace(/\[.\] /g, '').slice(0, 80)}</p>
                     </div>
-                    <p className="text-xs text-gray-500 mt-0.5 truncate">{n.content.slice(0, 80)}</p>
+                    <p className="text-[10px] text-gray-600 flex-shrink-0">{new Date(n.updated_at).toLocaleDateString()}</p>
                   </div>
-                  <p className="text-[10px] text-gray-600 flex-shrink-0">{new Date(n.updated_at).toLocaleDateString()}</p>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )
       }
@@ -2043,13 +2135,18 @@ function StudentPracticeDiaryPanel({ lang }) {
   const [practiced, setPracticed] = useState('');
   const [goal, setGoal] = useState('');
   const [labelDraft, setLabelDraft] = useState('');
-  const [imageDraft, setImageDraft] = useState(null);
-  const [uploading, setUploading] = useState(false);
+  const [images, setImages] = useState([]);
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState(null);
   const imgInputRef = useRef(null);
 
   const tk = () => localStorage.getItem('sherlock_token');
+
+  function parseImages(raw) {
+    if (!raw) return [];
+    try { const p = JSON.parse(raw); return Array.isArray(p) ? p : [raw]; }
+    catch { return [raw]; }
+  }
 
   async function reload() {
     const [dd, ld] = await Promise.all([
@@ -2071,17 +2168,13 @@ function StudentPracticeDiaryPanel({ lang }) {
     return matchQ && matchL;
   });
 
-  async function handleImagePick(e) {
+  function pickImage(e) {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
-    setUploading(true);
-    const form = new FormData();
-    form.append('image', file);
-    const res = await fetch('/api/school/notes/upload-image', { method: 'POST', headers: { Authorization: `Bearer ${tk()}` }, body: form });
-    const data = await res.json();
-    if (data.url) setImageDraft(data.url);
-    setUploading(false);
+    const reader = new FileReader();
+    reader.onload = ev => setImages(prev => [...prev, ev.target.result]);
+    reader.readAsDataURL(file);
   }
 
   async function save() {
@@ -2090,11 +2183,11 @@ function StudentPracticeDiaryPanel({ lang }) {
     await fetch('/api/school/notes/diary', {
       method: 'POST',
       headers: { Authorization: `Bearer ${tk()}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mood, practiced, goal: goal.trim() || null, label_id: labelDraft ? parseInt(labelDraft) : null, image_url: imageDraft || null }),
+      body: JSON.stringify({ mood, practiced, goal: goal.trim() || null, label_id: labelDraft ? parseInt(labelDraft) : null, image_url: images.length ? JSON.stringify(images) : null }),
     });
     setSaving(false);
     setShowCreate(false);
-    setPracticed(''); setGoal(''); setMood('😊'); setLabelDraft(''); setImageDraft(null);
+    setPracticed(''); setGoal(''); setMood('😊'); setLabelDraft(''); setImages([]);
     await reload();
   }
 
@@ -2144,23 +2237,25 @@ function StudentPracticeDiaryPanel({ lang }) {
               {labels.map(l => <option key={l.id} value={l.id} style={OPTION_DARK}>{l.name}</option>)}
             </select>
           )}
-          {imageDraft && (
-            <div className="relative inline-block">
-              <img src={imageDraft} alt="" className="max-h-32 rounded-xl border border-white/10 object-cover" />
-              <button onClick={() => setImageDraft(null)}
-                className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center hover:bg-black/80">✕</button>
+          {images.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {images.map((src, i) => (
+                <div key={i} className="relative inline-block">
+                  <img src={src} alt="" className="h-20 w-20 rounded-xl border border-white/10 object-cover" />
+                  <button onClick={() => setImages(prev => prev.filter((_, j) => j !== i))}
+                    className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center hover:bg-black/80">✕</button>
+                </div>
+              ))}
             </div>
           )}
-          <input ref={imgInputRef} type="file" accept="image/*" onChange={handleImagePick} className="hidden" />
-          <div className="flex gap-2">
+          <input ref={imgInputRef} type="file" accept="image/*" onChange={pickImage} className="hidden" />
+          <div className="flex gap-2 border-t border-white/[0.06] pt-2">
+            <button onClick={() => imgInputRef.current?.click()}
+              className="rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] px-3 py-2 text-sm transition-colors"
+              title={lang === 'GEO' ? 'სურათის დამატება' : 'Add image'}>📷</button>
             <button onClick={save} disabled={!practiced.trim() || saving}
               className="flex-1 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
               {saving ? '…' : (lang === 'GEO' ? 'შენახვა' : 'Save Entry')}
-            </button>
-            <button onClick={() => imgInputRef.current?.click()} disabled={uploading}
-              className="rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] px-3 py-2 text-sm transition-colors disabled:opacity-40"
-              title={lang === 'GEO' ? 'სურათის დამატება' : 'Add image'}>
-              {uploading ? '…' : '📷'}
             </button>
           </div>
         </div>
@@ -2169,35 +2264,44 @@ function StudentPracticeDiaryPanel({ lang }) {
         ? <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'ჩანაწერები არ არის.' : 'No entries yet.'}</p>
         : (
           <div className="space-y-2">
-            {filtered.map(e => (
-              <div key={e.id} className="rounded-xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
-                <div onClick={() => setExpanded(expanded === e.id ? null : e.id)}
-                  className="cursor-pointer px-3 py-2.5 flex items-start gap-2 hover:bg-white/[0.03] transition-colors">
-                  <span className="text-lg flex-shrink-0">{e.mood || '📝'}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      {e.label_color && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: e.label_color }} />}
-                      <p className="text-xs text-gray-300 truncate">{e.practiced.slice(0, 70)}</p>
+            {filtered.map(e => {
+              const imgs = parseImages(e.image_url);
+              return (
+                <div key={e.id} className="rounded-xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
+                  <div onClick={() => setExpanded(expanded === e.id ? null : e.id)}
+                    className="cursor-pointer px-3 py-2.5 flex items-start gap-2 hover:bg-white/[0.03] transition-colors">
+                    <span className="text-lg flex-shrink-0">{e.mood || '📝'}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        {e.label_color && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: e.label_color }} />}
+                        <p className="text-xs text-gray-300 truncate">{e.practiced.slice(0, 70)}</p>
+                      </div>
+                      {e.goal && <p className="text-xs text-gray-600 mt-0.5 truncate">→ {e.goal.slice(0, 60)}</p>}
                     </div>
-                    {e.goal && <p className="text-xs text-gray-600 mt-0.5 truncate">→ {e.goal.slice(0, 60)}</p>}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {imgs.length > 0 && <span className="text-[10px] text-gray-500">🖼{imgs.length > 1 ? ` ×${imgs.length}` : ''}</span>}
+                      <p className="text-[10px] text-gray-600">{new Date(e.created_at).toLocaleDateString()}</p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {e.image_url && <span className="text-[10px] text-gray-500">🖼</span>}
-                    <p className="text-[10px] text-gray-600">{new Date(e.created_at).toLocaleDateString()}</p>
-                  </div>
+                  {expanded === e.id && (
+                    <div className="px-3 pb-2.5 border-t border-white/[0.06] space-y-2 pt-2">
+                      <p className="text-xs text-gray-300">{e.practiced}</p>
+                      {e.goal && <p className="text-xs text-gray-500">→ {e.goal}</p>}
+                      {imgs.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {imgs.map((src, i) => (
+                            <img key={i} src={src} alt="" className="max-h-40 rounded-xl border border-white/10 object-cover" />
+                          ))}
+                        </div>
+                      )}
+                      <button onClick={() => del(e.id)} className="text-xs text-red-400 hover:text-red-300 transition-colors">
+                        {lang === 'GEO' ? '🗑 წაშლა' : '🗑 Delete'}
+                      </button>
+                    </div>
+                  )}
                 </div>
-                {expanded === e.id && (
-                  <div className="px-3 pb-2.5 border-t border-white/[0.06] space-y-2 pt-2">
-                    <p className="text-xs text-gray-300">{e.practiced}</p>
-                    {e.goal && <p className="text-xs text-gray-500">→ {e.goal}</p>}
-                    {e.image_url && <img src={e.image_url} alt="" className="max-h-40 rounded-xl border border-white/10 object-cover" />}
-                    <button onClick={() => del(e.id)} className="text-xs text-red-400 hover:text-red-300 transition-colors">
-                      {lang === 'GEO' ? '🗑 წაშლა' : '🗑 Delete'}
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )
       }
