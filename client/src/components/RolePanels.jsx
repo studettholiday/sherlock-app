@@ -2203,25 +2203,29 @@ function StudentNotesPanel({ lang }) {
       {filtered.length === 0
         ? <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'ჩანაწერები არ არის.' : 'No notes yet.'}</p>
         : (
-          <div className="space-y-2">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px', padding: '4px' }}>
             {filtered.map(n => {
               const imgs = parseImages(n.image_url);
               const hasChecklist = (n.content || '').split('\n').some(l => l.startsWith('[ ] ') || l.startsWith('[x] '));
+              const contentPreview = (n.content || '').replace(/\[.\] /g, '');
               return (
                 <div key={n.id} onClick={() => openEdit(n)}
-                  className="cursor-pointer rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2.5 hover:bg-white/[0.05] transition-colors">
-                  <div className="flex items-start gap-2">
-                    {imgs[0] && <img src={imgs[0]} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-white/10 cursor-zoom-in" onClick={e => { e.stopPropagation(); setPreviewImg(imgs[0]); }} />}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        {n.label_color && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: n.label_color }} />}
-                        {hasChecklist && <span className="text-[10px] text-gray-500">☑</span>}
-                        {imgs.length > 1 && <span className="text-[10px] text-gray-500">🖼 ×{imgs.length}</span>}
-                        <p className="text-xs font-semibold text-white truncate">{n.title || (lang === 'GEO' ? 'სათაური არ არის' : 'Untitled')}</p>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-0.5 truncate">{n.content.replace(/\[.\] /g, '').slice(0, 80)}</p>
+                  className="cursor-pointer rounded-[10px] border border-white/[0.12] bg-white/[0.03] hover:bg-white/[0.06] transition-colors overflow-hidden"
+                  style={{ maxHeight: '200px' }}
+                >
+                  {imgs[0] && (
+                    <img src={imgs[0]} alt="" style={{ width: '100%', maxHeight: '80px', objectFit: 'cover', display: 'block' }}
+                      onClick={e => { e.stopPropagation(); setPreviewImg(imgs[0]); }} />
+                  )}
+                  <div style={{ padding: '10px 12px' }}>
+                    {n.title && <p style={{ fontSize: '13px', fontWeight: 600, color: 'white', marginBottom: '4px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{n.title}</p>}
+                    {contentPreview && <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', lineHeight: '1.4' }}>{contentPreview}</p>}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '6px' }}>
+                      {n.label_color && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: n.label_color, flexShrink: 0 }} />}
+                      {hasChecklist && <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)' }}>☑</span>}
+                      {imgs.length > 1 && <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)' }}>🖼×{imgs.length}</span>}
+                      <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)', marginLeft: 'auto' }}>{new Date(n.updated_at).toLocaleDateString()}</span>
                     </div>
-                    <p className="text-[10px] text-gray-600 flex-shrink-0">{new Date(n.updated_at).toLocaleDateString()}</p>
                   </div>
                 </div>
               );
@@ -2403,46 +2407,61 @@ function StudentPracticeDiaryPanel({ lang }) {
       {filtered.length === 0
         ? <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'ჩანაწერები არ არის.' : 'No entries yet.'}</p>
         : (
-          <div className="space-y-2">
-            {filtered.map(e => {
-              const imgs = parseImages(e.image_url);
-              return (
-                <div key={e.id} className="rounded-xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
-                  <div onClick={() => setExpanded(expanded === e.id ? null : e.id)}
-                    className="cursor-pointer px-3 py-2.5 flex items-start gap-2 hover:bg-white/[0.03] transition-colors">
-                    <span className="text-lg flex-shrink-0">{e.mood || '📝'}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        {e.label_color && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: e.label_color }} />}
-                        <p className="text-xs text-gray-300 truncate">{e.practiced.slice(0, 70)}</p>
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px', padding: '4px' }}>
+              {filtered.map(e => {
+                const imgs = parseImages(e.image_url);
+                const isSelected = expanded === e.id;
+                return (
+                  <div key={e.id} onClick={() => setExpanded(isSelected ? null : e.id)}
+                    className="cursor-pointer rounded-[10px] transition-colors overflow-hidden"
+                    style={{ border: `1px solid ${isSelected ? 'rgba(139,92,246,0.5)' : 'rgba(255,255,255,0.12)'}`, background: isSelected ? 'rgba(139,92,246,0.06)' : 'rgba(255,255,255,0.03)', maxHeight: '200px' }}
+                  >
+                    {imgs[0] && (
+                      <img src={imgs[0]} alt="" style={{ width: '100%', maxHeight: '80px', objectFit: 'cover', display: 'block' }}
+                        onClick={ev => { ev.stopPropagation(); setPreviewImg(imgs[0]); }} />
+                    )}
+                    <div style={{ padding: '10px 12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '5px' }}>
+                        <span style={{ fontSize: '16px' }}>{e.mood || '📝'}</span>
+                        {e.label_color && <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: e.label_color, flexShrink: 0 }} />}
                       </div>
-                      {e.goal && <p className="text-xs text-gray-600 mt-0.5 truncate">→ {e.goal.slice(0, 60)}</p>}
-                    </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {imgs.length > 0 && <span className="text-[10px] text-gray-500">🖼{imgs.length > 1 ? ` ×${imgs.length}` : ''}</span>}
-                      <p className="text-[10px] text-gray-600">{new Date(e.created_at).toLocaleDateString()}</p>
+                      <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.75)', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', lineHeight: '1.4' }}>{e.practiced}</p>
+                      {e.goal && <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '3px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>→ {e.goal}</p>}
+                      <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.2)', marginTop: '5px' }}>{new Date(e.created_at).toLocaleDateString()}</p>
                     </div>
                   </div>
-                  {expanded === e.id && (
-                    <div className="px-3 pb-2.5 border-t border-white/[0.06] space-y-2 pt-2">
-                      <p className="text-xs text-gray-300">{e.practiced}</p>
-                      {e.goal && <p className="text-xs text-gray-500">→ {e.goal}</p>}
-                      {imgs.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {imgs.map((src, i) => (
-                            <img key={i} src={src} alt="" className="max-h-40 rounded-xl border border-white/10 object-cover cursor-zoom-in" onClick={e => { e.stopPropagation(); setPreviewImg(src); }} />
-                          ))}
-                        </div>
-                      )}
-                      <button onClick={() => del(e.id)} className="text-xs text-red-400 hover:text-red-300 transition-colors">
-                        {lang === 'GEO' ? '🗑 წაშლა' : '🗑 Delete'}
-                      </button>
+                );
+              })}
+            </div>
+            {expanded && (() => {
+              const entry = filtered.find(e => e.id === expanded);
+              if (!entry) return null;
+              const imgs = parseImages(entry.image_url);
+              return (
+                <div style={{ border: '1px solid rgba(139,92,246,0.3)', borderRadius: '10px', padding: '14px', background: 'rgba(139,92,246,0.04)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                    <span style={{ fontSize: '18px' }}>{entry.mood || '📝'}</span>
+                    {entry.label_color && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: entry.label_color }} />}
+                    <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginLeft: 'auto' }}>{new Date(entry.created_at).toLocaleDateString()}</span>
+                    <button onClick={() => setExpanded(null)} style={{ color: 'rgba(255,255,255,0.4)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', lineHeight: 1 }}>✕</button>
+                  </div>
+                  <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, marginBottom: '6px' }}>{entry.practiced}</p>
+                  {entry.goal && <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '8px' }}>→ {entry.goal}</p>}
+                  {imgs.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+                      {imgs.map((src, i) => (
+                        <img key={i} src={src} alt="" style={{ maxHeight: '120px', borderRadius: '8px', objectFit: 'cover', cursor: 'zoom-in' }} onClick={() => setPreviewImg(src)} />
+                      ))}
                     </div>
                   )}
+                  <button onClick={() => del(entry.id)} style={{ fontSize: '12px', color: 'rgba(239,68,68,0.8)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                    {lang === 'GEO' ? '🗑 წაშლა' : '🗑 Delete'}
+                  </button>
                 </div>
               );
-            })}
-          </div>
+            })()}
+          </>
         )
       }
     </div>
