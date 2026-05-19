@@ -1909,7 +1909,9 @@ function StudentNotesPanel({ lang }) {
       fetch('/api/school/notes/labels', { headers: { Authorization: `Bearer ${tk()}` } }).then(r => r.json()),
     ]);
     setNotes(nd.notes || []);
-    setLabels(ld.labels || []);
+    const fetchedLabels = ld.labels || [];
+    console.log('labels:', fetchedLabels);
+    setLabels(fetchedLabels);
   }
 
   useEffect(() => { reload().then(() => setLoading(false)).catch(() => setLoading(false)); }, []);
@@ -2196,8 +2198,8 @@ function StudentNotesPanel({ lang }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 12px' }}>
             <button onClick={exitSelection} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '14px', padding: '0 4px 0 0', lineHeight: 1 }}>✕</button>
             <span style={{ fontSize: '13px', color: 'white', fontWeight: 600 }}>{selectedIds.length} {lang === 'GEO' ? 'არჩეული' : 'selected'}</span>
-            <button onClick={() => setSelectedIds(filtered.map(n => n.id))} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#a78bfa', cursor: 'pointer', fontSize: '12px', fontWeight: 600, padding: 0 }}>
-              {lang === 'GEO' ? 'ყველა' : 'Select All'}
+            <button onClick={() => selectedIds.length === filtered.length ? setSelectedIds([]) : setSelectedIds(filtered.map(n => n.id))} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#a78bfa', cursor: 'pointer', fontSize: '12px', fontWeight: 600, padding: 0 }}>
+              {selectedIds.length === filtered.length ? (lang === 'GEO' ? 'გაუქმება' : 'Deselect All') : (lang === 'GEO' ? 'ყველა' : 'Select All')}
             </button>
             <button onClick={() => setLabelPopup(v => !v)} disabled={selectedIds.length === 0} style={{ background: 'none', border: 'none', color: selectedIds.length > 0 ? '#fbbf24' : 'rgba(255,255,255,0.3)', cursor: selectedIds.length > 0 ? 'pointer' : 'default', fontSize: '12px', fontWeight: 600, padding: 0 }}>
               🏷 {lang === 'GEO' ? 'ლეიბლი' : 'Label'}
@@ -2335,7 +2337,9 @@ function StudentPracticeDiaryPanel({ lang }) {
       fetch('/api/school/notes/labels', { headers: { Authorization: `Bearer ${tk()}` } }).then(r => r.json()),
     ]);
     setEntries(dd.entries || []);
-    setLabels(ld.labels || []);
+    const fetchedLabels = ld.labels || [];
+    console.log('diary labels:', fetchedLabels);
+    setLabels(fetchedLabels);
   }
 
   useEffect(() => {
@@ -2492,8 +2496,8 @@ function StudentPracticeDiaryPanel({ lang }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '10px', padding: '8px 12px' }}>
             <button onClick={exitSelection} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '14px', padding: '0 4px 0 0', lineHeight: 1 }}>✕</button>
             <span style={{ fontSize: '13px', color: 'white', fontWeight: 600 }}>{selectedIds.length} {lang === 'GEO' ? 'არჩეული' : 'selected'}</span>
-            <button onClick={() => setSelectedIds(filtered.map(e => e.id))} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#a78bfa', cursor: 'pointer', fontSize: '12px', fontWeight: 600, padding: 0 }}>
-              {lang === 'GEO' ? 'ყველა' : 'Select All'}
+            <button onClick={() => selectedIds.length === filtered.length ? setSelectedIds([]) : setSelectedIds(filtered.map(e => e.id))} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#a78bfa', cursor: 'pointer', fontSize: '12px', fontWeight: 600, padding: 0 }}>
+              {selectedIds.length === filtered.length ? (lang === 'GEO' ? 'გაუქმება' : 'Deselect All') : (lang === 'GEO' ? 'ყველა' : 'Select All')}
             </button>
             <button onClick={() => setLabelPopup(v => !v)} disabled={selectedIds.length === 0} style={{ background: 'none', border: 'none', color: selectedIds.length > 0 ? '#fbbf24' : 'rgba(255,255,255,0.3)', cursor: selectedIds.length > 0 ? 'pointer' : 'default', fontSize: '12px', fontWeight: 600, padding: 0 }}>
               🏷 {lang === 'GEO' ? 'ლეიბლი' : 'Label'}
