@@ -1999,6 +1999,7 @@ function StudentReportExamAbsencePanel({ lang }) {
 
 function StudentChangeGroupPanel({ lang }) {
   const [allGroups, setAllGroups] = useState([]);
+  const [allSchedule, setAllSchedule] = useState([]);
   const [currentGroups, setCurrentGroups] = useState([]);
   const [fromGroup, setFromGroup] = useState(null);
   const [toGroup, setToGroup] = useState('');
@@ -2009,13 +2010,15 @@ function StudentChangeGroupPanel({ lang }) {
   useEffect(() => {
     const token = localStorage.getItem('sherlock_token');
     Promise.all([
-      fetch('/api/school/groups', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-      fetch('/api/school/my-schedule', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
-    ]).then(([gd, sd]) => {
+      fetch('/api/school/groups',   { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      fetch('/api/school/my-schedule', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      fetch('/api/school/schedule', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+    ]).then(([gd, sd, sched]) => {
       const groups = gd.groups || [];
       const myGroups = sd.schedule || [];
       setAllGroups(groups);
       setCurrentGroups(myGroups);
+      setAllSchedule(sched.schedule || []);
       if (myGroups.length) {
         const first = myGroups[0];
         setFromGroup(first);
@@ -2081,6 +2084,9 @@ function StudentChangeGroupPanel({ lang }) {
           className={`${FIELD} cursor-pointer`}>
           {currentGroups.map(g => <option key={g.group_id} value={g.group_id} style={{ background: '#1a1a2e', color: 'white' }}>{g.group_name} ({g.subject_name})</option>)}
         </select>
+        {allSchedule.filter(s => s.group_id === fromGroup?.group_id).map((s, i) => (
+          <p key={i} className="text-xs text-gray-500 ml-1">{DAYS_GEO[s.day_of_week]} · {s.lesson_time}</p>
+        ))}
       </div>
       <div>
         <p className="text-xs text-gray-500 mb-1.5">{lang === 'GEO' ? 'გადასვლა ამ ჯგუფში' : 'Transfer to'}</p>
@@ -2092,6 +2098,9 @@ function StudentChangeGroupPanel({ lang }) {
               {availableTo.map(g => <option key={g.id} value={g.id} style={{ background: '#1a1a2e', color: 'white' }}>{g.name}</option>)}
             </select>
         }
+        {toGroup && allSchedule.filter(s => s.group_id === parseInt(toGroup)).map((s, i) => (
+          <p key={i} className="text-xs text-gray-500 ml-1">{DAYS_GEO[s.day_of_week]} · {s.lesson_time}</p>
+        ))}
       </div>
       {err && <p className="text-red-400 text-xs">{err}</p>}
       {pendingRequests.map((name, i) => (
