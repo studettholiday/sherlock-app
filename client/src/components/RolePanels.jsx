@@ -131,7 +131,7 @@ const PANEL_TITLES = {
   'report-absence':  'Report Absence',
   'change-group':    'Change Group',
   'add-subject':     'Add Subject',
-  'remove-subject':  'Remove Subject',
+  'remove-subject':  'Remove Group',
   'requests':        'Requests',
   'teachers':        'Teachers',
   'subjects':              'Subjects',
@@ -167,7 +167,7 @@ const GEO_PANEL_TITLES = {
   'report-absence':  'გამოუცხადებლობის გაცდენა',
   'change-group':    'ჯგუფის შეცვლა',
   'add-subject':     'საგნის დამატება',
-  'remove-subject':  'საგნის წაშლა',
+  'remove-subject':  'ჯგუფის წაშლა',
   'requests':        'მოთხოვნები',
   'teachers':        'მასწავლებლები',
   'subjects':              'საგნები',
@@ -2553,7 +2553,7 @@ export const ROLE_BUTTONS = {
     { id: 'report-absence',  label: 'Report Absence'  },
     { id: 'change-group',    label: 'Change Group'    },
     { id: 'add-subject',     label: 'Add Subject'     },
-    { id: 'remove-subject',  label: 'Remove Subject'  },
+    { id: 'remove-subject',  label: 'Remove Group'  },
   ],
 };
 
