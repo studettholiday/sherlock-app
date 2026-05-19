@@ -2094,6 +2094,7 @@ function StudentChangeGroupPanel({ lang }) {
 function StudentAddSubjectPanel({ lang }) {
   const [subjects, setSubjects] = useState([]);
   const [allGroups, setAllGroups] = useState([]);
+  const [myGroupIds, setMyGroupIds] = useState([]);
   const [enrolled, setEnrolled] = useState([]);
   const [subject, setSubject] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('');
@@ -2110,14 +2111,16 @@ function StudentAddSubjectPanel({ lang }) {
     ]).then(([sd, gd, sc]) => {
       const available = sd.subjects || [];
       const groups = gd.groups || [];
+      const enrolledGroupIds = (sc.schedule || []).map(s => s.group_id);
       const mySubjectNames = [...new Set((sc.schedule || []).map(s => s.subject_name))];
+      setMyGroupIds(enrolledGroupIds);
       setEnrolled(mySubjectNames);
       setSubjects(available);
       setAllGroups(groups);
       if (available.length) {
         const firstSubjectId = available[0].id;
         setSubject(firstSubjectId);
-        const firstGroups = groups.filter(g => g.subject_id === firstSubjectId);
+        const firstGroups = groups.filter(g => g.subject_id === firstSubjectId && !enrolledGroupIds.includes(g.id));
         if (firstGroups.length) setSelectedGroup(firstGroups[0].id);
       }
       setLoading(false);
@@ -2126,11 +2129,11 @@ function StudentAddSubjectPanel({ lang }) {
 
   function onSubjectChange(subjectId) {
     setSubject(subjectId);
-    const groupsForSubject = allGroups.filter(g => String(g.subject_id) === String(subjectId));
-    setSelectedGroup(groupsForSubject.length ? groupsForSubject[0].id : '');
+    const available = allGroups.filter(g => String(g.subject_id) === String(subjectId) && !myGroupIds.includes(g.id));
+    setSelectedGroup(available.length ? available[0].id : '');
   }
 
-  const groupsForSubject = allGroups.filter(g => String(g.subject_id) === String(subject));
+  const groupsForSubject = allGroups.filter(g => String(g.subject_id) === String(subject) && !myGroupIds.includes(g.id));
 
   async function submit() {
     if (!selectedGroup) return;
