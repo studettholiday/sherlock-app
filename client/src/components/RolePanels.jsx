@@ -2001,8 +2001,7 @@ function StudentChangeGroupPanel({ lang }) {
   const [currentGroups, setCurrentGroups] = useState([]);
   const [fromGroup, setFromGroup] = useState(null);
   const [toGroup, setToGroup] = useState('');
-  const [sent, setSent] = useState(false);
-  const [pendingGroup, setPendingGroup] = useState('');
+  const [pendingRequests, setPendingRequests] = useState([]);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -2053,8 +2052,9 @@ function StudentChangeGroupPanel({ lang }) {
       return;
     }
     const group = availableTo.find(g => String(g.id) === String(toGroup));
-    setPendingGroup(group ? group.name : toGroup);
-    setSent(true);
+    setPendingRequests(prev => [...prev, group ? group.name : toGroup]);
+    const next = availableTo.find(g => String(g.id) !== String(toGroup));
+    setToGroup(next ? next.id : '');
   }
 
   if (loading) return <p className="text-xs text-gray-500">Loading…</p>;
@@ -2080,13 +2080,13 @@ function StudentChangeGroupPanel({ lang }) {
         }
       </div>
       {err && <p className="text-red-400 text-xs">{err}</p>}
-      {sent
-        ? <p className="text-yellow-400 text-sm">⏳ {lang === 'GEO' ? `მოთხოვნა განხილვაშია: ${pendingGroup}` : `Request pending: ${pendingGroup} — waiting for admin approval`}</p>
-        : <button onClick={submit} disabled={!toGroup || availableTo.length === 0}
-            className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
-            {lang === 'GEO' ? 'მოთხოვნის გაგზავნა' : 'Submit Request'}
-          </button>
-      }
+      {pendingRequests.map((name, i) => (
+        <p key={i} className="text-yellow-400 text-xs">⏳ {lang === 'GEO' ? `განხილვაშია: ${name}` : `Pending: ${name}`}</p>
+      ))}
+      <button onClick={submit} disabled={!toGroup || availableTo.length === 0}
+          className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
+        {lang === 'GEO' ? 'მოთხოვნის გაგზავნა' : 'Submit Request'}
+      </button>
     </div>
   );
 }
@@ -2187,8 +2187,7 @@ function StudentAddSubjectPanel({ lang }) {
 function StudentRemoveSubjectPanel({ lang }) {
   const [enrolled, setEnrolled] = useState([]);
   const [checked, setChecked] = useState([]);
-  const [sent, setSent] = useState(false);
-  const [pendingNames, setPendingNames] = useState('');
+  const [pendingRequests, setPendingRequests] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -2220,8 +2219,7 @@ function StudentRemoveSubjectPanel({ lang }) {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ group_ids: groupIds })
     });
-    setPendingNames(checked.join(', '));
-    setSent(true);
+    setPendingRequests(prev => [...prev, ...checked]);
     setChecked([]);
   }
 
@@ -2237,12 +2235,12 @@ function StudentRemoveSubjectPanel({ lang }) {
           </label>
         ))}
       </div>
-      {sent
-        ? <p className="text-yellow-400 text-sm">⏳ {lang === 'GEO' ? `მოთხოვნა განხილვაშია: ${pendingNames}` : `Request pending: ${pendingNames} — waiting for admin approval`}</p>
-        : <button onClick={submit} disabled={!checked.length} className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
-            {lang === 'GEO' ? 'მოთხოვნის გაგზავნა' : 'Submit Request'}
-          </button>
-      }
+      {pendingRequests.map((name, i) => (
+        <p key={i} className="text-yellow-400 text-xs">⏳ {lang === 'GEO' ? `განხილვაშია: ${name}` : `Pending: ${name}`}</p>
+      ))}
+      <button onClick={submit} disabled={!checked.length} className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
+        {lang === 'GEO' ? 'მოთხოვნის გაგზავნა' : 'Submit Request'}
+      </button>
     </div>
   );
 }
