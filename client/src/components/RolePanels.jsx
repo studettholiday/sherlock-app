@@ -1887,8 +1887,13 @@ function StudentNotesPanel({ lang }) {
   const [checklist, setChecklist] = useState(false);
   const [newItem, setNewItem] = useState('');
   const [saving, setSaving] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
   const [previewImg, setPreviewImg] = useState(null);
+  const [histState, setHistState] = useState({ canUndo: false, canRedo: false });
   const imgInputRef = useRef(null);
+  const origRef = useRef({ title: '', content: '', images: [] });
+  const histRef = useRef({ stack: [], idx: -1 });
+  const debounceRef = useRef(null);
 
   const tk = () => localStorage.getItem('sherlock_token');
 
@@ -1903,6 +1908,30 @@ function StudentNotesPanel({ lang }) {
 
   useEffect(() => { reload().then(() => setLoading(false)).catch(() => setLoading(false)); }, []);
 
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (view !== 'new' && view !== 'edit') return;
+      if (e.ctrlKey && !e.shiftKey && e.key === 'z') {
+        e.preventDefault();
+        const h = histRef.current;
+        if (h.idx <= 0) return;
+        h.idx--;
+        setContentDraft(h.stack[h.idx]);
+        setHistState({ canUndo: h.idx > 0, canRedo: h.idx < h.stack.length - 1 });
+      }
+      if (e.ctrlKey && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {
+        e.preventDefault();
+        const h = histRef.current;
+        if (h.idx >= h.stack.length - 1) return;
+        h.idx++;
+        setContentDraft(h.stack[h.idx]);
+        setHistState({ canUndo: h.idx > 0, canRedo: h.idx < h.stack.length - 1 });
+      }
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [view]);
+
   const filtered = notes.filter(n => {
     const q = searchQ.toLowerCase();
     const matchQ = !q || (n.title || '').toLowerCase().includes(q) || n.content.toLowerCase().includes(q);
@@ -1911,19 +1940,61 @@ function StudentNotesPanel({ lang }) {
   });
 
   function openNew() {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     setView('new'); setEditing(null);
     setTitleDraft(''); setContentDraft(''); setLabelDraft('');
     setImages([]); setChecklist(false); setNewItem('');
+    origRef.current = { title: '', content: '', images: [] };
+    histRef.current = { stack: [], idx: -1 };
+    setHistState({ canUndo: false, canRedo: false });
   }
   function openEdit(n) {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     setView('edit'); setEditing(n);
     setTitleDraft(n.title || ''); setContentDraft(n.content || '');
     setLabelDraft(n.label_id ? String(n.label_id) : '');
-    setImages(parseImages(n.image_url));
+    const imgs = parseImages(n.image_url);
+    setImages(imgs);
     const isChecklist = (n.content || '').split('\n').some(l => l.startsWith('[ ] ') || l.startsWith('[x] '));
     setChecklist(isChecklist); setNewItem('');
+    origRef.current = { title: n.title || '', content: n.content || '', images: imgs };
+    histRef.current = { stack: [n.content || ''], idx: 0 };
+    setHistState({ canUndo: false, canRedo: false });
   }
-  function backToList() { setView('list'); setEditing(null); setImages([]); setChecklist(false); setPreviewImg(null); }
+  function backToList() { setView('list'); setEditing(null); setImages([]); setChecklist(false); setPreviewImg(null); setSavedFlash(false); }
+
+  function hasChanges() {
+    const orig = origRef.current;
+    return titleDraft !== orig.title || contentDraft !== orig.content || JSON.stringify(images) !== JSON.stringify(orig.images);
+  }
+
+  function handleContentChange(val) {
+    setContentDraft(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      const h = histRef.current;
+      const newStack = [...h.stack.slice(0, h.idx + 1), val].slice(-50);
+      h.stack = newStack;
+      h.idx = newStack.length - 1;
+      setHistState({ canUndo: h.idx > 0, canRedo: false });
+    }, 500);
+  }
+
+  function undo() {
+    const h = histRef.current;
+    if (h.idx <= 0) return;
+    h.idx--;
+    setContentDraft(h.stack[h.idx]);
+    setHistState({ canUndo: h.idx > 0, canRedo: h.idx < h.stack.length - 1 });
+  }
+
+  function redo() {
+    const h = histRef.current;
+    if (h.idx >= h.stack.length - 1) return;
+    h.idx++;
+    setContentDraft(h.stack[h.idx]);
+    setHistState({ canUndo: h.idx > 0, canRedo: h.idx < h.stack.length - 1 });
+  }
 
   function pickImage(e) {
     const file = e.target.files?.[0];
@@ -1966,7 +2037,7 @@ function StudentNotesPanel({ lang }) {
     setNewItem('');
   }
 
-  async function save() {
+  async function saveNote() {
     if (!contentDraft.trim()) return;
     setSaving(true);
     const body = { title: titleDraft.trim() || null, content: contentDraft, label_id: labelDraft ? parseInt(labelDraft) : null, image_url: images.length ? JSON.stringify(images) : null };
@@ -1977,6 +2048,19 @@ function StudentNotesPanel({ lang }) {
     }
     setSaving(false);
     await reload();
+  }
+
+  async function save() {
+    await saveNote();
+    backToList();
+  }
+
+  async function handleBack() {
+    if (hasChanges() && contentDraft.trim()) {
+      await saveNote();
+      setSavedFlash(true);
+      await new Promise(r => setTimeout(r, 700));
+    }
     backToList();
   }
 
@@ -1998,7 +2082,10 @@ function StudentNotesPanel({ lang }) {
             <button onClick={() => setPreviewImg(null)} style={{position:'absolute',top:20,right:20,background:'rgba(255,255,255,0.1)',border:'none',color:'white',fontSize:24,cursor:'pointer',borderRadius:'50%',width:40,height:40}}>✕</button>
           </div>
         )}
-        <button onClick={backToList} className="text-xs text-violet-400 hover:text-violet-300 transition-colors">← {lang === 'GEO' ? 'უკან' : 'Back'}</button>
+        <div className="flex items-center gap-2">
+          <button onClick={handleBack} className="text-xs text-violet-400 hover:text-violet-300 transition-colors">← {lang === 'GEO' ? 'უკან' : 'Back'}</button>
+          {savedFlash && <span className="text-xs text-green-400">✓ {lang === 'GEO' ? 'შენახულია' : 'Saved'}</span>}
+        </div>
         <input value={titleDraft} onChange={e => setTitleDraft(e.target.value)}
           placeholder={lang === 'GEO' ? 'სათაური...' : 'Title…'} className={INPUT_SM} />
 
@@ -2042,7 +2129,7 @@ function StudentNotesPanel({ lang }) {
             </div>
           </div>
         ) : (
-          <textarea rows={7} value={contentDraft} onChange={e => setContentDraft(e.target.value)}
+          <textarea rows={7} value={contentDraft} onChange={e => handleContentChange(e.target.value)}
             placeholder={lang === 'GEO' ? 'შინაარსი...' : 'Content…'}
             className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-white/80 placeholder-white/20 focus:outline-none focus:border-white/25 resize-none" />
         )}
@@ -2065,6 +2152,12 @@ function StudentNotesPanel({ lang }) {
           <button onClick={toggleChecklist}
             className={`rounded-lg border px-2.5 py-1.5 text-sm transition-colors ${checklist ? 'border-violet-500/50 bg-violet-500/10 text-violet-400' : 'border-white/10 bg-white/[0.04] hover:bg-white/[0.08]'}`}
             title={lang === 'GEO' ? 'სია' : 'Checklist'}>☑️</button>
+          <button onClick={undo} disabled={!histState.canUndo}
+            className="rounded-lg border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-30 px-2.5 py-1.5 text-sm transition-colors"
+            title="Undo (Ctrl+Z)">↩</button>
+          <button onClick={redo} disabled={!histState.canRedo}
+            className="rounded-lg border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] disabled:opacity-30 px-2.5 py-1.5 text-sm transition-colors"
+            title="Redo (Ctrl+Y)">↪</button>
           <div className="flex-1" />
           <button onClick={save} disabled={!contentDraft.trim() || saving}
             className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-1.5 text-xs text-white font-medium transition-colors">
