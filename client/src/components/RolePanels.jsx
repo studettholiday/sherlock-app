@@ -544,8 +544,14 @@ function PendingRegistrationsPanel({ lang }) {
               <p className="text-xs text-gray-400 truncate flex items-center gap-1.5 flex-wrap">
                 {r.subject_name && <span className="text-violet-400">{r.subject_name} — </span>}
                 {r.group_name}
-                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 ${r.request_type === 'remove' ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                  {r.request_type === 'remove' ? (lang === 'GEO' ? 'წაშლა' : 'Remove') : (lang === 'GEO' ? 'დამატება' : 'Add')}
+                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                  r.request_type === 'remove' ? 'bg-red-500/20 text-red-400' :
+                  r.request_type === 'change' ? 'bg-yellow-500/20 text-yellow-400' :
+                  'bg-emerald-500/20 text-emerald-400'
+                }`}>
+                  {r.request_type === 'remove' ? (lang === 'GEO' ? 'წაშლა სურს' : 'Wants to remove') :
+                   r.request_type === 'change' ? (lang === 'GEO' ? 'შეცვლა სურს' : 'Wants to change') :
+                   (lang === 'GEO' ? 'დამატება სურს' : 'Wants to add')}
                 </span>
               </p>
               {r.schedule_times?.length > 0 && (
