@@ -1437,29 +1437,19 @@ function TeachersPanel({ role, lang, allMembers, onMembersRefresh }) { return <M
 
 // ─── Teacher panels ───────────────────────────────────────────────────────────
 
-function MySchedulePanel({ lang }) {
+function MySchedulePanel({ lang, token }) {
   const [rows, setRows] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const DAYS_GEO = {0:'ორშაბათი',1:'სამშაბათი',2:'ოთხშაბათი',3:'ხუთშაბათი',4:'პარასკევი',5:'შაბათი',6:'კვირა'};
   const DAYS_EN = {0:'Monday',1:'Tuesday',2:'Wednesday',3:'Thursday',4:'Friday',5:'Saturday',6:'Sunday'};
 
   React.useEffect(() => {
-    let attempts = 0;
-    const tryFetch = () => {
-      const token = localStorage.getItem('sherlock_token');
-      if (!token && attempts < 10) {
-        attempts++;
-        setTimeout(tryFetch, 500);
-        return;
-      }
-      if (!token) { setLoading(false); return; }
-      fetch('/api/school/my-schedule', { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => r.json())
-        .then(d => { setRows(d.schedule || []); setLoading(false); })
-        .catch(() => setLoading(false));
-    };
-    tryFetch();
-  }, []);
+    if (!token) { setLoading(false); return; }
+    fetch('/api/school/my-schedule', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => { setRows(d.schedule || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [token]);
 
   if (loading) return React.createElement('p', {className: 'text-xs text-gray-500'}, 'Loading...');
   if (!rows.length) return React.createElement('p', {className: 'text-xs text-gray-500'}, lang === 'GEO' ? 'განრიგი ცარიელია.' : 'No schedule yet.');
@@ -2224,7 +2214,7 @@ function panelContent(role, panel, libraryProps, lang, allMembers, onMembersRefr
     case 'admin-announce':
     case 'announce':        return <AnnouncePanel role={role} lang={lang} />;
     case 'invite':          return <InvitePanel role={role} lang={lang} />;
-    case 'my-schedule':     return <MySchedulePanel lang={lang} />;
+    case 'my-schedule':     return <MySchedulePanel lang={lang} token={localStorage.getItem('sherlock_token')} />;
     case 'my-groups':       return <MyGroupsPanel lang={lang} />;
     case 'share-files':       return <TeacherShareFilesPanel lang={lang} />;
     case 'knowledge-library': return <KnowledgeLibraryPanel role={role} lang={lang} {...(libraryProps ?? {})} />;
