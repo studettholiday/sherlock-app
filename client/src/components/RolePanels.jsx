@@ -2034,13 +2034,16 @@ function StudentChangeGroupPanel({ lang }) {
   const availableTo = fromGroup ? allGroups.filter(g => g.subject_id === fromGroup.subject_id && g.id !== fromGroup.group_id) : [];
 
   async function submit() {
+    console.log('submit clicked');
     if (!toGroup) return;
     const token = localStorage.getItem('sherlock_token');
-    await fetch('/api/school/web-registrations', {
+    console.log('before fetch /api/school/web-registrations', { group_id: toGroup, token: token ? 'present' : 'missing' });
+    const res = await fetch('/api/school/web-registrations', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ group_id: toGroup })
     });
+    console.log('after fetch status:', res.status);
     setSent(true);
     setTimeout(() => setSent(false), 3000);
   }
