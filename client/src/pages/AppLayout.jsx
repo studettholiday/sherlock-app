@@ -329,7 +329,8 @@ function LeftColumn({ members, membersLoading, onMembersRefresh }) {
         </button>
       </div>
 
-      {/* Scrollable content */}
+      {/* Scrollable content — hidden entirely for students */}
+      {user?.role !== 'student' && (
       <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px' }}>
         {(dataLoading || membersLoading) ? (
           <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 40 }}>
@@ -476,6 +477,7 @@ function LeftColumn({ members, membersLoading, onMembersRefresh }) {
           </>
         )}
       </div>
+      )} {/* end student hide */}
 
       {/* Members modal */}
       {memberModal && (() => {
