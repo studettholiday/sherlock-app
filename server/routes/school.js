@@ -612,7 +612,7 @@ router.get('/notes', authMiddleware, async (req, res) => {
     let query = `SELECT n.*, l.name AS label_name, l.color AS label_color
       FROM student_notes n
       LEFT JOIN student_labels l ON n.label_id = l.id
-      WHERE n.user_id = $1 AND n.school_id = $2`;
+      WHERE n.user_id = $1 AND n.school_id = $2 AND n.deleted_at IS NULL`;
     const params = [req.user.userId, req.user.schoolId];
     if (label_id) { params.push(label_id); query += ` AND n.label_id = $${params.length}`; }
     if (q) { params.push(`%${q}%`); query += ` AND (n.title ILIKE $${params.length} OR n.content ILIKE $${params.length})`; }
@@ -658,7 +658,7 @@ router.patch('/notes/:id', authMiddleware, async (req, res) => {
 
 router.delete('/notes/:id', authMiddleware, async (req, res) => {
   try {
-    await getPool().query('DELETE FROM student_notes WHERE id = $1 AND user_id = $2', [req.params.id, req.user.userId]);
+    await getPool().query('UPDATE student_notes SET deleted_at = NOW() WHERE id = $1 AND user_id = $2', [req.params.id, req.user.userId]);
     res.json({ success: true });
   } catch (err) {
     console.error('[notes] DELETE error:', err.message);
@@ -674,7 +674,7 @@ router.get('/notes/diary', authMiddleware, async (req, res) => {
     let query = `SELECT d.*, l.name AS label_name, l.color AS label_color
       FROM student_diary d
       LEFT JOIN student_labels l ON d.label_id = l.id
-      WHERE d.user_id = $1 AND d.school_id = $2`;
+      WHERE d.user_id = $1 AND d.school_id = $2 AND d.deleted_at IS NULL`;
     const params = [req.user.userId, req.user.schoolId];
     if (label_id) { params.push(label_id); query += ` AND d.label_id = $${params.length}`; }
     if (q) { params.push(`%${q}%`); query += ` AND (d.practiced ILIKE $${params.length} OR d.goal ILIKE $${params.length})`; }
@@ -720,10 +720,53 @@ router.patch('/notes/diary/:id', authMiddleware, async (req, res) => {
 
 router.delete('/notes/diary/:id', authMiddleware, async (req, res) => {
   try {
-    await getPool().query('DELETE FROM student_diary WHERE id = $1 AND user_id = $2', [req.params.id, req.user.userId]);
+    await getPool().query('UPDATE student_diary SET deleted_at = NOW() WHERE id = $1 AND user_id = $2', [req.params.id, req.user.userId]);
     res.json({ success: true });
   } catch (err) {
     console.error('[notes/diary] DELETE error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// --- Notes: Trash ---
+
+router.get('/notes/trash', authMiddleware, async (req, res) => {
+  try {
+    const result = await getPool().query(`
+      SELECT id, title, content, image_url, 'note' AS type, deleted_at FROM student_notes
+      WHERE user_id = $1 AND deleted_at > NOW() - INTERVAL '24 hours'
+      UNION ALL
+      SELECT id, NULL AS title, practiced AS content, image_url, 'diary' AS type, deleted_at FROM student_diary
+      WHERE user_id = $1 AND deleted_at > NOW() - INTERVAL '24 hours'
+      ORDER BY deleted_at DESC
+    `, [req.user.userId]);
+    res.json({ items: result.rows });
+  } catch (err) {
+    console.error('[notes/trash] GET error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/notes/trash/:id/restore', authMiddleware, async (req, res) => {
+  const { type } = req.query;
+  const table = type === 'diary' ? 'student_diary' : 'student_notes';
+  try {
+    await getPool().query(`UPDATE ${table} SET deleted_at = NULL WHERE id = $1 AND user_id = $2`, [req.params.id, req.user.userId]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[notes/trash] restore error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.delete('/notes/trash/:id/permanent', authMiddleware, async (req, res) => {
+  const { type } = req.query;
+  const table = type === 'diary' ? 'student_diary' : 'student_notes';
+  try {
+    await getPool().query(`DELETE FROM ${table} WHERE id = $1 AND user_id = $2`, [req.params.id, req.user.userId]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[notes/trash] permanent delete error:', err.message);
     res.status(500).json({ error: 'Server error' });
   }
 });

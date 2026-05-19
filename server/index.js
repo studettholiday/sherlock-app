@@ -24,6 +24,11 @@ async function runMigrations() {
       ALTER TABLE student_diary ADD COLUMN IF NOT EXISTS image_url TEXT;
     `);
     console.log('[startup] migration 011 complete');
+    await pool.query(`
+      ALTER TABLE student_notes ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+      ALTER TABLE student_diary ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+    `);
+    console.log('[startup] migration 012 complete');
   } catch (e) {
     console.error('[startup] migration error:', e.message);
   } finally {

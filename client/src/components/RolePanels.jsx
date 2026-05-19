@@ -1888,10 +1888,12 @@ function StudentNotesPanel({ lang }) {
   const [newItem, setNewItem] = useState('');
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [trashMsg, setTrashMsg] = useState(false);
   const [previewImg, setPreviewImg] = useState(null);
   const imgInputRef = useRef(null);
   const origRef = useRef({ title: '', content: '', images: [] });
   const debounceRef = useRef(null);
+  const trashRef = useRef(null);
 
   const tk = () => localStorage.getItem('sherlock_token');
 
@@ -2008,8 +2010,20 @@ function StudentNotesPanel({ lang }) {
 
   async function del(id) {
     await fetch(`/api/school/notes/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${tk()}` } });
+    trashRef.current = { id, type: 'note' };
     await reload();
     backToList();
+    setTrashMsg(true);
+    setTimeout(() => setTrashMsg(false), 5000);
+  }
+
+  async function undoTrash() {
+    if (!trashRef.current) return;
+    const { id, type } = trashRef.current;
+    await fetch(`/api/school/notes/trash/${id}/restore?type=${type}`, { method: 'POST', headers: { Authorization: `Bearer ${tk()}` } });
+    trashRef.current = null;
+    setTrashMsg(false);
+    await reload();
   }
 
   if (loading) return <p className="text-xs text-gray-500">Loading…</p>;
@@ -2129,6 +2143,14 @@ function StudentNotesPanel({ lang }) {
           + {lang === 'GEO' ? 'ახალი' : 'New'}
         </button>
       </div>
+      {trashMsg && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', color: 'rgba(255,255,255,0.65)' }}>
+          <span>{lang === 'GEO' ? 'კალათაში გადაიტანა' : 'Moved to Trash'}</span>
+          <button onClick={undoTrash} style={{ marginLeft: 'auto', color: '#a78bfa', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, padding: 0 }}>
+            {lang === 'GEO' ? 'გაუქმება' : 'Undo'}
+          </button>
+        </div>
+      )}
       {labels.length > 0 && (
         <select value={labelFilter} onChange={e => setLabelFilter(e.target.value)}
           style={SELECT_DARK} className={INPUT_SM}>
@@ -2187,8 +2209,10 @@ function StudentPracticeDiaryPanel({ lang }) {
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [trashMsg, setTrashMsg] = useState(false);
   const [previewImg, setPreviewImg] = useState(null);
   const imgInputRef = useRef(null);
+  const trashRef = useRef(null);
 
   const tk = () => localStorage.getItem('sherlock_token');
 
@@ -2279,6 +2303,18 @@ function StudentPracticeDiaryPanel({ lang }) {
 
   async function del(id) {
     await fetch(`/api/school/notes/diary/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${tk()}` } });
+    trashRef.current = { id, type: 'diary' };
+    await reload();
+    setTrashMsg(true);
+    setTimeout(() => setTrashMsg(false), 5000);
+  }
+
+  async function undoTrash() {
+    if (!trashRef.current) return;
+    const { id, type } = trashRef.current;
+    await fetch(`/api/school/notes/trash/${id}/restore?type=${type}`, { method: 'POST', headers: { Authorization: `Bearer ${tk()}` } });
+    trashRef.current = null;
+    setTrashMsg(false);
     await reload();
   }
 
@@ -2302,6 +2338,14 @@ function StudentPracticeDiaryPanel({ lang }) {
           </button>
         )}
       </div>
+      {trashMsg && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '8px', padding: '8px 12px', fontSize: '12px', color: 'rgba(255,255,255,0.65)' }}>
+          <span>{lang === 'GEO' ? 'კალათაში გადაიტანა' : 'Moved to Trash'}</span>
+          <button onClick={undoTrash} style={{ marginLeft: 'auto', color: '#a78bfa', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600, padding: 0 }}>
+            {lang === 'GEO' ? 'გაუქმება' : 'Undo'}
+          </button>
+        </div>
+      )}
       {labels.length > 0 && (
         <select value={labelFilter} onChange={e => setLabelFilter(e.target.value)}
           style={SELECT_DARK} className={INPUT_SM}>
@@ -2517,6 +2561,60 @@ function StudentLabelsPanel({ lang }) {
           }
         </div>
       )}
+    </div>
+  );
+}
+
+function StudentTrashPanel({ lang }) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const tk = () => localStorage.getItem('sherlock_token');
+
+  async function reload() {
+    const d = await fetch('/api/school/notes/trash', { headers: { Authorization: `Bearer ${tk()}` } }).then(r => r.json());
+    setItems(d.items || []);
+  }
+
+  useEffect(() => { reload().then(() => setLoading(false)).catch(() => setLoading(false)); }, []);
+
+  async function restore(id, type) {
+    await fetch(`/api/school/notes/trash/${id}/restore?type=${type}`, { method: 'POST', headers: { Authorization: `Bearer ${tk()}` } });
+    await reload();
+  }
+
+  async function deletePermanent(id, type) {
+    await fetch(`/api/school/notes/trash/${id}/permanent?type=${type}`, { method: 'DELETE', headers: { Authorization: `Bearer ${tk()}` } });
+    await reload();
+  }
+
+  if (loading) return <p className="text-xs text-gray-500">Loading…</p>;
+
+  return (
+    <div className="space-y-3">
+      <p className="text-[11px] text-gray-500">{lang === 'GEO' ? 'ელემენტები 24 საათის შემდეგ სამუდამოდ წაიშლება.' : 'Items are permanently deleted after 24 hours.'}</p>
+      {items.length === 0
+        ? <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'კალათა ცარიელია.' : 'Trash is empty.'}</p>
+        : items.map(item => (
+          <div key={`${item.type}-${item.id}`} className="flex items-start gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
+            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium flex-shrink-0 mt-0.5 ${item.type === 'diary' ? 'bg-blue-500/20 text-blue-300' : 'bg-violet-500/20 text-violet-300'}`}>
+              {item.type === 'diary' ? (lang === 'GEO' ? 'დღიური' : 'Diary') : (lang === 'GEO' ? 'ჩანაწერი' : 'Note')}
+            </span>
+            <div className="flex-1 min-w-0">
+              {item.title && <p className="text-xs text-white font-medium truncate">{item.title}</p>}
+              {item.content && <p className="text-xs text-gray-400 overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{item.content}</p>}
+              <p className="text-[10px] text-gray-500 mt-1">{new Date(item.deleted_at).toLocaleString()}</p>
+            </div>
+            <div className="flex flex-col gap-1 flex-shrink-0 items-end">
+              <button onClick={() => restore(item.id, item.type)} className="text-[11px] text-violet-400 hover:text-violet-300 transition-colors">
+                {lang === 'GEO' ? 'აღდგენა' : 'Restore'}
+              </button>
+              <button onClick={() => deletePermanent(item.id, item.type)} className="text-[11px] text-red-400 hover:text-red-300 transition-colors">
+                {lang === 'GEO' ? 'წაშლა' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        ))
+      }
     </div>
   );
 }
@@ -3118,6 +3216,7 @@ function panelContent(role, panel, libraryProps, lang, allMembers, onMembersRefr
     case 'notes':           return <StudentNotesPanel lang={lang} />;
     case 'practice-diary':  return <StudentPracticeDiaryPanel lang={lang} />;
     case 'labels':          return <StudentLabelsPanel lang={lang} />;
+    case 'trash':           return <StudentTrashPanel lang={lang} />;
     case 'report-absence':        return <StudentReportAbsencePanel lang={lang} />;
     case 'report-event-absence':  return <StudentReportEventAbsencePanel lang={lang} />;
     case 'report-exam-absence':   return <StudentReportExamAbsencePanel lang={lang} />;
