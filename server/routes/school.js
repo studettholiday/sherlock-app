@@ -356,6 +356,14 @@ router.post('/web-registrations', authMiddleware, async (req, res) => {
   }
   const pool = getPool();
   try {
+    const countRes = await pool.query(
+      "SELECT COUNT(*) FROM web_registrations WHERE user_id = $1 AND status = 'pending'",
+      [req.user.userId]
+    );
+    const pendingCount = parseInt(countRes.rows[0].count, 10);
+    if (pendingCount + ids.length > 3) {
+      return res.status(429).json({ error: 'Maximum 3 pending requests allowed' });
+    }
     for (const groupId of ids) {
       const dup = await pool.query(
         "SELECT id FROM web_registrations WHERE user_id = $1 AND group_id = $2 AND status = 'approved'",
@@ -364,11 +372,14 @@ router.post('/web-registrations', authMiddleware, async (req, res) => {
       if (dup.rows.length) {
         return res.status(409).json({ error: 'Already enrolled in this group' });
       }
+      const pendingDup = await pool.query(
+        "SELECT id FROM web_registrations WHERE user_id = $1 AND group_id = $2 AND status = 'pending'",
+        [req.user.userId, groupId]
+      );
+      if (pendingDup.rows.length) {
+        return res.status(409).json({ error: 'Request already pending for this group' });
+      }
     }
-    await pool.query(
-      "DELETE FROM web_registrations WHERE user_id = $1 AND status = 'pending'",
-      [req.user.userId]
-    );
     for (const groupId of ids) {
       await pool.query(
         'INSERT INTO web_registrations (user_id, group_id, school_id, status, request_type) VALUES ($1, $2, $3, $4, $5)',
