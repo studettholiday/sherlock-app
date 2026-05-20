@@ -160,7 +160,7 @@ const BUTTON_GROUPS = {
     { id: 'events',    label: 'Events'     },
     { id: 'plan',      label: '📋 Plan',      children: [{ id: 'change-group', label: 'Change Group' }, { id: 'remove-subject', label: 'Remove Group' }, { id: 'add-subject', label: 'Add Subject' }] },
     { id: 'my-notes',  label: '📓 My Notes',  children: [{ id: 'notes', label: 'Notes' }, { id: 'practice-diary', label: 'Practice Diary' }, { id: 'labels', label: 'Labels' }, { id: 'trash', label: '🗑 Trash' }] },
-    { id: 'report',    label: '⚠️ Report',    children: [{ id: 'report-absence', label: 'Lesson Absence' }, { id: 'report-event-absence', label: 'Report Event Absence' }, { id: 'report-exam-absence', label: 'Report Exam Absence' }] },
+    { id: 'report',    label: '⚠️ Report',    children: [{ id: 'report-absence', label: 'Lesson Absence' }] },
   ],
 };
 
@@ -188,7 +188,7 @@ const GEO_BUTTON_GROUPS = {
     { id: 'events',   label: 'ღონისძიებები' },
     { id: 'plan',     label: '📋 გეგმა',            children: [{ id: 'change-group', label: 'ჯგუფის შეცვლა' }, { id: 'add-subject', label: 'საგნის დამატება' }, { id: 'remove-subject', label: 'ჯგუფის წაშლა' }] },
     { id: 'my-notes', label: '📓 ჩემი ჩანაწერები',  children: [{ id: 'notes', label: 'ჩანაწერები' }, { id: 'practice-diary', label: 'პრაქტიკის დღიური' }, { id: 'labels', label: 'ლეიბლები' }, { id: 'trash', label: '🗑 კალათი' }] },
-    { id: 'report',    label: '⚠️ გაცდენა',           children: [{ id: 'report-absence', label: 'გაკვეთილის გაცდენა' }, { id: 'report-event-absence', label: 'ღონისძიების გაცდენა' }, { id: 'report-exam-absence', label: 'გამოცდის გაცდენა' }] },
+    { id: 'report',    label: '⚠️ გაცდენა',           children: [{ id: 'report-absence', label: 'გაკვეთილის გაცდენა' }] },
   ],
 };
 

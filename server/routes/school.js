@@ -784,53 +784,87 @@ router.delete('/notes/trash/:id/permanent', authMiddleware, async (req, res) => 
   }
 });
 
-// --- Absences ---
+// --- Absence Reports ---
 
-router.post('/absences', authMiddleware, async (req, res) => {
-  const { group_id, date, time, reason, type } = req.body;
-  if (!date || !reason || !type) return res.status(400).json({ error: 'date, reason, and type are required' });
-  if (!['lesson', 'event', 'exam'].includes(type)) return res.status(400).json({ error: 'Invalid type' });
+// Student's enrolled groups + their scheduled lesson days, for the report form
+router.get('/my-groups-for-report', authMiddleware, async (req, res) => {
+  try {
+    const result = await getPool().query(
+      `SELECT g.id AS group_id, g.name AS group_name,
+              COALESCE(
+                (SELECT array_agg(DISTINCT sc.day_of_week)
+                 FROM schedule sc
+                 WHERE sc.group_id = g.id AND sc.day_of_week IS NOT NULL),
+                ARRAY[]::text[]
+              ) AS lesson_days
+       FROM web_registrations wr
+       JOIN groups g ON wr.group_id = g.id
+       WHERE wr.user_id = $1 AND wr.school_id = $2 AND wr.status = 'approved'
+       GROUP BY g.id, g.name
+       ORDER BY g.name ASC`,
+      [req.user.userId, req.user.schoolId]
+    );
+    res.json({ groups: result.rows });
+  } catch (err) {
+    console.error('[my-groups-for-report] GET error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Upcoming events for this school (today onward)
+router.get('/upcoming-events', authMiddleware, async (req, res) => {
+  try {
+    const result = await getPool().query(
+      `SELECT id, name, to_char(event_date, 'YYYY-MM-DD') AS event_date, event_time, place
+       FROM events
+       WHERE school_id = $1 AND event_date >= CURRENT_DATE
+       ORDER BY event_date ASC`,
+      [req.user.schoolId]
+    );
+    res.json({ events: result.rows });
+  } catch (err) {
+    console.error('[upcoming-events] GET error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Student submits an absence report; notifies all school staff
+router.post('/absence-report', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'student') return res.status(403).json({ error: 'Forbidden' });
+  const { group_id, lesson_day, reason } = req.body;
+  if (!group_id) return res.status(400).json({ error: 'group_id is required' });
+  if (!reason || !reason.trim()) return res.status(400).json({ error: 'reason is required' });
   const pool = getPool();
   try {
     const userRow = await pool.query('SELECT name FROM users WHERE id = $1', [req.user.userId]);
     const studentName = userRow.rows[0]?.name || 'A student';
 
     await pool.query(
-      'INSERT INTO absences (user_id, school_id, group_id, type, date, time, reason) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-      [req.user.userId, req.user.schoolId, group_id || null, type, date, time || null, reason]
+      `INSERT INTO absence_reports (school_id, student_id, type, group_id, lesson_day, reason)
+       VALUES ($1, $2, 'lesson', $3, $4, $5)`,
+      [req.user.schoolId, req.user.userId, group_id, lesson_day || null, reason.trim()]
     );
 
-    let recipients = [];
-    let message = '';
+    // Human-readable description of what was missed, for the notification
+    const gr = await pool.query('SELECT name FROM groups WHERE id = $1 AND school_id = $2', [group_id, req.user.schoolId]);
+    const groupName = gr.rows[0]?.name || '';
+    const info = `Lesson${groupName ? `: ${groupName}` : ''}${lesson_day ? ` on ${lesson_day}` : ''}`;
+    const message = `⚠️ ${studentName} reported a lesson absence. ${info}. Reason: ${reason.trim()}`;
 
-    if (type === 'lesson') {
-      let groupName = 'group';
-      if (group_id) {
-        const gr = await pool.query('SELECT name FROM groups WHERE id = $1', [group_id]);
-        groupName = gr.rows[0]?.name || groupName;
-      }
-      const timeStr = time ? ` at ${time}` : '';
-      message = `Student ${studentName} will miss ${groupName} on ${date}${timeStr}. Reason: ${reason}`;
-    } else {
-      const typeLabel = type === 'exam' ? 'exam' : 'event';
-      message = `Student ${studentName} will miss ${typeLabel} on ${date}. Reason: ${reason}`;
-    }
-    const rows = await pool.query(
-      `SELECT id FROM users WHERE school_id = $1 AND role IN ('teacher', 'assistant')`,
+    const staff = await pool.query(
+      "SELECT id FROM users WHERE school_id = $1 AND role IN ('admin', 'teacher', 'assistant')",
       [req.user.schoolId]
     );
-    recipients = rows.rows.map(r => r.id);
-
-    await Promise.all(recipients.map(recipientId =>
+    await Promise.all(staff.rows.map(u =>
       pool.query(
-        'INSERT INTO notifications (recipient_id, school_id, type, message) VALUES ($1,$2,$3,$4)',
-        [recipientId, req.user.schoolId, `absence_${type}`, message]
+        'INSERT INTO notifications (recipient_id, school_id, type, message) VALUES ($1, $2, $3, $4)',
+        [u.id, req.user.schoolId, 'absence_lesson', message]
       )
     ));
 
     res.json({ success: true });
   } catch (err) {
-    console.error('[absences] POST error:', err.message);
+    console.error('[absence-report] POST error:', err.message);
     res.status(500).json({ error: 'Server error' });
   }
 });

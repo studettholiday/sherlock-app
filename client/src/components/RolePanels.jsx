@@ -138,8 +138,6 @@ const PANEL_TITLES = {
   'view-events':           'View Events',
   'add-event':             'Add Event',
   'delete-event':          'Delete Event',
-  'report-event-absence':  'Report Event Absence',
-  'report-exam-absence':   'Report Exam Absence',
   'share-files':           'Share Files',
   'knowledge-library':     'Knowledge Library',
   'notes-box':             'Notes Box',
@@ -175,8 +173,6 @@ const GEO_PANEL_TITLES = {
   'view-events':           'ღონისძიებების ნახვა',
   'add-event':             'ღონისძიების დამატება',
   'delete-event':          'ღონისძიების წაშლა',
-  'report-event-absence':  'ღონისძიებაზე გამოუცხადებლობა',
-  'report-exam-absence':   'გამოცდაზე გამოუცხადებლობა',
   'share-files':           'ფაილების გაზიარება',
   'knowledge-library':     'ცოდნის ბიბლიოთეკა',
   'notes-box':             'ჩანაწერების ყუთი',
@@ -2825,11 +2821,10 @@ function StudentTrashPanel({ lang }) {
   );
 }
 
-function StudentReportAbsencePanel({ lang }) {
+function LessonAbsenceForm({ lang }) {
   const [groups, setGroups] = useState([]);
   const [groupId, setGroupId] = useState('');
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
+  const [lessonDay, setLessonDay] = useState('');
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -2837,139 +2832,72 @@ function StudentReportAbsencePanel({ lang }) {
   const tk = () => localStorage.getItem('sherlock_token');
 
   useEffect(() => {
-    fetch('/api/school/my-schedule', { headers: { Authorization: `Bearer ${tk()}` } })
+    fetch('/api/school/my-groups-for-report', { headers: { Authorization: `Bearer ${tk()}` } })
       .then(r => r.json())
       .then(d => {
-        const seen = new Set();
-        const unique = (d.schedule || []).filter(g => {
-          if (seen.has(g.group_id)) return false;
-          seen.add(g.group_id); return true;
-        });
-        setGroups(unique);
-        if (unique.length) setGroupId(String(unique[0].group_id));
+        const gs = d.groups || [];
+        setGroups(gs);
+        if (gs.length) {
+          setGroupId(String(gs[0].group_id));
+          setLessonDay(gs[0].lesson_days?.[0] || '');
+        }
       })
       .catch(() => {});
   }, []);
 
+  const selectedGroup = groups.find(g => String(g.group_id) === String(groupId));
+  const days = selectedGroup?.lesson_days || [];
+
+  function onGroupChange(e) {
+    const id = e.target.value;
+    setGroupId(id);
+    const g = groups.find(gr => String(gr.group_id) === String(id));
+    setLessonDay(g?.lesson_days?.[0] || '');
+  }
+
   async function submit() {
-    if (!date || !reason.trim()) return;
+    if (!groupId || !reason.trim()) return;
     setSubmitting(true); setErr('');
     try {
-      const res = await fetch('/api/school/absences', {
+      const res = await fetch('/api/school/absence-report', {
         method: 'POST',
         headers: { Authorization: `Bearer ${tk()}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ group_id: groupId ? parseInt(groupId) : null, date, time: time || null, reason: reason.trim(), type: 'lesson' }),
+        body: JSON.stringify({ group_id: parseInt(groupId), lesson_day: lessonDay || null, reason: reason.trim() }),
       });
-      if (!res.ok) { const d = await res.json(); setErr(d.error || 'Error'); return; }
-      setSubmitted(true); setDate(''); setTime(''); setReason('');
+      if (!res.ok) { const d = await res.json().catch(() => ({})); setErr(d.error || 'Error'); return; }
+      setSubmitted(true); setReason('');
       setTimeout(() => setSubmitted(false), 4000);
     } catch { setErr('Network error'); }
     finally { setSubmitting(false); }
+  }
+
+  if (submitted) {
+    return <p className="text-emerald-400 text-sm">{lang === 'GEO' ? '✅ მოხსენება გაიგზავნა' : '✅ Report submitted'}</p>;
   }
 
   return (
     <div className="space-y-3">
       {groups.length > 0
-        ? <select value={groupId} onChange={e => setGroupId(e.target.value)} style={SELECT_DARK} className={`${FIELD} cursor-pointer`}>
-            {groups.map(g => <option key={g.group_id} value={g.group_id} style={OPTION_DARK}>{g.group_name}</option>)}
-          </select>
-        : <p className="text-xs text-white/40">{lang === 'GEO' ? 'ჯგუფები ვერ მოიძებნა' : 'No enrolled groups found'}</p>
+        ? <>
+            <select value={groupId} onChange={onGroupChange} style={SELECT_DARK} className={`${FIELD} cursor-pointer`}>
+              {groups.map(g => <option key={g.group_id} value={g.group_id} style={OPTION_DARK}>{g.group_name}</option>)}
+            </select>
+            {days.length > 0
+              ? <select value={lessonDay} onChange={e => setLessonDay(e.target.value)} style={SELECT_DARK} className={`${FIELD} cursor-pointer`}>
+                  {days.map(d => <option key={d} value={d} style={OPTION_DARK}>{d}</option>)}
+                </select>
+              : <p className="text-xs text-white/40">{lang === 'GEO' ? 'ამ ჯგუფს განრიგი არ აქვს' : 'No scheduled days for this group'}</p>
+            }
+          </>
+        : <p className="text-xs text-white/40">{lang === 'GEO' ? 'ჩარიცხული ჯგუფები ვერ მოიძებნა' : 'No enrolled groups found'}</p>
       }
-      <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ colorScheme: 'dark' }} className={FIELD} />
-      <input type="text" value={time} onChange={e => setTime(e.target.value)}
-        placeholder={lang === 'GEO' ? 'დრო (მაგ. 10:00)' : 'Time (e.g. 10:00 or Period 2)'} className={FIELD} />
       <textarea rows={3} value={reason} onChange={e => setReason(e.target.value)}
         placeholder={lang === 'GEO' ? 'გაცდენის მიზეზი...' : 'Reason for absence…'} className={FIELD} />
       {err && <p className="text-red-400 text-xs">{err}</p>}
-      {submitted
-        ? <p className="text-emerald-400 text-sm">{lang === 'GEO' ? '✅ მასწავლებელს გაეგზავნა' : '✅ Sent to your teacher'}</p>
-        : <button onClick={submit} disabled={submitting || !date || !reason.trim()}
-            className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
-            {submitting ? '…' : (lang === 'GEO' ? 'გაცდენის შეტყობინება' : 'Report Absence')}
-          </button>
-      }
-    </div>
-  );
-}
-
-function StudentReportEventAbsencePanel({ lang }) {
-  const [date, setDate] = useState('');
-  const [reason, setReason] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [err, setErr] = useState('');
-  const tk = () => localStorage.getItem('sherlock_token');
-
-  async function submit() {
-    if (!date || !reason.trim()) return;
-    setSubmitting(true); setErr('');
-    try {
-      const res = await fetch('/api/school/absences', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${tk()}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, reason: reason.trim(), type: 'event' }),
-      });
-      if (!res.ok) { const d = await res.json(); setErr(d.error || 'Error'); return; }
-      setSubmitted(true); setDate(''); setReason('');
-      setTimeout(() => setSubmitted(false), 4000);
-    } catch { setErr('Network error'); }
-    finally { setSubmitting(false); }
-  }
-
-  return (
-    <div className="space-y-3">
-      <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ colorScheme: 'dark' }} className={FIELD} />
-      <textarea rows={3} value={reason} onChange={e => setReason(e.target.value)}
-        placeholder={lang === 'GEO' ? 'გაცდენის მიზეზი...' : 'Reason for absence…'} className={FIELD} />
-      {err && <p className="text-red-400 text-xs">{err}</p>}
-      {submitted
-        ? <p className="text-emerald-400 text-sm">{lang === 'GEO' ? '✅ ასისტენტს გაეგზავნა' : '✅ Sent to assistant'}</p>
-        : <button onClick={submit} disabled={submitting || !date || !reason.trim()}
-            className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
-            {submitting ? '…' : (lang === 'GEO' ? 'მოხსენების გაგზავნა' : 'Submit Report')}
-          </button>
-      }
-    </div>
-  );
-}
-
-function StudentReportExamAbsencePanel({ lang }) {
-  const [date, setDate] = useState('');
-  const [reason, setReason] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [err, setErr] = useState('');
-  const tk = () => localStorage.getItem('sherlock_token');
-
-  async function submit() {
-    if (!date || !reason.trim()) return;
-    setSubmitting(true); setErr('');
-    try {
-      const res = await fetch('/api/school/absences', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${tk()}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, reason: reason.trim(), type: 'exam' }),
-      });
-      if (!res.ok) { const d = await res.json(); setErr(d.error || 'Error'); return; }
-      setSubmitted(true); setDate(''); setReason('');
-      setTimeout(() => setSubmitted(false), 4000);
-    } catch { setErr('Network error'); }
-    finally { setSubmitting(false); }
-  }
-
-  return (
-    <div className="space-y-3">
-      <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ colorScheme: 'dark' }} className={FIELD} />
-      <textarea rows={3} value={reason} onChange={e => setReason(e.target.value)}
-        placeholder={lang === 'GEO' ? 'გაცდენის მიზეზი...' : 'Reason for absence…'} className={FIELD} />
-      {err && <p className="text-red-400 text-xs">{err}</p>}
-      {submitted
-        ? <p className="text-emerald-400 text-sm">{lang === 'GEO' ? '✅ ასისტენტს გაეგზავნა' : '✅ Sent to assistant'}</p>
-        : <button onClick={submit} disabled={submitting || !date || !reason.trim()}
-            className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
-            {submitting ? '…' : (lang === 'GEO' ? 'მოხსენების გაგზავნა' : 'Submit Report')}
-          </button>
-      }
+      <button onClick={submit} disabled={submitting || !groupId || !reason.trim()}
+        className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors">
+        {submitting ? '…' : (lang === 'GEO' ? 'მოხსენების გაგზავნა' : 'Submit Report')}
+      </button>
     </div>
   );
 }
@@ -3501,9 +3429,7 @@ function panelContent(role, panel, libraryProps, lang, allMembers, onMembersRefr
     case 'practice-diary':  return <StudentPracticeDiaryPanel lang={lang} />;
     case 'labels':          return <StudentLabelsPanel lang={lang} />;
     case 'trash':           return <StudentTrashPanel lang={lang} />;
-    case 'report-absence':        return <StudentReportAbsencePanel lang={lang} />;
-    case 'report-event-absence':  return <StudentReportEventAbsencePanel lang={lang} />;
-    case 'report-exam-absence':   return <StudentReportExamAbsencePanel lang={lang} />;
+    case 'report-absence':        return <LessonAbsenceForm lang={lang} />;
     case 'change-group':    return <StudentChangeGroupPanel lang={lang} />;
     case 'add-subject':     return <StudentAddSubjectPanel lang={lang} />;
     case 'remove-subject':  return <StudentRemoveSubjectPanel lang={lang} />;

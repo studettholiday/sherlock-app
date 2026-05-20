@@ -30,17 +30,6 @@ async function runMigrations() {
     `);
     console.log('[startup] migration 012 complete');
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS absences (
-        id SERIAL PRIMARY KEY,
-        user_id INT REFERENCES users(id),
-        school_id INT REFERENCES schools(id),
-        group_id INT REFERENCES groups(id),
-        type VARCHAR(20) NOT NULL,
-        date DATE NOT NULL,
-        time VARCHAR(50),
-        reason TEXT NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      );
       CREATE TABLE IF NOT EXISTS notifications (
         id SERIAL PRIMARY KEY,
         recipient_id INT REFERENCES users(id),
@@ -52,6 +41,20 @@ async function runMigrations() {
       );
     `);
     console.log('[startup] migration 013 complete');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS absence_reports (
+        id SERIAL PRIMARY KEY,
+        school_id INT REFERENCES schools(id),
+        student_id INT REFERENCES users(id),
+        type VARCHAR(20) NOT NULL,
+        group_id INT REFERENCES groups(id),
+        lesson_day VARCHAR(20),
+        event_id INT REFERENCES events(id),
+        reason TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+    console.log('[startup] migration 014 complete');
   } catch (e) {
     console.error('[startup] migration error:', e.message);
   } finally {
