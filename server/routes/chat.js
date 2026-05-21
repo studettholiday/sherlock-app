@@ -100,9 +100,10 @@ router.post('/', authMiddleware, async (req, res) => {
       return res.status(403).json({ error: 'School not found' });
     }
     const school = schoolResult.rows[0];
-    const apiKey = school.api_key_encrypted;
+    const apiKey = school.api_key_encrypted || process.env.ANTHROPIC_API_KEY;
 
     if (!apiKey) {
+      console.warn('[chat] No API key for school', user.schoolId, '- env fallback also missing');
       return res.status(402).json({ error: 'No API key configured for this school. Please add your Anthropic API key in settings.' });
     }
 

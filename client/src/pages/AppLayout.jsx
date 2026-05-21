@@ -490,7 +490,7 @@ function RightColumn() {
         body: JSON.stringify({ messages: apiMessages, context: buildContext(attachedFiles), language: lang === 'GEO' ? 'ka' : 'en' }),
       });
       const data = await res.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: data.message ?? 'No response.' }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: res.ok ? (data.message ?? 'No response.') : (data.error || `Chat error (HTTP ${res.status})`) }]);
       setTimeout(() => { messagesRef.current?.scrollTo({ top: messagesRef.current.scrollHeight, behavior: 'smooth' }); }, 50);
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: lang === 'GEO' ? 'შეცდომა: კავშირი ვერ მოხდა.' : 'Error: could not reach the server.' }]);

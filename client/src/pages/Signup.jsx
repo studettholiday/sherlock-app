@@ -17,7 +17,7 @@ export default function Signup({ onSwitch, onSuccess }) {
   const [lang, setLang] = useState(localStorage.getItem('sherlock_lang') || 'en');
   const [form, setForm] = useState({
     schoolName: '', directorName: '', phone: '', website: '',
-    email: '', password: '', apiKey: ''
+    email: '', password: ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,7 +29,7 @@ export default function Signup({ onSwitch, onSuccess }) {
     setError('');
     setLoading(true);
     try {
-      await signup(form.schoolName, form.email, form.password, form.apiKey, {
+      await signup(form.schoolName, form.email, form.password, '', {
         directorName: form.directorName,
         phone: form.phone,
         website: form.website,
@@ -98,14 +98,6 @@ export default function Signup({ onSwitch, onSuccess }) {
             <label style={LABEL_STYLE}>{isKa ? 'პაროლი' : 'Password'} *</label>
             <input required type="password" value={form.password} onChange={set('password')} style={FIELD_STYLE} />
           </div>
-
-          <div style={{ marginBottom: '8px' }}>
-            <label style={LABEL_STYLE}>{isKa ? 'Anthropic API გასაღები (არასავალდებულო)' : 'Anthropic API key (optional — can add later)'}</label>
-            <input type="text" value={form.apiKey} onChange={set('apiKey')} style={FIELD_STYLE} />
-          </div>
-          <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '12px', marginBottom: '24px' }}>
-            {isKa ? 'თქვენ პირდაპირ იხდით AI-სთვის. ჩვენ არასდროს ვეხებით თქვენს ბიუჯეტს.' : 'You pay for AI directly using your own key. We never touch your budget.'}
-          </p>
 
           <button type="submit" disabled={loading} style={{ width: '100%', padding: '12px', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', border: 'none', borderRadius: '8px', color: 'white', fontSize: '16px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>
             {loading ? '...' : (isKa ? 'ანგარიშის შექმნა' : 'Create account')}
