@@ -25,7 +25,7 @@ router.post('/schedule', authMiddleware, async (req, res) => {
   try {
     const result = await getPool().query(
       'INSERT INTO schedule (school_id, day_of_week, lesson_time, class_name, room) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [req.user.schoolId, day_of_week || null, lesson_time || null, class_name || null, room || null]
+      [req.user.schoolId, day_of_week ?? null, lesson_time || null, class_name || null, room || null]
     );
     res.json({ row: result.rows[0] });
   } catch (err) {
