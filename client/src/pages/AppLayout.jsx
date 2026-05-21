@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../AuthContext';
-import { RolePanel, PANEL_ACTIVE_CLS, NotificationBell } from '../components/RolePanels';
+import { RolePanel, PANEL_ACTIVE_CLS } from '../components/RolePanels';
 import Dashboard from './Dashboard';
 
 /* ── Dashboard palette ─────────────────────────────────────────────────────── */
 const BASE_URL   = 'https://sherlock-app-production.up.railway.app';
 const COLORS     = { card: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.08)', muted: 'rgba(255,255,255,0.45)' };
-const roleColor  = { admin: '#a78bfa', teacher: '#60a5fa', assistant: '#fbbf24', student: '#34d399' };
-const roleBg     = { admin: 'rgba(124,58,237,0.2)', teacher: 'rgba(59,130,246,0.2)', assistant: 'rgba(245,158,11,0.2)', student: 'rgba(16,185,129,0.2)' };
-const roleBorder = { admin: '#7c3aed', teacher: '#3b82f6', assistant: '#f59e0b', student: '#10b981' };
+const roleColor  = { teacher: '#60a5fa', student: '#34d399' };
+const roleBg     = { teacher: 'rgba(59,130,246,0.2)', student: 'rgba(16,185,129,0.2)' };
+const roleBorder = { teacher: '#3b82f6', student: '#10b981' };
 
 /* ── Chat constants ────────────────────────────────────────────────────────── */
 const THEME = {
@@ -22,22 +22,16 @@ const BASE_IDENTITY = 'You are Sherlock Is Smart, an AI assistant for school man
 const NO_INFO_INSTRUCTION = `When you cannot find information in the school library or context, respond with one of these naturally, matching the user's language: English: 'Sorry, I couldn\'t find anything on that.' or 'My deductive methods failed me on this one, haha. No information found.' Georgian: 'სამწუხაროდ, ინფორმაცია ვერ მოიძებნა.' or 'ინფორმაცია ვერ ვიპოვე ამ თემაზე.' or 'ჩემი დედუქციის მეთოდი უსარგებლო აღმოჩნდა, ჰაჰაჰა. ინფორმაცია ვერ ვიპოვე.' Vary the response naturally, don't always use the same one.`;
 
 const SYSTEM_PROMPTS = {
-  admin:     `${BASE_IDENTITY} You are assisting a school admin. Answer questions directly and helpfully. When responding to a greeting or first message, do not list your capabilities. Simply ask how you can help, using variations like: 'How can I help you?', 'How may I assist you?', 'რით შემიძლია დაგეხმაროთ?', 'დღეს რით შემიძლია გემსახუროთ?' — match the language of the user's message. ${NO_INFO_INSTRUCTION}`,
-  assistant: `${BASE_IDENTITY} You are assisting a school office assistant. Answer questions directly and helpfully. When responding to a greeting or first message, do not list your capabilities. Simply ask how you can help, using variations like: 'How can I help you?', 'How may I assist you?', 'რით შემიძლია დაგეხმაროთ?', 'დღეს რით შემიძლია გემსახუროთ?' — match the language of the user's message. ${NO_INFO_INSTRUCTION}`,
   teacher:   `${BASE_IDENTITY} You are assisting a teacher. Answer questions directly and helpfully. When responding to a greeting or first message, do not list your capabilities. Simply ask how you can help, using variations like: 'How can I help you?', 'How may I assist you?', 'რით შემიძლია დაგეხმაროთ?', 'დღეს რით შემიძლია გემსახუროთ?' — match the language of the user's message. ${NO_INFO_INSTRUCTION}`,
   student:   `${BASE_IDENTITY} You are assisting a student. Answer questions directly and helpfully. When responding to a greeting or first message, do not list your capabilities. Simply ask how you can help, using variations like: 'How can I help you?', 'How may I assist you?', 'რით შემიძლია დაგეხმაროთ?', 'დღეს რით შემიძლია გემსახუროთ?' — match the language of the user's message. ${NO_INFO_INSTRUCTION}`,
 };
 
 const GREETINGS = {
-  admin:     "Hello! I'm Sherlock, your admin assistant. How can I help you today?",
-  assistant: "Hi! I'm Sherlock, your office assistant. What do you need?",
   teacher:   "Hi! I'm Sherlock, your teaching assistant. How can I help today?",
   student:   "Hey! I'm Sherlock, your school assistant. Ask me anything!",
 };
 
 const GEO_GREETINGS = {
-  admin:     "გამარჯობა! მე ვარ შერლოკ არის ჭკვიანი, ასისტენტი სკოლის მართვისთვის. რით შემიძლია დაგეხმაროთ?",
-  assistant: "გამარჯობა! მე ვარ შერლოკი, ოფისის ასისტენტი. რა გჭირდებათ?",
   teacher:   "გამარჯობა! მე ვარ შერლოკი, სკოლის AI ასისტენტი. რით შემიძლია დაგეხმაროთ?",
   student:   "გამარჯობა! მე ვარ შერლოკი, თქვენი AI ასისტენტი. რით შემიძლია დაგეხმაროთ?",
 };
@@ -141,66 +135,21 @@ function MessageBubble({ message, accentColor }) {
   );
 }
 
-const ROLE_SWITCHER = [
-  { id: 'admin',     label: 'Admin',     activeCls: 'bg-purple-600 text-white'  },
-  { id: 'assistant', label: 'Assistant', activeCls: 'bg-orange-600 text-white'  },
-  { id: 'teacher',   label: 'Teacher',   activeCls: 'bg-blue-600 text-white'    },
-  { id: 'student',   label: 'Student',   activeCls: 'bg-emerald-600 text-white' },
-];
-
 const BUTTON_GROUPS = {
-  admin: [
-    { id: 'people',    label: '👥 People',    children: [{ id: 'students', label: 'Students' }, { id: 'assistants', label: 'Assistants' }, { id: 'teachers', label: 'Teachers' }, { id: 'invite', label: 'Invite' }] },
-    { id: 'manage',    label: '📋 Manage',    children: [{ id: 'subjects', label: 'Manage' }] },
-    { id: 'broadcast', label: '📢 Notify',    children: [{ id: 'broadcast', label: 'Broadcast' }, { id: 'admin-announce', label: 'Announce' }] },
-    { id: 'events',    label: '🎪 Events',    children: [{ id: 'view-events', label: 'View Events' }, { id: 'add-event', label: 'Add Event' }, { id: 'delete-event', label: 'Delete Event' }] },
-  ],
-  assistant: [
-    { id: 'people',   label: '👥 People',   children: [{ id: 'students', label: 'Students' }, { id: 'teachers', label: 'Teachers' }, { id: 'invite', label: 'Invite' }] },
-    { id: 'manage',   label: '📋 Manage',   children: [{ id: 'subjects', label: 'Subjects' }] },
-    { id: 'events',   label: '🎪 Events',   children: [{ id: 'view-events', label: 'View Events' }, { id: 'add-event', label: 'Add Event' }, { id: 'delete-event', label: 'Delete Event' }] },
-    { id: 'requests', label: '📬 Requests', children: [{ id: 'requests', label: 'Pending Requests' }] },
-    { id: 'announce', label: '📢 Announce', children: [{ id: 'announce', label: 'Announce' }] },
-  ],
   teacher: [
-    { id: 'my-work',     label: '📅 My Work',     children: [{ id: 'my-schedule', label: 'My Schedule' }, { id: 'my-groups', label: 'My Groups' }] },
-    { id: 'announce',    label: '📢 Announce'    },
-    { id: 'share-files', label: '📁 Share Files' },
+    { id: 'schedule', label: '📅 Schedule' },
   ],
   student: [
-    { id: 'schedule', label: 'Schedule' },
-    { id: 'events',   label: 'Events'   },
-    { id: 'plan',     label: '📋 Plan',     children: [{ id: 'change-group', label: 'Change Group' }, { id: 'remove-subject', label: 'Remove Group' }, { id: 'add-subject', label: 'Add Subject' }] },
-    { id: 'my-notes', label: '📓 My Notes', children: [{ id: 'notes', label: 'Notes' }, { id: 'practice-diary', label: 'Practice Diary' }, { id: 'labels', label: 'Labels' }, { id: 'trash', label: '🗑 Trash' }] },
-    { id: 'report',   label: '⚠️ Report',   children: [{ id: 'report-absence', label: 'Lesson Absence' }] },
+    { id: 'schedule', label: '📅 Schedule' },
   ],
 };
 
 const GEO_BUTTON_GROUPS = {
-  admin: [
-    { id: 'people',    label: '👥 ხალხი',        children: [{ id: 'students', label: 'სტუდენტები' }, { id: 'assistants', label: 'ასისტენტები' }, { id: 'teachers', label: 'მასწავლებლები' }, { id: 'invite', label: 'მოწვევა' }] },
-    { id: 'manage',    label: '📋 მართვა',        children: [{ id: 'subjects', label: 'მართვა' }] },
-    { id: 'broadcast', label: '📢 შეტყობინება',   children: [{ id: 'broadcast', label: 'ყველას' }, { id: 'admin-announce', label: 'ჯგუფს' }] },
-    { id: 'events',    label: '🎪 ღონისძიებები', children: [{ id: 'view-events', label: 'ნახვა' }, { id: 'add-event', label: 'დამატება' }, { id: 'delete-event', label: 'წაშლა' }] },
-  ],
-  assistant: [
-    { id: 'people',   label: '👥 ხალხი',        children: [{ id: 'students', label: 'სტუდენტები' }, { id: 'teachers', label: 'მასწავლებლები' }, { id: 'invite', label: 'მოწვევა' }] },
-    { id: 'manage',   label: '📋 მართვა',        children: [{ id: 'subjects', label: 'საგნები' }] },
-    { id: 'events',   label: '🎪 ღონისძიებები', children: [{ id: 'view-events', label: 'ნახვა' }, { id: 'add-event', label: 'დამატება' }, { id: 'delete-event', label: 'წაშლა' }] },
-    { id: 'requests', label: '📬 მოთხოვნები',   children: [{ id: 'requests', label: 'მოლოდინი' }] },
-    { id: 'announce', label: '📢 გამოცხადება',   children: [{ id: 'announce', label: 'გამოცხადება' }] },
-  ],
   teacher: [
-    { id: 'my-work',     label: '📅 ჩემი სამუშაო',       children: [{ id: 'my-schedule', label: 'ჩემი განრიგი' }, { id: 'my-groups', label: 'ჩემი ჯგუფები' }] },
-    { id: 'announce',    label: '📢 გამოცხადება' },
-    { id: 'share-files', label: '📁 ფაილების გაზიარება' },
+    { id: 'schedule', label: '📅 განრიგი' },
   ],
   student: [
-    { id: 'schedule', label: 'განრიგი' },
-    { id: 'events',   label: 'ღონისძიებები' },
-    { id: 'plan',     label: '📋 გეგმა',           children: [{ id: 'change-group', label: 'ჯგუფის შეცვლა' }, { id: 'add-subject', label: 'საგნის დამატება' }, { id: 'remove-subject', label: 'ჯგუფის წაშლა' }] },
-    { id: 'my-notes', label: '📓 ჩემი ჩანაწერები', children: [{ id: 'notes', label: 'ჩანაწერები' }, { id: 'practice-diary', label: 'პრაქტიკის დღიური' }, { id: 'labels', label: 'ლეიბლები' }, { id: 'trash', label: '🗑 კალათი' }] },
-    { id: 'report',   label: '⚠️ გაცდენა',          children: [{ id: 'report-absence', label: 'გაკვეთილის გაცდენა' }] },
+    { id: 'schedule', label: '📅 განრიგი' },
   ],
 };
 
@@ -208,15 +157,15 @@ function getButtonGroups(lang) { return lang === 'GEO' ? GEO_BUTTON_GROUPS : BUT
 
 const GROUP_OPEN_CLS = 'text-white border border-white/30 bg-white/[0.05]';
 
-const ACCENT_COLORS = { admin: '#7c3aed', assistant: '#7c3aed', teacher: '#7c3aed', student: '#7c3aed' };
+const ACCENT_COLORS = { teacher: '#7c3aed', student: '#7c3aed' };
 
 /* ── Left Column ─────────────────────────────────────────────────────────────── */
-function LeftColumn({ members, membersLoading, onMembersRefresh }) {
+function LeftColumn() {
   const { user, logout } = useAuth();
   const token      = localStorage.getItem('sherlock_token');
   const headers    = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
-  const canManage  = user?.role === 'admin' || user?.role === 'assistant';
-  const canLibrary = ['admin', 'assistant', 'teacher'].includes(user?.role);
+  const canManage  = user?.role === 'teacher' && user?.is_owner;
+  const canLibrary = user?.role === 'teacher' && user?.is_owner;
 
   const [invites, setInvites]         = useState([]);
   const [inviteRole, setInviteRole]   = useState('teacher');
@@ -226,7 +175,6 @@ function LeftColumn({ members, membersLoading, onMembersRefresh }) {
   const [libLoading, setLibLoading]   = useState(false);
   const [libUploading, setLibUploading] = useState(false);
   const [libError, setLibError]       = useState('');
-  const [memberModal, setMemberModal] = useState(null);
   const fileInputRef = useRef(null);
 
   useEffect(() => { fetchData(); }, []);
@@ -253,15 +201,6 @@ function LeftColumn({ members, membersLoading, onMembersRefresh }) {
   async function revokeInvite(id) {
     await fetch(`/api/invites/${id}`, { method: 'DELETE', headers });
     setInvites(prev => prev.filter(i => i.id !== id));
-  }
-
-  async function deleteMember(memberId, memberName) {
-    if (!window.confirm(`Remove ${memberName} from this school? This cannot be undone.`)) return;
-    try {
-      const res = await fetch(`/api/school/members/${memberId}`, { method: 'DELETE', headers });
-      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `Delete failed (${res.status})`); }
-      onMembersRefresh();
-    } catch (e) { alert(e.message); }
   }
 
   async function fetchLibrary() {
@@ -332,7 +271,7 @@ function LeftColumn({ members, membersLoading, onMembersRefresh }) {
       {/* Scrollable content — hidden entirely for students */}
       {user?.role !== 'student' && (
       <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px' }}>
-        {(dataLoading || membersLoading) ? (
+        {dataLoading ? (
           <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 40 }}>
             <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid rgba(124,58,237,0.2)', borderTopColor: '#7c3aed', animation: 'spin 0.8s linear infinite' }} />
           </div>
@@ -345,7 +284,6 @@ function LeftColumn({ members, membersLoading, onMembersRefresh }) {
                 <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
                   <select value={inviteRole} onChange={e => setInviteRole(e.target.value)}
                     style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: 'white', fontSize: 13, cursor: 'pointer', outline: 'none', colorScheme: 'dark', flex: 1 }}>
-                    {user?.role === 'admin' && <option value="assistant" style={{ background: '#0d0d1a' }}>Assistant</option>}
                     <option value="teacher" style={{ background: '#0d0d1a' }}>Teacher</option>
                     <option value="student" style={{ background: '#0d0d1a' }}>Student</option>
                   </select>
@@ -435,97 +373,20 @@ function LeftColumn({ members, membersLoading, onMembersRefresh }) {
               )}
             </div>
             )}
-
-            {/* Members — grouped by role */}
-            {(user?.role === 'admin' || user?.role === 'assistant') && (() => {
-              const folderDefs = user?.role === 'admin'
-                ? [
-                    { key: 'assistant', label: '👨‍💼 Assistants', canDelete: true },
-                    { key: 'teacher',   label: '👨‍🏫 Teachers',   canDelete: true },
-                    { key: 'student',   label: '👨‍🎓 Students',   canDelete: true },
-                  ]
-                : [
-                    { key: 'teacher', label: '👨‍🏫 Teachers', canDelete: false },
-                    { key: 'student', label: '👨‍🎓 Students', canDelete: true  },
-                  ];
-              return (
-                <div>
-                  <h2 style={{ fontSize: 11, fontWeight: 600, margin: '0 0 12px', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)' }}>
-                    Members
-                  </h2>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {folderDefs.map(folder => {
-                      const folderMembers = members.filter(m => m.role === folder.key);
-                      return (
-                        <div key={folder.key}>
-                          <button
-                            onClick={() => setMemberModal({ key: folder.key, label: folder.label, canDelete: folder.canDelete })}
-                            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, cursor: 'pointer', color: 'white', textAlign: 'left' }}>
-                            <span style={{ fontSize: 13, fontWeight: 600 }}>{folder.label}</span>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.08)', borderRadius: 20, padding: '1px 8px' }}>{folderMembers.length}</span>
-                              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>▶</span>
-                            </span>
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
           </>
         )}
       </div>
       )} {/* end student hide */}
-
-      {/* Members modal */}
-      {memberModal && (() => {
-        const modalMembers = members.filter(m => m.role === memberModal.key);
-        return (
-          <div
-            onClick={() => setMemberModal(null)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-            <div
-              onClick={e => e.stopPropagation()}
-              style={{ background: '#0f0f1a', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, width: '100%', maxWidth: 480, maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
-                <span style={{ fontSize: 15, fontWeight: 700, color: 'white' }}>{memberModal.label}</span>
-                <button onClick={() => setMemberModal(null)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '2px 6px', borderRadius: 6 }}>✕</button>
-              </div>
-              <div style={{ overflowY: 'auto', flex: 1 }}>
-                {modalMembers.length === 0 ? (
-                  <div style={{ padding: '24px', fontSize: 13, color: 'rgba(255,255,255,0.35)', textAlign: 'center' }}>No members</div>
-                ) : modalMembers.map((m, i) => (
-                  <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: i < modalMembers.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none', gap: 12 }}>
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</div>
-                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.email}</div>
-                    </div>
-                    {memberModal.canDelete && m.id !== user?.id && (
-                      <button onClick={() => deleteMember(m.id, m.name)}
-                        style={{ padding: '4px 10px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#f87171', cursor: 'pointer', fontSize: 13, fontWeight: 600, flexShrink: 0 }}>
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
     </div>
   );
 }
 
 /* ── Right Column (Chat Panel) ───────────────────────────────────────────────── */
-function RightColumn({ members, onMembersRefresh }) {
+function RightColumn() {
   const { user } = useAuth();
   const lang = localStorage.getItem('sherlock_lang') === 'ka' ? 'GEO' : 'EN';
 
-  const defaultRole = user?.role || 'admin';
-  const [role, setRole]         = useState(defaultRole);
+  const role = user?.role || 'teacher';
   const [activePanel, setActivePanel] = useState(null);
   const [openGroup, setOpenGroup]     = useState(null);
 
@@ -534,77 +395,16 @@ function RightColumn({ members, onMembersRefresh }) {
   ]);
   const [input, setInput]     = useState('');
   const [loading, setLoading] = useState(false);
-  const [accentColor, setAccentColor] = useState(ACCENT_COLORS[defaultRole] || '#7c3aed');
+  const [accentColor] = useState(ACCENT_COLORS[role] || '#7c3aed');
   const [attachedFiles, setAttachedFiles] = useState([]);
-  const [provider, setProvider] = useState(lang === 'GEO' ? 'gemini' : 'anthropic');
-  const [styleOpen, setStyleOpen]         = useState(false);
-  const [chatStyle, setChatStyle] = useState(() => localStorage.getItem('sherlock_style') || 'glass');
-  const [customLabels, setCustomLabels]   = useState({ admin: {}, assistant: {}, teacher: {}, student: {} });
-  const [customRoleNames, setCustomRoleNames] = useState({ admin: '', assistant: '', teacher: '', student: '' });
-  const [editSubmenuOpen, setEditSubmenuOpen] = useState(false);
-  const [editOpen, setEditOpen]     = useState(false);
-  const [editTarget, setEditTarget] = useState(null);
-  const [editDraft, setEditDraft]   = useState({});
-  const [editRoleName, setEditRoleName] = useState('');
 
   const messagesRef   = useRef(null);
   const fileInputRef  = useRef(null);
-  const stylePanelRef = useRef(null);
-  const editBtnRef    = useRef(null);
   const s = CHAT_STYLES.glass;
-
-  useEffect(() => { setAccentColor(ACCENT_COLORS[role] || '#7c3aed'); }, [role]);
-
-  useEffect(() => {
-    setMessages([{ role: 'assistant', content: getGreeting(role, lang, user?.schoolName || '') }]);
-    setInput(''); setLoading(false); setActivePanel(null); setOpenGroup(null); setAttachedFiles([]);
-  }, [role]);
-
-  useEffect(() => {
-    if (!styleOpen) return;
-    const h = e => { if (stylePanelRef.current && !stylePanelRef.current.contains(e.target)) setStyleOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, [styleOpen]);
-
-  useEffect(() => {
-    if (!editSubmenuOpen) return;
-    const h = e => { if (editBtnRef.current && !editBtnRef.current.contains(e.target)) setEditSubmenuOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, [editSubmenuOpen]);
 
   function handleSignOut() {
     localStorage.removeItem('sherlock_token');
     window.location.href = '/login';
-  }
-
-  function getEffLabel(btnRole, id, baseLabel) {
-    return customLabels[btnRole]?.[id] ?? baseLabel;
-  }
-
-  function openEditor(targetRole) {
-    const groups = getButtonGroups(lang)[targetRole];
-    const draft = {};
-    groups.forEach(g => {
-      draft[g.id] = customLabels[targetRole]?.[g.id] ?? g.label;
-      if (g.children) g.children.forEach(c => { draft[c.id] = customLabels[targetRole]?.[c.id] ?? c.label; });
-    });
-    setEditDraft(draft);
-    setEditTarget(targetRole);
-    setEditRoleName(customRoleNames[targetRole] ?? '');
-    setEditOpen(true);
-    setEditSubmenuOpen(false);
-  }
-
-  function saveLabels() {
-    setCustomLabels(prev => ({ ...prev, [editTarget]: editDraft }));
-    if (editRoleName.trim()) setCustomRoleNames(prev => ({ ...prev, [editTarget]: editRoleName.trim() }));
-    setEditOpen(false); setEditTarget(null); setEditRoleName('');
-  }
-
-  function cancelEdit() {
-    setEditOpen(false); setEditTarget(null); setEditDraft({}); setEditRoleName('');
   }
 
   function clearChat() {
@@ -687,7 +487,7 @@ function RightColumn({ members, onMembersRefresh }) {
       const res  = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ messages: apiMessages, provider, context: buildContext(attachedFiles), language: lang === 'GEO' ? 'ka' : 'en' }),
+        body: JSON.stringify({ messages: apiMessages, context: buildContext(attachedFiles), language: lang === 'GEO' ? 'ka' : 'en' }),
       });
       const data = await res.json();
       setMessages(prev => [...prev, { role: 'assistant', content: data.message ?? 'No response.' }]);
@@ -700,22 +500,11 @@ function RightColumn({ members, onMembersRefresh }) {
   const inactiveCls = 'border border-white/10 text-white/60 hover:text-white hover:border-white/25 transition-colors';
   const openGroupDef = openGroup ? getButtonGroups(lang)[role]?.find(g => g.id === openGroup) : null;
 
-  const visibleRoleSwitcher = ROLE_SWITCHER.filter(r => {
-    const userRole = user?.role;
-    if (userRole === 'admin') return true;
-    if (userRole === 'assistant') return r.id === 'assistant' || r.id === 'student';
-    if (userRole === 'teacher') return r.id === 'teacher';
-    if (userRole === 'student') return r.id === 'student';
-    return true;
-  });
-
   return (
     <div className={`flex flex-col flex-1 overflow-hidden ${s.wrap}`} style={{ position: 'relative' }}>
       {/* Ambient glow */}
-      {chatStyle !== 'minimal' && (
-        <div className="pointer-events-none absolute inset-0 -z-10"
-          style={{ background: `radial-gradient(ellipse 80% 35% at 50% 0%, ${accentColor}${chatStyle === 'vibrant' ? '33' : '18'}, transparent)` }} />
-      )}
+      <div className="pointer-events-none absolute inset-0 -z-10"
+        style={{ background: `radial-gradient(ellipse 80% 35% at 50% 0%, ${accentColor}18, transparent)` }} />
 
       {/* Chat header */}
       <header className={`flex items-center gap-2 px-4 py-3 border-b ${s.headerBorder} flex-shrink-0`}>
@@ -724,109 +513,6 @@ function RightColumn({ members, onMembersRefresh }) {
         {user?.schoolName && <span className="text-xs ml-1" style={{ color: 'rgba(255,255,255,0.5)' }}>{user.schoolName}</span>}
 
         <div className="ml-auto flex items-center gap-2">
-          <NotificationBell lang={lang} />
-          {/* Edit button — visible when not on student tab */}
-          {user?.role !== 'student' && (
-            <div className="relative flex-shrink-0" ref={editBtnRef}>
-              <button
-                onClick={() => setEditSubmenuOpen(o => !o)}
-                className={`text-xs px-2.5 py-1 rounded-lg border transition-colors duration-150 ${editSubmenuOpen ? 'border-white/20 text-white/80 bg-white/[0.06]' : 'border-white/10 text-white/50 hover:text-white/80 hover:border-white/20'}`}>
-                {lang === 'GEO' ? '✏️ რედაქტირება' : '✏️ Edit'}
-              </button>
-              {editSubmenuOpen && (
-                <div className="absolute right-0 mt-1 w-52 rounded-xl border border-white/15 bg-[#0f0f1a] shadow-2xl z-50 overflow-hidden">
-                  <button onClick={() => openEditor(role)}
-                    className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-white/[0.05] hover:text-white transition-colors">
-                    {lang === 'GEO' ? 'ჩემი პროფილი' : 'My Profile'}
-                  </button>
-                  {(role === 'admin' || role === 'assistant') && (
-                    <button onClick={() => openEditor('student')}
-                      className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-white/[0.05] hover:text-white transition-colors border-t border-white/[0.06]">
-                      {lang === 'GEO' ? 'სტუდენტის პროფილი' : 'Student Profile'}
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Provider selector */}
-          <select
-            value={provider}
-            onChange={e => setProvider(e.target.value)}
-            disabled={loading}
-            style={{ colorScheme: 'dark' }}
-            className={`text-xs rounded-lg px-2.5 py-1 focus:outline-none border border-white/10 bg-white/[0.04] text-white/50 disabled:opacity-40 focus:border-white/20`}>
-            <option value="anthropic">Claude</option>
-            <option value="openai">GPT-4</option>
-            <option value="gemini">Gemini</option>
-          </select>
-
-          {/* Style customizer */}
-          <div className="relative flex-shrink-0" ref={stylePanelRef}>
-            <button
-              onClick={() => setStyleOpen(o => !o)}
-              className={`text-xs px-2.5 py-1 rounded-lg border transition-colors duration-150 ${styleOpen ? 'border-white/20 text-white/80 bg-white/[0.06]' : 'border-white/10 text-white/50 hover:text-white/80 hover:border-white/20'}`}
-              style={{ borderColor: accentColor + '60' }}>
-              <span className="flex items-center gap-2">
-                <span style={{ background: accentColor, width: 10, height: 10, borderRadius: '50%', display: 'inline-block' }} />
-                {lang === 'GEO' ? 'სტილი' : 'Stylize'}
-              </span>
-            </button>
-            {styleOpen && (
-              <div className="absolute right-0 top-full mt-2 rounded-2xl border border-white/[0.08] bg-[#0a0a14] backdrop-blur-xl shadow-2xl z-50 p-4 flex flex-col gap-4" style={{ width: 220 }}>
-                <p className="text-xs text-white/40 font-semibold uppercase tracking-widest">Style</p>
-                <div className="flex flex-col gap-1.5">
-                  {[
-                    { id: 'minimal', label: 'Minimal', desc: 'Pure dark, no glow' },
-                    { id: 'glass',   label: 'Glass',   desc: 'Subtle ambient depth' },
-                    { id: 'vibrant', label: 'Vibrant', desc: 'Glow + color' },
-                  ].map(preset => (
-                    <button
-                      key={preset.id}
-                      onClick={() => { setChatStyle(preset.id); localStorage.setItem('sherlock_style', preset.id); }}
-                      className={`text-left px-3 py-2.5 rounded-xl border transition-colors ${
-                        chatStyle === preset.id
-                          ? 'border-violet-500/50 bg-violet-500/[0.08] text-white'
-                          : 'border-white/[0.06] bg-transparent text-white/50 hover:text-white/80 hover:border-white/15'
-                      }`}
-                    >
-                      <p className="text-xs font-medium">{preset.label}</p>
-                      <p className="text-xs mt-0.5 opacity-60">{preset.desc}</p>
-                    </button>
-                  ))}
-                </div>
-                {chatStyle !== 'minimal' && (
-                  <>
-                    <p className="text-xs text-white/40 font-semibold uppercase tracking-widest -mb-2">Accent Color</p>
-                    <input
-                      type="range" min="0" max="359"
-                      value={(() => {
-                        const hex = accentColor.replace('#', '');
-                        const r = parseInt(hex.slice(0,2),16)/255, g = parseInt(hex.slice(2,4),16)/255, b = parseInt(hex.slice(4,6),16)/255;
-                        const max = Math.max(r,g,b), min = Math.min(r,g,b);
-                        if (max === min) return 0;
-                        let h = max === r ? (g-b)/(max-min) : max === g ? 2+(b-r)/(max-min) : 4+(r-g)/(max-min);
-                        return Math.round(((h*60)+360)%360);
-                      })()}
-                      onChange={e => {
-                        const h = Math.min(359, parseInt(e.target.value));
-                        const f = n => { const k=(n+h/60)%6; return Math.round((1-Math.max(0,Math.min(k,4-k,1)))*200+55); };
-                        setAccentColor('#'+f(5).toString(16).padStart(2,'0')+f(3).toString(16).padStart(2,'0')+f(1).toString(16).padStart(2,'0'));
-                      }}
-                      className="w-full cursor-pointer rainbow-slider"
-                      style={{ height:20, borderRadius:10, border:'none', outline:'none', appearance:'none', WebkitAppearance:'none', background:'linear-gradient(to right,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff2200)' }}
-                    />
-                    <div className="flex items-center gap-2">
-                      <div style={{ width:24, height:24, borderRadius:6, background:accentColor, flexShrink:0 }} />
-                      <span className="text-xs text-white/40">Selected</span>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-
           {/* Sign out */}
           <button
             type="button"
@@ -836,19 +522,6 @@ function RightColumn({ members, onMembersRefresh }) {
           </button>
         </div>
       </header>
-
-      {/* Role switcher */}
-      <div className={`flex items-center gap-1 px-4 py-2 border-b ${s.headerBorder} flex-shrink-0 overflow-x-auto`} style={{ scrollbarWidth: 'none' }}>
-        {visibleRoleSwitcher.map(r => (
-          <button key={r.id} onClick={() => setRole(r.id)}
-            className={`px-3 py-1 text-xs transition-all duration-150 flex-shrink-0 border-b-2 ${role === r.id ? 'text-white font-semibold border-violet-500' : 'text-white/40 border-transparent hover:text-white/70'}`}>
-            {customRoleNames[r.id] || (lang === 'GEO' ? ({ admin: 'ადმინი', assistant: 'ასისტენტი', teacher: 'მასწავლებელი', student: 'სტუდენტი' })[r.id] : r.label)}
-          </button>
-        ))}
-        <button onClick={clearChat} className="ml-auto text-xs px-2 py-1 rounded-lg text-gray-600 hover:text-gray-400 transition-colors">
-          {lang === 'GEO' ? '↺ ახალი' : '↺ New'}
-        </button>
-      </div>
 
       {/* Handler buttons */}
       <div className={`flex flex-col border-b ${s.headerBorder} flex-shrink-0`}>
@@ -860,7 +533,7 @@ function RightColumn({ members, onMembersRefresh }) {
                 <button key={item.id}
                   onClick={() => setOpenGroup(g => g === item.id ? null : item.id)}
                   className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-all duration-200 ${openGroup === item.id ? GROUP_OPEN_CLS : inactiveCls}`}>
-                  {getEffLabel(role, item.id, item.label)} {openGroup === item.id ? '▲' : '▼'}
+                  {item.label} {openGroup === item.id ? '▲' : '▼'}
                 </button>
               );
             }
@@ -869,10 +542,27 @@ function RightColumn({ members, onMembersRefresh }) {
               <button key={item.id}
                 onClick={() => setActivePanel(activePanel === panelId ? null : panelId)}
                 className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all duration-200 ${activePanel === panelId ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
-                {getEffLabel(role, item.id, item.label)}
+                {item.label}
               </button>
             );
           })}
+          {user?.is_owner && (
+            <>
+              <button
+                onClick={() => setActivePanel(activePanel === 'invite' ? null : 'invite')}
+                className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all duration-200 ${activePanel === 'invite' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
+                {lang === 'GEO' ? '⚙️ მოწვევა' : '⚙️ Invite'}
+              </button>
+              <button
+                onClick={() => setActivePanel(activePanel === 'schedule-editor' ? null : 'schedule-editor')}
+                className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all duration-200 ${activePanel === 'schedule-editor' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
+                {lang === 'GEO' ? '📅 განრიგის რედაქტირება' : '📅 Edit Schedule'}
+              </button>
+            </>
+          )}
+          <button onClick={clearChat} className="ml-auto text-xs px-2 py-1 rounded-lg text-gray-600 hover:text-gray-400 transition-colors flex-shrink-0">
+            {lang === 'GEO' ? '↺ ახალი' : '↺ New'}
+          </button>
         </div>
         {openGroupDef?.children && openGroupDef.children.length >= 2 && (
           <div className={`flex items-center gap-1.5 px-6 py-1.5 border-t ${s.headerBorder} flex-wrap`}>
@@ -880,7 +570,7 @@ function RightColumn({ members, onMembersRefresh }) {
               <button key={child.id}
                 onClick={() => setActivePanel(activePanel === child.id ? null : child.id)}
                 className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all duration-200 ${activePanel === child.id ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
-                {getEffLabel(role, child.id, child.label)}
+                {child.label}
               </button>
             ))}
           </div>
@@ -896,8 +586,6 @@ function RightColumn({ members, onMembersRefresh }) {
             ) : (
               <RolePanel role={role} panel={activePanel} onClose={() => setActivePanel(null)}
                 libraryProps={{ orgName: user?.schoolName || '', orgNameGenitive: '' }}
-                allMembers={members}
-                onMembersRefresh={onMembersRefresh}
                 lang={lang} />
             )}
           </div>
@@ -960,49 +648,6 @@ function RightColumn({ members, onMembersRefresh }) {
         </button>
       </form>
 
-      {/* Edit labels modal */}
-      {editOpen && editTarget && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#0f0f1a] border border-white/15 rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[80vh]">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-              <h3 className="text-sm font-semibold text-white">
-                {lang === 'GEO' ? `რედაქტირება — ${editTarget}` : `Edit — ${editTarget}`}
-              </h3>
-              <button onClick={cancelEdit} className="text-gray-500 hover:text-white text-sm transition-colors">✕</button>
-            </div>
-            <div className="p-5 overflow-y-auto flex-1 space-y-3">
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">{lang === 'GEO' ? 'როლის სახელი' : 'Role name'}</label>
-                <input
-                  value={editRoleName}
-                  onChange={e => setEditRoleName(e.target.value)}
-                  placeholder={editTarget}
-                  className="w-full rounded-xl border border-white/15 bg-white/[0.05] px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none"
-                />
-              </div>
-              <p className="text-xs text-gray-500 pt-1">{lang === 'GEO' ? 'ღილაკების სახელები' : 'Button labels'}</p>
-              {Object.entries(editDraft).map(([id, val]) => (
-                <div key={id} className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 w-28 flex-shrink-0 truncate">{id}</span>
-                  <input
-                    value={val}
-                    onChange={e => setEditDraft(d => ({ ...d, [id]: e.target.value }))}
-                    className="flex-1 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs text-white focus:outline-none"
-                  />
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2 px-5 py-4 border-t border-white/10">
-              <button onClick={cancelEdit} className="flex-1 py-2 rounded-xl border border-white/15 text-xs text-gray-400 hover:text-white transition-colors">
-                {lang === 'GEO' ? 'გაუქმება' : 'Cancel'}
-              </button>
-              <button onClick={saveLabels} className="flex-1 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs text-white font-medium transition-colors">
-                {lang === 'GEO' ? 'შენახვა' : 'Save'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -1011,21 +656,6 @@ function RightColumn({ members, onMembersRefresh }) {
 export default function AppLayout() {
   const { user } = useAuth();
   const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768);
-  const [members, setMembers] = useState([]);
-  const [membersLoading, setMembersLoading] = useState(true);
-
-  async function fetchMembers() {
-    const token = localStorage.getItem('sherlock_token');
-    if (!token) { setMembersLoading(false); return; }
-    try {
-      const res = await fetch('/api/school/members', { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      setMembers(data.members || []);
-    } catch (e) { console.error(e); }
-    finally { setMembersLoading(false); }
-  }
-
-  useEffect(() => { fetchMembers(); }, []);
 
   useEffect(() => {
     const h = () => setIsDesktop(window.innerWidth >= 768);
@@ -1066,12 +696,12 @@ export default function AppLayout() {
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative', zIndex: 1 }}>
         {user?.role !== 'student' && (
           <>
-            <LeftColumn members={members} membersLoading={membersLoading} onMembersRefresh={fetchMembers} />
+            <LeftColumn />
             {/* Divider */}
             <div style={{ width: 1, flexShrink: 0, background: 'rgba(255,255,255,0.08)' }} />
           </>
         )}
-        <RightColumn members={members} onMembersRefresh={fetchMembers} />
+        <RightColumn />
       </div>
     </div>
   );

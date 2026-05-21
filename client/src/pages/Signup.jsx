@@ -90,7 +90,7 @@ export default function Signup({ onSwitch, onSuccess }) {
           <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '20px 0' }} />
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={LABEL_STYLE}>{isKa ? 'ადმინის ელ-ფოსტა' : 'Admin email'} *</label>
+            <label style={LABEL_STYLE}>{isKa ? 'მფლობელის ელ-ფოსტა' : 'Owner email'} *</label>
             <input required type="email" value={form.email} onChange={set('email')} style={FIELD_STYLE} />
           </div>
 

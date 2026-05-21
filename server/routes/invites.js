@@ -9,9 +9,9 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 // POST /api/invites/generate
 router.post('/generate', authMiddleware, async (req, res) => {
-  if (!['admin', 'assistant'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
+  if (!(req.user.role === 'teacher' && req.user.is_owner)) return res.status(403).json({ error: 'Forbidden' });
   const { target_role, email } = req.body;
-  if (!['assistant', 'teacher', 'student'].includes(target_role)) return res.status(400).json({ error: 'Invalid target_role' });
+  if (!['teacher', 'student'].includes(target_role)) return res.status(400).json({ error: 'Invalid target_role' });
   try {
     const schoolResult = await pool.query('SELECT name FROM schools WHERE id = $1', [req.user.schoolId]);
     const schoolName = schoolResult.rows[0]?.name ?? 'your school';
@@ -52,7 +52,7 @@ router.post('/generate', authMiddleware, async (req, res) => {
 
 // GET /api/invites
 router.get('/', authMiddleware, async (req, res) => {
-  if (!['admin', 'assistant'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
+  if (!(req.user.role === 'teacher' && req.user.is_owner)) return res.status(403).json({ error: 'Forbidden' });
   try {
     const result = await pool.query(
       `SELECT i.id, i.code, i.target_role, i.used_at, i.used_by, i.expires_at, i.created_at,
@@ -71,7 +71,7 @@ router.get('/', authMiddleware, async (req, res) => {
 
 // DELETE /api/invites/:id
 router.delete('/:id', authMiddleware, async (req, res) => {
-  if (!['admin', 'assistant'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
+  if (!(req.user.role === 'teacher' && req.user.is_owner)) return res.status(403).json({ error: 'Forbidden' });
   try {
     const result = await pool.query(
       'DELETE FROM invites WHERE id = $1 AND school_id = $2 RETURNING id',

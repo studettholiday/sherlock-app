@@ -12,14 +12,13 @@ const COLORS = {
   muted: 'rgba(255,255,255,0.45)',
 };
 
-const roleColor  = { admin: '#a78bfa', teacher: '#60a5fa', assistant: '#fbbf24', student: '#34d399' };
-const roleBg     = { admin: 'rgba(124,58,237,0.2)', teacher: 'rgba(59,130,246,0.2)', assistant: 'rgba(245,158,11,0.2)', student: 'rgba(16,185,129,0.2)' };
-const roleBorder = { admin: '#7c3aed', teacher: '#3b82f6', assistant: '#f59e0b', student: '#10b981' };
-const roleGlow   = { admin: 'rgba(124,58,237,0.35)', teacher: 'rgba(59,130,246,0.35)', assistant: 'rgba(245,158,11,0.35)', student: 'rgba(16,185,129,0.35)' };
+const roleColor  = { teacher: '#60a5fa', student: '#34d399' };
+const roleBg     = { teacher: 'rgba(59,130,246,0.2)', student: 'rgba(16,185,129,0.2)' };
+const roleBorder = { teacher: '#3b82f6', student: '#10b981' };
+const roleGlow   = { teacher: 'rgba(59,130,246,0.35)', student: 'rgba(16,185,129,0.35)' };
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
-  const [members, setMembers] = useState([]);
   const [invites, setInvites] = useState([]);
   const [inviteRole, setInviteRole] = useState('teacher');
   const [loading, setLoading] = useState(true);
@@ -28,54 +27,27 @@ export default function Dashboard() {
   const [libLoading, setLibLoading] = useState(false);
   const [libUploading, setLibUploading] = useState(false);
   const [libError, setLibError] = useState('');
-  const [chatMode, setChatMode] = useState(null);
-  const [chatModeSaving, setChatModeSaving] = useState(false);
   const fileInputRef = useRef(null);
 
   const token = localStorage.getItem('sherlock_token');
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
-  const canManage = user?.role === 'admin' || user?.role === 'assistant';
-  const canLibrary = ['admin', 'assistant', 'teacher'].includes(user?.role);
+  const canManage = user?.role === 'teacher' && user?.is_owner;
+  const canLibrary = user?.role === 'teacher' && user?.is_owner;
 
   useEffect(() => { fetchData(); }, []);
   useEffect(() => { fetchLibrary(); }, [user?.schoolId]);
 
   const fetchData = async () => {
     try {
-      const requests = [fetch('/api/school/members', { headers })];
-      if (canManage) requests.push(fetch('/api/invites', { headers }));
-      if (user?.role === 'admin') requests.push(fetch('/api/school/settings', { headers }));
-      const results = await Promise.all(requests);
-      const membersData = await results[0].json();
-      setMembers(membersData.members || []);
-      if (canManage && results[1]) {
-        const invData = await results[1].json();
+      if (canManage) {
+        const res = await fetch('/api/invites', { headers });
+        const invData = await res.json();
         setInvites(invData.invites || []);
-      }
-      if (user?.role === 'admin' && results[results.length - 1]) {
-        const settings = await results[results.length - 1].json();
-        setChatMode(settings.chat_mode_ceiling ?? 'full');
       }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const saveChatMode = async (mode) => {
-    setChatModeSaving(true);
-    try {
-      const res = await fetch('/api/school/settings', {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({ chat_mode_ceiling: mode }),
-      });
-      if (res.ok) setChatMode(mode);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setChatModeSaving(false);
     }
   };
 
@@ -249,7 +221,6 @@ export default function Dashboard() {
             <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
               <select value={inviteRole} onChange={e => setInviteRole(e.target.value)}
                 style={{ padding: '10px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: 'white', fontSize: '14px', cursor: 'pointer', outline: 'none', colorScheme: 'dark', backdropFilter: 'blur(12px)' }}>
-                {user?.role === 'admin' && <option value="assistant" style={{ background: '#0d0d1a' }}>Assistant</option>}
                 <option value="teacher" style={{ background: '#0d0d1a' }}>Teacher</option>
                 <option value="student" style={{ background: '#0d0d1a' }}>Student</option>
               </select>
@@ -300,54 +271,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* AI Power Settings */}
-        {user?.role === 'admin' && (() => {
-          const geo = localStorage.getItem('sherlock_lang') === 'ka';
-          const aiModes = [
-            { id: 'focus', label: 'FOCUS', desc: 'Library only. Sherlock answers only from documents you upload. Zero hallucination, maximum control. Cheapest.', descGeo: 'მხოლოდ ბიბლიოთეკა. შერლოკი პასუხობს მხოლოდ ატვირთული დოკუმენტებიდან. ნულოვანი ჰალუცინაცია, მაქსიმალური კონტროლი. ყველაზე იაფი.' },
-            { id: 'smart', label: 'SMART', desc: 'Library + general knowledge. Balanced cost.',                                                                    descGeo: 'ბიბლიოთეკა + ზოგადი ცოდნა. შერლოკი პირველ რიგში იყენებს თქვენს დოკუმენტებს, შემდეგ საკუთარ ცოდნას. დაბალანსებული ხარჯი.' },
-            { id: 'full',  label: 'FULL',  desc: 'Unrestricted. Web search, anything. Most powerful, highest cost.',                                               descGeo: 'შეუზღუდავი. შერლოკს შეუძლია ინტერნეტ-ძიება, კონტენტის გენერირება, ნებისმიერ კითხვაზე პასუხი. ყველაზე მძლავრი, ყველაზე მაღალი ხარჯი.' },
-          ];
-          return (
-            <div style={{ marginBottom: '44px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: '700', margin: '0 0 4px 0', letterSpacing: '-0.01em' }}>⚡ {geo ? 'AI სიმძლავრის პარამეტრები' : 'AI Power Settings'}</h2>
-              <p style={{ color: COLORS.muted, fontSize: '13px', marginBottom: '20px', marginTop: 4 }}>{geo ? 'როგორც ადმინი, თქვენ აკონტროლებთ რამხელა AI სიმძლავრეს იყენებს თქვენი სკოლა. ეს პირდაპირ გავლენას ახდენს თქვენს API ხარჯებზე.' : 'Control how much AI power your school uses. This directly affects your API costs.'}</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {aiModes.map(mode => {
-                  const active = chatMode === mode.id;
-                  return (
-                    <div
-                      key={mode.id}
-                      onClick={() => !chatModeSaving && saveChatMode(mode.id)}
-                      style={{
-                        background: active ? 'rgba(124,58,237,0.12)' : COLORS.card,
-                        border: active ? '1px solid #7c3aed' : `1px solid ${COLORS.border}`,
-                        boxShadow: active ? '0 0 18px rgba(124,58,237,0.25)' : 'none',
-                        borderRadius: '14px',
-                        padding: '16px 20px',
-                        cursor: chatModeSaving ? 'wait' : 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '16px',
-                        backdropFilter: 'blur(20px)',
-                        transition: 'border 0.15s, box-shadow 0.15s, background 0.15s',
-                      }}
-                    >
-                      <div style={{ flex: 1 }}>
-                        <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: 700, color: active ? '#a78bfa' : 'white', letterSpacing: '0.04em' }}>{mode.label}</p>
-                        <p style={{ margin: 0, fontSize: '13px', color: COLORS.muted, lineHeight: 1.5 }}>{geo ? mode.descGeo : mode.desc}</p>
-                      </div>
-                      {active && (
-                        <span style={{ fontSize: '12px', fontWeight: 700, padding: '4px 12px', borderRadius: '20px', background: 'rgba(124,58,237,0.25)', color: '#a78bfa', border: '1px solid rgba(124,58,237,0.5)', flexShrink: 0 }}>{geo ? 'აქტიური' : 'Active'}</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })()}
-
         {/* Knowledge Library */}
         {user?.role !== 'student' && <div style={{ marginBottom: '44px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
@@ -397,35 +320,6 @@ export default function Dashboard() {
             )}
           </div>
         }
-
-        {/* Members */}
-        {user?.role !== 'student' && <div>
-          <h2 style={{ fontSize: '18px', fontWeight: '700', margin: '0 0 16px 0', letterSpacing: '-0.01em' }}>
-            Members <span style={{ fontSize: 14, fontWeight: 500, color: COLORS.muted }}>({members.length})</span>
-          </h2>
-          <div style={{ background: COLORS.card, border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', overflow: 'hidden', backdropFilter: 'blur(20px)' }}>
-            {members.length === 0 ? (
-              <div style={{ padding: '40px', textAlign: 'center', color: COLORS.muted }}>No members yet</div>
-            ) : (
-              members.map((m, i) => (
-                <div key={m.id} className="member-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: i < members.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none', gap: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: roleBg[m.role] || 'rgba(255,255,255,0.08)', border: `1px solid ${roleBorder[m.role] || 'rgba(255,255,255,0.1)'}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, color: roleColor[m.role] || 'white', flexShrink: 0 }}>
-                      {(m.name || '?')[0].toUpperCase()}
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: '14px', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</div>
-                      <div style={{ fontSize: '12px', color: COLORS.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.email}</div>
-                    </div>
-                  </div>
-                  <span style={{ fontSize: '12px', fontWeight: 600, padding: '4px 12px', borderRadius: '20px', background: roleBg[m.role] || 'rgba(255,255,255,0.08)', color: roleColor[m.role] || 'white', border: `1px solid ${roleBorder[m.role] || 'rgba(255,255,255,0.1)'}44`, flexShrink: 0, letterSpacing: '0.02em' }}>
-                    {m.role}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>}
       </div>
     </div>
   );

@@ -4,17 +4,6 @@ const pool = require('../services/db');
 
 // Run migrations on startup
 pool.query(`
-  CREATE TABLE IF NOT EXISTS knowledge_library (
-    id SERIAL PRIMARY KEY,
-    filename TEXT NOT NULL,
-    content TEXT NOT NULL,
-    uploaded_at TIMESTAMP DEFAULT NOW()
-  )
-`).then(() =>
-  pool.query(`ALTER TABLE knowledge_library ADD COLUMN IF NOT EXISTS uploaded_by TEXT DEFAULT 'admin'`)
-).catch(err => console.error('Library migration failed:', err.message));
-
-pool.query(`
   CREATE TABLE IF NOT EXISTS waitlist (
     id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,

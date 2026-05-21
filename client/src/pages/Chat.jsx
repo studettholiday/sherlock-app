@@ -1,23 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../AuthContext';
-import { RolePanel, PANEL_ACTIVE_CLS, NotificationBell } from '../components/RolePanels';
+import { RolePanel, PANEL_ACTIVE_CLS } from '../components/RolePanels';
 
 const THEMES = {
-  admin: {
-    avatar:     'bg-gradient-to-br from-purple-500 to-purple-700',
-    userBubble: 'bg-gradient-to-br from-purple-600 to-purple-800 text-white',
-    sendBtn:    'bg-purple-600 hover:bg-purple-500 shadow-lg shadow-purple-900/40',
-    ring:       'focus:ring-2 focus:ring-purple-500/40',
-    glow:       'rgba(147,51,234,0.10)',
-  },
-  assistant: {
-    avatar:     'bg-gradient-to-br from-orange-500 to-orange-700',
-    userBubble: 'bg-gradient-to-br from-orange-600 to-orange-800 text-white',
-    sendBtn:    'bg-orange-600 hover:bg-orange-500 shadow-lg shadow-orange-900/40',
-    ring:       'focus:ring-2 focus:ring-orange-500/40',
-    glow:       'rgba(234,88,12,0.10)',
-  },
   teacher: {
     avatar:     'bg-gradient-to-br from-blue-500 to-blue-700',
     userBubble: 'bg-gradient-to-br from-blue-600 to-blue-800 text-white',
@@ -39,22 +25,16 @@ const BASE_IDENTITY = 'You are Sherlock Is Smart, an AI assistant for school man
 const NO_INFO_INSTRUCTION = `When you cannot find information in the school library or context, respond with one of these naturally, matching the user's language: English: 'Sorry, I couldn\'t find anything on that.' or 'My deductive methods failed me on this one, haha. No information found.' Georgian: 'სამწუხაროდ, ინფორმაცია ვერ მოიძებნა.' or 'ინფორმაცია ვერ ვიპოვე ამ თემაზე.' or 'ჩემი დედუქციის მეთოდი უსარგებლო აღმოჩნდა, ჰაჰაჰა. ინფორმაცია ვერ ვიპოვე.' Vary the response naturally, don't always use the same one.`;
 
 const SYSTEM_PROMPTS = {
-  admin:     `${BASE_IDENTITY} You are assisting a school admin. Answer questions directly and helpfully. When responding to a greeting or first message, do not list your capabilities. Simply ask how you can help, using variations like: 'How can I help you?', 'How may I assist you?', 'რით შემიძლია დაგეხმაროთ?', 'დღეს რით შემიძლია გემსახუროთ?' — match the language of the user's message. ${NO_INFO_INSTRUCTION}`,
-  assistant: `${BASE_IDENTITY} You are assisting a school office assistant. Answer questions directly and helpfully. When responding to a greeting or first message, do not list your capabilities. Simply ask how you can help, using variations like: 'How can I help you?', 'How may I assist you?', 'რით შემიძლია დაგეხმაროთ?', 'დღეს რით შემიძლია გემსახუროთ?' — match the language of the user's message. ${NO_INFO_INSTRUCTION}`,
   teacher:   `${BASE_IDENTITY} You are assisting a teacher. Answer questions directly and helpfully. When responding to a greeting or first message, do not list your capabilities. Simply ask how you can help, using variations like: 'How can I help you?', 'How may I assist you?', 'რით შემიძლია დაგეხმაროთ?', 'დღეს რით შემიძლია გემსახუროთ?' — match the language of the user's message. ${NO_INFO_INSTRUCTION}`,
   student:   `${BASE_IDENTITY} You are assisting a student. Answer questions directly and helpfully. When responding to a greeting or first message, do not list your capabilities. Simply ask how you can help, using variations like: 'How can I help you?', 'How may I assist you?', 'რით შემიძლია დაგეხმაროთ?', 'დღეს რით შემიძლია გემსახუროთ?' — match the language of the user's message. ${NO_INFO_INSTRUCTION}`,
 };
 
 const GREETINGS = {
-  admin:     "Hello! I'm Sherlock, your admin assistant. I can help you manage students, approve registrations, generate invite codes, set schedules, broadcast messages, and view audit logs. What would you like to do?",
-  assistant: "Hi! I'm Sherlock, your office assistant. I can help with student management, groups, announcements, and sending invitations. What do you need?",
   teacher:   "Hi! I'm Sherlock, your teaching assistant. I can help with group schedules, student attendance, lesson notes, and group announcements. How can I help today?",
   student:   "Hey! I'm Sherlock, your school assistant. Ask me about your schedule, upcoming events, notes, or anything in the school library!",
 };
 
 const GEO_GREETINGS = {
-  admin:     "გამარჯობა! მე ვარ შერლოკ არის ჭკვიანი, ხელოვნური ინტელექტი, ასისტენტი სკოლის მართვისთვის. რით შემიძლია დაგეხმაროთ დღეს, როგორც სკოლის ადმინისტრატორს? შემიძლია დაგეხმაროთ სტუდენტების დამტკიცებაში, მოსაწვევი კოდების გენერირებაში, განრიგის დადგენაში, მომხმარებლების დაბლოკვაში, აუდიტის ჟურნალების ნახვაში და შეტყობინებების გავრცელებაში.",
-  assistant: "გამარჯობა! მე ვარ შერლოკი, თქვენი ოფისის ასისტენტი. შემიძლია დაგეხმაროთ სტუდენტების მართვაში, ჯგუფებში, განცხადებებში და მოწვევების გაგზავნაში. რა გჭირდებათ?",
   teacher:   "გამარჯობა! მე ვარ შერლოკი, სკოლის მართვის AI ასისტენტი. რით შემიძლია დაგეხმაროთ დღეს? შემიძლია დაგეხმაროთ განრიგების, ჯგუფური განცხადებების, მოსწავლეთა დასწრების, გაკვეთილის ჩანაწერების მართვაში და ჯგუფებისთვის ინფორმაციის გაგზავნაში.",
   student:   "გამარჯობა! მე ვარ შერლოკი, თქვენი AI ასისტენტი. რით შემიძლია დაგეხმაროთ დღეს? შემიძლია მოგაწოდოთ ინფორმაცია განრიგის, მომავალი ღონისძიებების, ჩანაწერების შესახებ ან ნებისმიერი სხვა ინფორმაცია სასკოლო ბიბლიოთეკიდან.",
 };
@@ -129,66 +109,21 @@ function MessageBubble({ message, theme }) {
   );
 }
 
-const ROLE_SWITCHER = [
-  { id: 'admin',     label: 'Admin',     activeCls: 'bg-purple-600 text-white'  },
-  { id: 'assistant', label: 'Assistant', activeCls: 'bg-orange-600 text-white'  },
-  { id: 'teacher',   label: 'Teacher',   activeCls: 'bg-blue-600 text-white'    },
-  { id: 'student',   label: 'Student',   activeCls: 'bg-emerald-600 text-white' },
-];
-
 const BUTTON_GROUPS = {
-  admin: [
-    { id: 'people',    label: '👥 People',    children: [{ id: 'students', label: 'Students' }, { id: 'assistants', label: 'Assistants' }, { id: 'teachers', label: 'Teachers' }, { id: 'invite', label: 'Invite' }] },
-    { id: 'manage',    label: '📋 Manage',    children: [{ id: 'subjects', label: 'Manage' }] },
-    { id: 'broadcast', label: '📢 Notify',    children: [{ id: 'broadcast', label: 'Broadcast' }, { id: 'admin-announce', label: 'Announce' }] },
-    { id: 'events',    label: '🎪 Events',    children: [{ id: 'view-events', label: 'View Events' }, { id: 'add-event', label: 'Add Event' }, { id: 'delete-event', label: 'Delete Event' }] },
-  ],
-  assistant: [
-    { id: 'people',   label: '👥 People',   children: [{ id: 'students', label: 'Students' }, { id: 'teachers', label: 'Teachers' }, { id: 'invite', label: 'Invite' }] },
-    { id: 'manage',   label: '📋 Manage',   children: [{ id: 'subjects', label: 'Subjects' }] },
-    { id: 'events',   label: '🎪 Events',   children: [{ id: 'view-events', label: 'View Events' }, { id: 'add-event', label: 'Add Event' }, { id: 'delete-event', label: 'Delete Event' }] },
-    { id: 'requests', label: '📬 Requests', children: [{ id: 'requests', label: 'Pending Requests' }] },
-    { id: 'announce', label: '📢 Announce', children: [{ id: 'announce', label: 'Announce' }] },
-  ],
   teacher: [
-    { id: 'my-work',     label: '📅 My Work',     children: [{ id: 'my-schedule', label: 'My Schedule' }, { id: 'my-groups', label: 'My Groups' }] },
-    { id: 'announce',    label: '📢 Announce'    },
-    { id: 'share-files', label: '📁 Share Files' },
+    { id: 'schedule', label: '📅 Schedule' },
   ],
   student: [
-    { id: 'schedule',  label: 'Schedule'   },
-    { id: 'events',    label: 'Events'     },
-    { id: 'plan',      label: '📋 Plan',      children: [{ id: 'change-group', label: 'Change Group' }, { id: 'remove-subject', label: 'Remove Group' }, { id: 'add-subject', label: 'Add Subject' }] },
-    { id: 'my-notes',  label: '📓 My Notes',  children: [{ id: 'notes', label: 'Notes' }, { id: 'practice-diary', label: 'Practice Diary' }, { id: 'labels', label: 'Labels' }, { id: 'trash', label: '🗑 Trash' }] },
-    { id: 'report',    label: '⚠️ Report',    children: [{ id: 'report-absence', label: 'Lesson Absence' }] },
+    { id: 'schedule', label: '📅 Schedule' },
   ],
 };
 
 const GEO_BUTTON_GROUPS = {
-  admin: [
-    { id: 'people',    label: '👥 ხალხი',        children: [{ id: 'students', label: 'სტუდენტები' }, { id: 'assistants', label: 'ასისტენტები' }, { id: 'teachers', label: 'მასწავლებლები' }, { id: 'invite', label: 'მოწვევა' }] },
-    { id: 'manage',    label: '📋 მართვა',        children: [{ id: 'subjects', label: 'მართვა' }] },
-    { id: 'broadcast', label: '📢 შეტყობინება',   children: [{ id: 'broadcast', label: 'ყველას' }, { id: 'admin-announce', label: 'ჯგუფს' }] },
-    { id: 'events',    label: '🎪 ღონისძიებები', children: [{ id: 'view-events', label: 'ნახვა' }, { id: 'add-event', label: 'დამატება' }, { id: 'delete-event', label: 'წაშლა' }] },
-  ],
-  assistant: [
-    { id: 'people',   label: '👥 ხალხი',        children: [{ id: 'students', label: 'სტუდენტები' }, { id: 'teachers', label: 'მასწავლებლები' }, { id: 'invite', label: 'მოწვევა' }] },
-    { id: 'manage',   label: '📋 მართვა',        children: [{ id: 'subjects', label: 'საგნები' }] },
-    { id: 'events',   label: '🎪 ღონისძიებები', children: [{ id: 'view-events', label: 'ნახვა' }, { id: 'add-event', label: 'დამატება' }, { id: 'delete-event', label: 'წაშლა' }] },
-    { id: 'requests', label: '📬 მოთხოვნები',   children: [{ id: 'requests', label: 'მოლოდინი' }] },
-    { id: 'announce', label: '📢 გამოცხადება',   children: [{ id: 'announce', label: 'გამოცხადება' }] },
-  ],
   teacher: [
-    { id: 'my-work',     label: '📅 ჩემი სამუშაო',       children: [{ id: 'my-schedule', label: 'ჩემი განრიგი' }, { id: 'my-groups', label: 'ჩემი ჯგუფები' }] },
-    { id: 'announce',    label: '📢 გამოცხადება' },
-    { id: 'share-files', label: '📁 ფაილების გაზიარება' },
+    { id: 'schedule', label: '📅 განრიგი' },
   ],
   student: [
-    { id: 'schedule', label: 'განრიგი' },
-    { id: 'events',   label: 'ღონისძიებები' },
-    { id: 'plan',     label: '📋 გეგმა',            children: [{ id: 'change-group', label: 'ჯგუფის შეცვლა' }, { id: 'add-subject', label: 'საგნის დამატება' }, { id: 'remove-subject', label: 'ჯგუფის წაშლა' }] },
-    { id: 'my-notes', label: '📓 ჩემი ჩანაწერები',  children: [{ id: 'notes', label: 'ჩანაწერები' }, { id: 'practice-diary', label: 'პრაქტიკის დღიური' }, { id: 'labels', label: 'ლეიბლები' }, { id: 'trash', label: '🗑 კალათი' }] },
-    { id: 'report',    label: '⚠️ გაცდენა',           children: [{ id: 'report-absence', label: 'გაკვეთილის გაცდენა' }] },
+    { id: 'schedule', label: '📅 განრიგი' },
   ],
 };
 
@@ -197,22 +132,19 @@ function getButtonGroups(lang) {
 }
 
 const GROUP_OPEN_CLS = {
-  admin:     'bg-purple-600/20 text-purple-300 border border-purple-500/40',
-  assistant: 'bg-orange-600/20 text-orange-300 border border-orange-500/40',
   teacher:   'bg-blue-600/20 text-blue-300 border border-blue-500/40',
   student:   'bg-emerald-600/20 text-emerald-300 border border-emerald-500/40',
 };
 
 const ACCENT_COLORS = {
-  admin: '#7c3aed', assistant: '#ea580c', teacher: '#2563eb', student: '#059669',
+  teacher: '#2563eb', student: '#059669',
 };
 
 export default function Chat() {
   const { user, logout } = useAuth();
   const lang = localStorage.getItem('sherlock_lang') === 'ka' ? 'GEO' : 'EN';
 
-  const defaultRole = user?.role || 'admin';
-  const [role, setRole]           = useState(defaultRole);
+  const role = user?.role || 'teacher';
   const [activePanel, setActivePanel] = useState(null);
   const [openGroup, setOpenGroup] = useState(null);
   const theme = THEMES[role] || THEMES.student;
@@ -222,7 +154,7 @@ export default function Chat() {
   ]);
   const [input, setInput]     = useState('');
   const [loading, setLoading] = useState(false);
-  const [accentColor, setAccentColor] = useState(ACCENT_COLORS[defaultRole] || '#7c3aed');
+  const [accentColor, setAccentColor] = useState(ACCENT_COLORS[role] || '#7c3aed');
 
   const messagesRef  = useRef(null);
   const fileInputRef = useRef(null);
@@ -414,50 +346,11 @@ export default function Chat() {
           )}
 
           <div className="ml-auto flex items-center gap-2">
-            <NotificationBell lang={lang} />
-            {user?.role === 'admin'
-              ? <a href="/dashboard" className="text-xs text-white/40 no-underline px-2.5 py-1.5 sm:px-3.5 rounded-xl border border-white/10 transition-colors hover:bg-white/[0.08] hover:text-white/70 whitespace-nowrap">
-                  {lang === 'GEO' ? '← დაფა' : '← Dashboard'}
-                </a>
-              : <button onClick={logout} className="text-xs text-white/40 px-2.5 py-1.5 sm:px-3.5 rounded-xl border border-white/10 transition-colors hover:bg-white/[0.08] hover:text-white/70 whitespace-nowrap bg-transparent cursor-pointer">
-                  {lang === 'GEO' ? 'გასვლა' : 'Sign out'}
-                </button>
-            }
+            <button onClick={logout} className="text-xs text-white/40 px-2.5 py-1.5 sm:px-3.5 rounded-xl border border-white/10 transition-colors hover:bg-white/[0.08] hover:text-white/70 whitespace-nowrap bg-transparent cursor-pointer">
+              {lang === 'GEO' ? 'გასვლა' : 'Sign out'}
+            </button>
           </div>
         </header>
-
-        {/* Role switcher */}
-        <div className={`flex items-center gap-1 px-2 py-1.5 sm:px-4 sm:py-2 border-b ${s.headerBorder} flex-shrink-0 overflow-x-auto`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          {(() => {
-            const userRole = user?.role;
-            return ROLE_SWITCHER.filter(r => {
-              if (!userRole || userRole === 'admin') return true;
-              if (userRole === 'assistant') return r.id === 'assistant' || r.id === 'student';
-              if (userRole === 'teacher') return r.id === 'teacher';
-              if (userRole === 'student') return r.id === 'student';
-              return true;
-            });
-          })().map((r) => (
-            <button
-              key={r.id}
-              onClick={() => setRole(r.id)}
-              className={`px-4 py-1 rounded-full text-xs font-medium transition-all duration-200 flex-shrink-0 ${
-                role === r.id
-                  ? r.activeCls
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              {lang === 'GEO' ? ({ admin: 'ადმინი', assistant: 'ასისტენტი', teacher: 'მასწავლებელი', student: 'სტუდენტი' })[r.id] : r.label}
-            </button>
-          ))}
-          <button
-            onClick={clearChat}
-            title="Start a new conversation"
-            className="ml-auto text-xs px-2 py-1 rounded-lg text-gray-600 hover:text-gray-400 transition-colors"
-          >
-            {lang === 'GEO' ? '↺ ახალი' : '↺ New'}
-          </button>
-        </div>
 
         {/* Handler buttons */}
         {(() => {
@@ -488,6 +381,27 @@ export default function Chat() {
                     </button>
                   );
                 })}
+                {user?.is_owner && (
+                  <>
+                    <button
+                      onClick={() => setActivePanel(activePanel === 'invite' ? null : 'invite')}
+                      className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all duration-200 ${activePanel === 'invite' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
+                      {lang === 'GEO' ? '⚙️ მოწვევა' : '⚙️ Invite'}
+                    </button>
+                    <button
+                      onClick={() => setActivePanel(activePanel === 'schedule-editor' ? null : 'schedule-editor')}
+                      className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all duration-200 ${activePanel === 'schedule-editor' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
+                      {lang === 'GEO' ? '📅 განრიგის რედაქტირება' : '📅 Edit Schedule'}
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={clearChat}
+                  title="Start a new conversation"
+                  className="ml-auto text-xs px-2 py-1 rounded-lg text-gray-600 hover:text-gray-400 transition-colors flex-shrink-0"
+                >
+                  {lang === 'GEO' ? '↺ ახალი' : '↺ New'}
+                </button>
               </div>
               {openGroupDef?.children && openGroupDef.children.length >= 2 && (
                 <div className={`flex items-center gap-1.5 px-6 py-1.5 border-t ${s.headerBorder} flex-wrap`}>

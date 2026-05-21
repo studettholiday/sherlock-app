@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import ChatWindow from './components/ChatWindow';
 import { AuthProvider, useAuth } from './AuthContext';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -10,7 +9,6 @@ import JoinWithCode from './pages/JoinWithCode';
 import Chat from './pages/Chat';
 import PendingApproval from './pages/PendingApproval';
 import ResetPassword from './pages/ResetPassword';
-import ChooseClasses from './pages/ChooseClasses';
 
 const T = {
   EN: {
@@ -23,9 +21,8 @@ const T = {
     emailLabel: 'Email address',
     schoolLabel: 'Organization name',
     typeLabel: 'Industry',
-    eventsTitle: 'Upcoming Events',
     scheduleTitle: 'Schedule',
-    roleAdmin: 'Admin', roleTeacher: 'Teacher', roleStudent: 'Student',
+    roleTeacher: 'Teacher', roleStudent: 'Student',
     chatTitle: 'Try Sherlock',
     chatSubtitle: 'Ask anything. See how it works.',
     thankYou: "You're on the list! We'll be in touch soon.",
@@ -40,9 +37,8 @@ const T = {
     emailLabel: 'ელ-ფოსტა',
     schoolLabel: 'ორგანიზაციის სახელი',
     typeLabel: 'ინდუსტრია',
-    eventsTitle: 'მომავალი ღონისძიებები',
     scheduleTitle: 'განრიგი',
-    roleAdmin: 'ადმინი', roleTeacher: 'მასწავლებელი', roleStudent: 'მოსწავლე',
+    roleTeacher: 'მასწავლებელი', roleStudent: 'მოსწავლე',
     chatTitle: 'სცადე შერლოკი',
     chatSubtitle: 'ნებისმიერი კითხვა. ნახეთ როგორ მუშაობს.',
     thankYou: 'თქვენ ჩაეწერეთ! მალე დაგიკავშირდებით.',
@@ -373,21 +369,6 @@ function AppInner() {
   const closeModal = useCallback(() => setModalOpen(false), []);
   const t = T[lang];
 
-  const events = [
-    { name: 'Year-End Concert',  name_ka: 'წლის შემაჯამებელი კონცერტი', event_date: '2025-06-20T00:00:00.000Z', event_time: '19:00', date_ka: '20 ივნ · 19:00', place: 'Tbilisi Art Hall',  place_ka: 'თბილისი არტ-ჰოლი' },
-    { name: 'Summer Workshop',   name_ka: 'საზაფხულო ვორქშოფი',         event_date: '2025-07-15T00:00:00.000Z', event_time: '11:00', date_ka: '15 ივლ · 11:00', place: 'State University', place_ka: 'სახელმწიფო უნივერსიტეტი' },
-  ];
-
-  const schedule = groupSchedule([
-    { group_name: 'Guitar Beginners', group_name_ka: 'გიტარა დამწყებთათვის', day_of_week: 0, lesson_time: '16:00' },
-    { group_name: 'Guitar Beginners', group_name_ka: 'გიტარა დამწყებთათვის', day_of_week: 2, lesson_time: '16:00' },
-    { group_name: 'Guitar Advanced',  group_name_ka: 'გიტარა ადვანს დონე',   day_of_week: 1, lesson_time: '17:00' },
-    { group_name: 'Guitar Advanced',  group_name_ka: 'გიტარა ადვანს დონე',   day_of_week: 3, lesson_time: '17:00' },
-    { group_name: 'Vocals Group I',   group_name_ka: 'ვოკალის ჯგუფი I',      day_of_week: 0, lesson_time: '18:00' },
-    { group_name: 'Vocals Group I',   group_name_ka: 'ვოკალის ჯგუფი I',      day_of_week: 4, lesson_time: '18:00' },
-    { group_name: 'Band Practice',    group_name_ka: 'ბენდის რეპეტიცია',     day_of_week: 5, lesson_time: '12:00' },
-  ]);
-
   useEffect(() => {
     document.documentElement.lang = lang === 'GEO' ? 'ka' : 'en';
   }, [lang]);
@@ -427,10 +408,9 @@ function AppInner() {
     user.status === 'pending' ||
     (user.role === 'student' && user.registrationStatus === 'pending')
   );
-  const isStudentNeedingClasses = user && user.role === 'student' && user.registrationStatus === 'none';
 
   if (inviteToken) return (
-    <InviteAccept token={inviteToken} onSuccess={(role) => window.location.href = role === 'student' ? '/choose-classes' : '/dashboard'} />
+    <InviteAccept token={inviteToken} onSuccess={() => window.location.href = '/dashboard'} />
   );
 
   if (window.location.pathname === '/pending') {
@@ -438,17 +418,6 @@ function AppInner() {
       ? <Login onSwitch={() => setAuthPage('signup')} onSuccess={() => window.location.href = '/dashboard'} />
       : <Signup onSwitch={() => setAuthPage('login')} onSuccess={() => window.location.href = '/dashboard'} />;
     return <PendingApproval />;
-  }
-
-  if (window.location.pathname === '/choose-classes') {
-    if (!user) return authPage === 'login'
-      ? <Login onSwitch={() => setAuthPage('signup')} onSuccess={() => window.location.href = '/choose-classes'} />
-      : <Signup onSwitch={() => setAuthPage('login')} onSuccess={() => window.location.href = '/choose-classes'} />;
-    if (user.role !== 'student' || user.registrationStatus === 'approved') {
-      window.location.replace('/dashboard');
-      return <div style={{ minHeight: '100vh', background: '#0d0d1a' }} />;
-    }
-    return <ChooseClasses />;
   }
 
   if (window.location.pathname === '/join') return <JoinWithCode />;
@@ -463,14 +432,12 @@ function AppInner() {
   if (window.location.pathname === '/dashboard' || window.location.pathname === '/app') {
     if (!user) return null;
     if (isPending) { window.location.replace('/pending'); return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />; }
-    if (isStudentNeedingClasses) { window.location.replace('/choose-classes'); return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />; }
     return <AppLayout />;
   }
 
   if (user && (window.location.pathname === "/" || window.location.pathname === "")) {
     if (typeof window !== "undefined") {
       if (isPending) window.location.replace('/pending');
-      else if (isStudentNeedingClasses) window.location.replace('/choose-classes');
       else window.location.replace('/dashboard');
     }
     return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />;

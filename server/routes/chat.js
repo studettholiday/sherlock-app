@@ -47,13 +47,11 @@ function buildSystemPrompt(user, mode, libraryFiles, language) {
   const schoolName = user.schoolName;
 
   const roleContext = {
-    admin:     `You are assisting ${schoolName}'s admin. You have full access to help manage the school.`,
-    assistant: `You are assisting ${schoolName}'s office assistant.`,
     teacher:   `You are assisting a teacher at ${schoolName}.`,
     student:   `You are assisting a student at ${schoolName}.`,
   }[role] || `You are assisting a member of ${schoolName}.`;
 
-  let prompt = `You are Sherlock, an AI assistant for ${schoolName}. ${roleContext} Be concise, helpful, and professional. You only know what is in the school library documents below. Do not invent features, capabilities, or information about the school that are not explicitly stated in those documents. If the library is empty, say you don't have school-specific information yet and ask the admin to upload documents to the library.`;
+  let prompt = `You are Sherlock, an AI assistant for ${schoolName}. ${roleContext} Be concise, helpful, and professional. You only know what is in the school library documents below. Do not invent features, capabilities, or information about the school that are not explicitly stated in those documents. If the library is empty, say you don't have school-specific information yet and ask the owner to upload documents to the library.`;
 
   if (language === 'ka') {
     prompt += ' Always respond in Georgian (ქართული) regardless of the language of the documents.';
@@ -95,7 +93,7 @@ router.post('/', authMiddleware, async (req, res) => {
 
   try {
     const schoolResult = await pool.query(
-      'SELECT api_key_encrypted, chat_mode_ceiling, name FROM schools WHERE id = $1',
+      'SELECT api_key_encrypted, name FROM schools WHERE id = $1',
       [user.schoolId]
     );
     if (schoolResult.rows.length === 0) {
@@ -103,11 +101,6 @@ router.post('/', authMiddleware, async (req, res) => {
     }
     const school = schoolResult.rows[0];
     const apiKey = school.api_key_encrypted;
-
-    // Enforce mode ceiling set by admin
-    const modeRank = { focus: 0, smart: 1, full: 2 };
-    const ceiling = school.chat_mode_ceiling || 'full';
-    const effectiveMode = (modeRank[mode] ?? 1) <= (modeRank[ceiling] ?? 2) ? mode : ceiling;
 
     if (!apiKey) {
       return res.status(402).json({ error: 'No API key configured for this school. Please add your Anthropic API key in settings.' });
@@ -117,7 +110,7 @@ router.post('/', authMiddleware, async (req, res) => {
 
     const systemPrompt = buildSystemPrompt(
       { ...user, schoolName: school.name || user.schoolName },
-      effectiveMode,
+      mode,
       libraryFiles,
       language
     );
