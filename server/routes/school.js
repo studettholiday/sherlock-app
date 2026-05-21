@@ -786,26 +786,39 @@ router.delete('/notes/trash/:id/permanent', authMiddleware, async (req, res) => 
 
 // --- Absence Reports ---
 
+// 0=Monday … 6=Sunday. Maps a numeric day_of_week to a name; values that are
+// already day-name strings pass through unchanged, so this is correct whether
+// schedule.day_of_week is stored as INTEGER or VARCHAR.
+const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+function toDayName(d) {
+  if (d === null || d === undefined) return null;
+  const n = Number(d);
+  return Number.isInteger(n) && n >= 0 && n <= 6 ? DAY_NAMES[n] : String(d);
+}
+
 // Student's enrolled groups + their scheduled lesson days, for the report form
 router.get('/my-groups-for-report', authMiddleware, async (req, res) => {
   console.log('[my-groups-for-report] userId:', req.user.userId, 'schoolId:', req.user.schoolId);
   try {
     const result = await getPool().query(
       `SELECT g.id AS group_id, g.name AS group_name,
-              COALESCE(
-                (SELECT array_agg(DISTINCT sc.day_of_week)
-                 FROM schedule sc
-                 WHERE sc.group_id = g.id AND sc.day_of_week IS NOT NULL),
-                ARRAY[]::text[]
-              ) AS lesson_days
+              array_agg(s.day_of_week ORDER BY s.day_of_week) AS lesson_days,
+              array_agg(s.lesson_time ORDER BY s.day_of_week) AS lesson_times
        FROM web_registrations wr
-       JOIN groups g ON wr.group_id = g.id
+       JOIN groups g   ON g.id = wr.group_id
+       JOIN schedule s ON s.group_id = g.id
        WHERE wr.user_id = $1 AND wr.school_id = $2 AND wr.status = 'approved'
        GROUP BY g.id, g.name
        ORDER BY g.name ASC`,
       [req.user.userId, req.user.schoolId]
     );
-    res.json({ groups: result.rows });
+    const groups = result.rows.map(r => ({
+      group_id:     r.group_id,
+      group_name:   r.group_name,
+      lesson_days:  (r.lesson_days || []).map(toDayName),
+      lesson_times: r.lesson_times || [],
+    }));
+    res.json({ groups });
   } catch (err) {
     console.error('[my-groups-for-report] GET error:', err.message);
     res.status(500).json({ error: 'Server error' });
