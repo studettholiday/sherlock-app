@@ -5,18 +5,18 @@ import { RolePanel, PANEL_ACTIVE_CLS } from '../components/RolePanels';
 
 const THEMES = {
   teacher: {
-    avatar:     'bg-gradient-to-br from-blue-500 to-blue-700',
-    userBubble: 'bg-gradient-to-br from-blue-600 to-blue-800 text-white',
-    sendBtn:    'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-900/40',
-    ring:       'focus:ring-2 focus:ring-blue-500/40',
-    glow:       'rgba(37,99,235,0.10)',
+    avatar:     'bg-[#eff6ff] text-[#2563eb]',
+    userBubble: 'bg-[#eff6ff] text-[#111827]',
+    sendBtn:    'bg-[#2563eb] hover:bg-[#1d4ed8]',
+    ring:       'focus:border-[#3b82f6]',
+    glow:       'transparent',
   },
   student: {
-    avatar:     'bg-gradient-to-br from-emerald-500 to-emerald-700',
-    userBubble: 'bg-gradient-to-br from-emerald-600 to-emerald-800 text-white',
-    sendBtn:    'bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-900/40',
-    ring:       'focus:ring-2 focus:ring-emerald-500/40',
-    glow:       'rgba(5,150,105,0.10)',
+    avatar:     'bg-[#eff6ff] text-[#2563eb]',
+    userBubble: 'bg-[#eff6ff] text-[#111827]',
+    sendBtn:    'bg-[#2563eb] hover:bg-[#1d4ed8]',
+    ring:       'focus:border-[#3b82f6]',
+    glow:       'transparent',
   },
 };
 
@@ -53,15 +53,15 @@ function getGreeting(role, lang, orgName = '', orgNameGenitive = '') {
 
 const CHAT_STYLES = {
   glass: {
-    wrap:            'bg-white/[0.03] backdrop-blur-2xl',
-    headerBorder:    'border-white/15',
-    footerBorder:    'border-white/15',
-    titleColor:      'text-white',
-    assistantBubble: 'bg-white/[0.08] text-white border border-white/10',
-    inputCls:        'bg-white/[0.08] border border-white/20 text-white placeholder-white/30',
-    selectCls:       'bg-white/[0.08] border border-white/20 text-white/80',
-    thinkingColor:   'text-white/40',
-    colorScheme:     'dark',
+    wrap:            'bg-[#ffffff]',
+    headerBorder:    'border-[#e5e7eb]',
+    footerBorder:    'border-[#e5e7eb]',
+    titleColor:      'text-[#111827]',
+    assistantBubble: 'bg-[#ffffff] text-[#111827] border border-[#e5e7eb]',
+    inputCls:        'bg-[#ffffff] border border-[#e5e7eb] text-[#111827] placeholder-[#9ca3af]',
+    selectCls:       'bg-[#ffffff] border border-[#e5e7eb] text-[#111827]',
+    thinkingColor:   'text-[#6b7280]',
+    colorScheme:     'light',
   },
 };
 
@@ -92,7 +92,7 @@ function MessageBubble({ message, theme }) {
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-3`}>
-      <div className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm leading-relaxed break-words ${
+      <div className={`max-w-[75%] px-3.5 py-2.5 rounded-xl text-sm leading-relaxed break-words ${
         isUser
           ? `${theme.userBubble} rounded-br-sm`
           : `${s.assistantBubble} rounded-bl-sm`
@@ -100,8 +100,8 @@ function MessageBubble({ message, theme }) {
         {isUser ? message.content : (
           <ReactMarkdown components={{
             a: ({ href, children }) => href?.startsWith('/api/library/download/')
-              ? <a href={href} download style={{ color: '#a78bfa', textDecoration: 'underline', cursor: 'pointer' }}>{children}</a>
-              : <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: '#a78bfa', textDecoration: 'underline' }}>{children}</a>
+              ? <a href={href} download style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}>{children}</a>
+              : <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline' }}>{children}</a>
           }}>{message.content}</ReactMarkdown>
         )}
       </div>
@@ -132,12 +132,12 @@ function getButtonGroups(lang) {
 }
 
 const GROUP_OPEN_CLS = {
-  teacher:   'bg-blue-600/20 text-blue-300 border border-blue-500/40',
-  student:   'bg-emerald-600/20 text-emerald-300 border border-emerald-500/40',
+  teacher:   'bg-[#eff6ff] text-[#2563eb] border border-[#3b82f6]',
+  student:   'bg-[#eff6ff] text-[#2563eb] border border-[#3b82f6]',
 };
 
 const ACCENT_COLORS = {
-  teacher: '#2563eb', student: '#059669',
+  teacher: '#2563eb', student: '#2563eb',
 };
 
 export default function Chat() {
@@ -154,7 +154,7 @@ export default function Chat() {
   ]);
   const [input, setInput]     = useState('');
   const [loading, setLoading] = useState(false);
-  const [accentColor, setAccentColor] = useState(ACCENT_COLORS[role] || '#7c3aed');
+  const [accentColor, setAccentColor] = useState(ACCENT_COLORS[role] || '#2563eb');
 
   const messagesRef  = useRef(null);
   const fileInputRef = useRef(null);
@@ -178,7 +178,7 @@ export default function Chat() {
   }, []);
 
   useEffect(() => {
-    setAccentColor(ACCENT_COLORS[role] || '#7c3aed');
+    setAccentColor(ACCENT_COLORS[role] || '#2563eb');
   }, [role]);
 
   useEffect(() => {
@@ -303,50 +303,34 @@ export default function Chat() {
   }
 
   return (
-    <div className="flex flex-col text-white font-sans overflow-hidden"
+    <div className="flex flex-col font-sans overflow-hidden"
       style={{
         position: 'fixed', top: 0, left: 0, right: 0,
         height: '100dvh',
-        background: 'linear-gradient(135deg, #0a0015 0%, #0d0d1a 50%, #050510 100%)',
+        background: '#ffffff',
+        color: '#111827',
       }}>
 
       <style>{`
-        @keyframes rainbowBar {
-          0%   { background-position: 0% 50%; }
-          100% { background-position: 200% 50%; }
-        }
         @keyframes dotBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
         .dot-bounce { animation: dotBounce 0.6s ease-in-out infinite; }
       `}</style>
 
-      {/* Rainbow top bar */}
-      <div style={{ height: 2, flexShrink: 0, background: 'linear-gradient(90deg,#7c3aed,#4f46e5,#0891b2,#06b6d4,#7c3aed)', backgroundSize: '200% 100%', animation: 'rainbowBar 4s linear infinite' }} />
-
-      {/* Full-page ambient glow */}
-      <div className="pointer-events-none fixed inset-0 -z-10"
-        style={{ background: `radial-gradient(ellipse 80% 35% at 50% 0%, ${accentColor}22, transparent)` }} />
-
       {/* Chat card fills remaining height */}
       <div className={`relative flex flex-col flex-1 overflow-hidden ${s.wrap}`}>
 
-        {/* Per-role ambient glow */}
-        <div
-          className="pointer-events-none absolute inset-0 -z-10"
-          style={{ background: `radial-gradient(ellipse 80% 35% at 50% 0%, ${accentColor}22, transparent)` }}
-        />
-
         {/* Header */}
-        <header className={`flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 border-b ${s.headerBorder} flex-shrink-0`}>
-          <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full ${theme.avatar} flex items-center justify-center text-white font-bold shadow-md flex-shrink-0 text-sm`}>
+        <header className={`flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 border-b ${s.headerBorder} flex-shrink-0 bg-[#ffffff]`}>
+          <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full ${theme.avatar} flex items-center justify-center font-bold flex-shrink-0 text-sm`}>
             S
           </div>
-          <h1 className={`text-sm sm:text-base font-semibold ${s.titleColor}`}>Sherlock</h1>
+          <h1 className="text-[18px] font-semibold text-[#111827]">Sherlock</h1>
           {user?.schoolName && (
-            <span className="hidden sm:inline text-xs text-white/35 ml-0.5">{user.schoolName}</span>
+            <span className="hidden sm:inline text-[14px] font-normal text-[#6b7280] ml-0.5">{user.schoolName}</span>
           )}
 
           <div className="ml-auto flex items-center gap-2">
-            <button onClick={logout} className="text-xs text-white/40 px-2.5 py-1.5 sm:px-3.5 rounded-xl border border-white/10 transition-colors hover:bg-white/[0.08] hover:text-white/70 whitespace-nowrap bg-transparent cursor-pointer">
+            <button onClick={logout} className="text-[13px] font-medium text-[#dc2626] px-3 py-1.5 sm:px-3.5 rounded-md border border-[#fecaca] transition-colors duration-150 hover:bg-[#fef2f2] whitespace-nowrap bg-[#ffffff] cursor-pointer">
               {lang === 'GEO' ? 'გასვლა' : 'Sign out'}
             </button>
           </div>
@@ -354,8 +338,8 @@ export default function Chat() {
 
         {/* Handler buttons */}
         {(() => {
-          const inactiveCls = 'border border-white/15 text-gray-400 hover:text-white hover:border-white/30';
-          const inactiveGroupCls = 'border border-white/15 text-gray-400 hover:text-white hover:border-white/30';
+          const inactiveCls = 'bg-[#ffffff] border border-[#e5e7eb] text-[#111827] hover:bg-[#f9fafb]';
+          const inactiveGroupCls = 'bg-[#ffffff] border border-[#e5e7eb] text-[#111827] hover:bg-[#f9fafb]';
           const openGroupDef = openGroup ? getButtonGroups(lang)[role].find(g => g.id === openGroup) : null;
           return (
             <div className={`flex flex-col border-b ${s.headerBorder} flex-shrink-0`}>
@@ -367,7 +351,7 @@ export default function Chat() {
                     return (
                       <button key={item.id}
                         onClick={() => setOpenGroup(g => g === item.id ? null : item.id)}
-                        className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-all duration-200 ${openGroup === item.id ? GROUP_OPEN_CLS[role] : inactiveGroupCls}`}>
+                        className={`px-4 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${openGroup === item.id ? GROUP_OPEN_CLS[role] : inactiveGroupCls}`}>
                         {item.label} {openGroup === item.id ? '▲' : '▼'}
                       </button>
                     );
@@ -376,7 +360,7 @@ export default function Chat() {
                   return (
                     <button key={item.id}
                       onClick={() => setActivePanel(activePanel === panelId ? null : panelId)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all duration-200 ${activePanel === panelId ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
+                      className={`px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${activePanel === panelId ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
                       {item.label}
                     </button>
                   );
@@ -385,17 +369,17 @@ export default function Chat() {
                   <>
                     <button
                       onClick={() => setActivePanel(activePanel === 'invite' ? null : 'invite')}
-                      className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all duration-200 ${activePanel === 'invite' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
+                      className={`px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${activePanel === 'invite' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
                       {lang === 'GEO' ? '⚙️ მოწვევა' : '⚙️ Invite'}
                     </button>
                     <button
                       onClick={() => setActivePanel(activePanel === 'schedule-editor' ? null : 'schedule-editor')}
-                      className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all duration-200 ${activePanel === 'schedule-editor' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
+                      className={`px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${activePanel === 'schedule-editor' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
                       {lang === 'GEO' ? '📅 განრიგის რედაქტირება' : '📅 Edit Schedule'}
                     </button>
                     <button
                       onClick={() => setActivePanel(activePanel === 'library' ? null : 'library')}
-                      className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all duration-200 ${activePanel === 'library' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
+                      className={`px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${activePanel === 'library' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
                       {lang === 'GEO' ? '📁 ფაილები' : '📁 Files'}
                     </button>
                   </>
@@ -403,7 +387,7 @@ export default function Chat() {
                 <button
                   onClick={clearChat}
                   title="Start a new conversation"
-                  className="ml-auto text-xs px-2 py-1 rounded-lg text-gray-600 hover:text-gray-400 transition-colors flex-shrink-0"
+                  className="ml-auto text-[13px] font-medium px-2.5 py-1.5 rounded-md text-[#6b7280] hover:bg-[#f9fafb] hover:text-[#111827] transition-colors duration-150 flex-shrink-0"
                 >
                   {lang === 'GEO' ? '↺ ახალი' : '↺ New'}
                 </button>
@@ -413,7 +397,7 @@ export default function Chat() {
                   {openGroupDef.children.map(child => (
                     <button key={child.id}
                       onClick={() => setActivePanel(activePanel === child.id ? null : child.id)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all duration-200 ${activePanel === child.id ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
+                      className={`px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${activePanel === child.id ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
                       {child.label}
                     </button>
                   ))}
@@ -439,13 +423,13 @@ export default function Chat() {
         {/* Thinking indicator — fixed below messages, never scrolls away */}
         <div style={{ display: loading ? 'flex' : 'none', alignItems: 'flex-end', gap: '8px', flexShrink: 0 }}
           className={`px-4 py-2 border-t ${s.footerBorder}`}>
-          <div className={`w-8 h-8 text-sm rounded-full ${theme.avatar} flex items-center justify-center text-white font-bold flex-shrink-0`}>
+          <div className={`w-8 h-8 text-sm rounded-full ${theme.avatar} flex items-center justify-center font-bold flex-shrink-0`}>
             S
           </div>
-          <div className={`px-4 py-2.5 rounded-2xl rounded-bl-sm ${s.assistantBubble} flex items-center gap-1.5`}>
+          <div className={`px-3.5 py-2.5 rounded-xl rounded-bl-sm ${s.assistantBubble} flex items-center gap-1.5`}>
             {[0, 1, 2].map(d => (
               <div key={d} className="dot-bounce w-2 h-2 rounded-full"
-                style={{ background: accentColor, animationDelay: `${d * 0.15}s` }} />
+                style={{ background: '#9ca3af', animationDelay: `${d * 0.15}s` }} />
             ))}
           </div>
         </div>
@@ -454,16 +438,16 @@ export default function Chat() {
         {attachedFiles.length > 0 && (
           <div className={`flex items-center gap-2 px-4 py-2 border-t ${s.footerBorder} flex-shrink-0 flex-wrap`}>
             {attachedFiles.map(f => (
-              <span key={f.id} className="text-xs rounded-full px-3 py-1.5 flex items-center gap-2 bg-white/[0.08] text-gray-300">
+              <span key={f.id} className="text-[13px] rounded-md px-3 py-1.5 flex items-center gap-2 bg-[#fafafa] border border-[#e5e7eb] text-[#111827]">
                 <span className="truncate max-w-[120px]">📄 {f.name}</span>
                 <button
                   type="button"
                   onClick={() => setAttachedFiles(prev => prev.filter(x => x.id !== f.id))}
-                  className="text-gray-500 hover:text-white flex-shrink-0 leading-none transition-colors"
+                  className="text-[#9ca3af] hover:text-[#111827] flex-shrink-0 leading-none transition-colors duration-150"
                 >✕</button>
               </span>
             ))}
-            <span className="text-xs text-gray-600">{attachedFiles.length}/3</span>
+            <span className="text-[13px] text-[#9ca3af]">{attachedFiles.length}/3</span>
           </div>
         )}
 
@@ -484,10 +468,10 @@ export default function Chat() {
             title="Attach document for this conversation only (.pdf, .txt, .md) — not saved to Library"
             onClick={() => fileInputRef.current?.click()}
             style={{ minHeight: 44, minWidth: 44 }}
-            className={`px-3 py-2 rounded-xl text-sm flex-shrink-0 transition-all duration-150 active:scale-95 ${
+            className={`px-3 py-2 rounded-md text-sm flex-shrink-0 transition-colors duration-150 ${
               attachedFiles.length > 0
                 ? PANEL_ACTIVE_CLS[role]
-                : 'border border-white/15 text-gray-400 hover:text-white hover:border-white/30'
+                : 'bg-[#ffffff] border border-[#e5e7eb] text-[#111827] hover:bg-[#f9fafb]'
             }`}
           >
             📎
@@ -499,13 +483,14 @@ export default function Chat() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) sendMessage(e); }}
             onFocus={() => setTimeout(() => messagesRef.current?.scrollTo({ top: messagesRef.current.scrollHeight, behavior: 'smooth' }), 300)}
-            className={`flex-1 resize-none rounded-xl px-3 py-2 text-sm focus:outline-none ${theme.ring} max-h-32 ${s.inputCls}`}
+            className={`flex-1 resize-none rounded-md text-[16px] focus:outline-none ${theme.ring} focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] max-h-32 ${s.inputCls}`}
+            style={{ padding: '10px 14px' }}
           />
           <button
             type="submit"
             disabled={loading || !input.trim()}
             style={{ minHeight: 44, minWidth: 44 }}
-            className={`px-4 py-2 rounded-xl text-white text-sm font-medium disabled:opacity-40 active:scale-95 transition-all duration-150 ${theme.sendBtn}`}
+            className={`px-4 py-2 rounded-md text-white text-sm font-medium disabled:opacity-40 transition-colors duration-150 ${theme.sendBtn}`}
           >
             {lang === 'GEO' ? 'გაგზავნა' : 'Send'}
           </button>

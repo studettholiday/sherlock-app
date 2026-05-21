@@ -36,26 +36,27 @@ export default function PendingApproval() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#0d0d1a',
+      background: '#ffffff',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       padding: '24px',
     }}>
       <div style={{
-        background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: 20,
+        background: '#ffffff',
+        border: '1px solid #e5e7eb',
+        borderRadius: 8,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
         padding: '48px 40px',
         maxWidth: 440,
         width: '100%',
         textAlign: 'center',
       }}>
         <div style={{ fontSize: '3rem', marginBottom: 16 }}>⏳</div>
-        <h1 style={{ color: '#fff', fontSize: '1.4rem', fontWeight: 700, margin: '0 0 12px' }}>
+        <h1 style={{ color: '#111827', fontSize: '24px', fontWeight: 700, margin: '0 0 12px' }}>
           {isStudentRegistrationPending ? 'Request Sent' : 'Pending Approval'}
         </h1>
-        <p style={{ color: 'rgb(156,163,175)', fontSize: '0.95rem', lineHeight: 1.6, margin: '0 0 32px' }}>
+        <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: 1.6, margin: '0 0 32px' }}>
           {isStudentRegistrationPending
             ? 'Your class selection is being reviewed. You will receive access once approved.'
             : 'Your registration is awaiting approval. You will receive access once your account has been reviewed.'
@@ -63,14 +64,18 @@ export default function PendingApproval() {
         </p>
         <button
           onClick={logout}
+          onMouseEnter={e => { e.target.style.background = '#fafafa'; }}
+          onMouseLeave={e => { e.target.style.background = '#ffffff'; }}
           style={{
-            background: 'transparent',
-            border: '1px solid rgba(255,255,255,0.15)',
-            borderRadius: 10,
-            color: 'rgb(156,163,175)',
+            background: '#ffffff',
+            border: '1px solid #e5e7eb',
+            borderRadius: 6,
+            color: '#6b7280',
             padding: '10px 24px',
-            fontSize: '0.875rem',
+            fontSize: '14px',
+            fontWeight: 500,
             cursor: 'pointer',
+            transition: 'background 0.15s ease',
           }}
         >
           Sign out

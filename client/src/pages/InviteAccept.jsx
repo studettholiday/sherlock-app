@@ -41,36 +41,37 @@ export default function InviteAccept({ token, onSuccess }) {
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', background: 'linear-gradient(135deg, #1a0533 0%, #0d0d1a 100%)'
+      justifyContent: 'center', background: '#ffffff'
     }}>
       <div style={{
         position: 'relative',
-        background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px',
+        background: '#ffffff',
+        border: '1px solid #e5e7eb', borderRadius: '8px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
         padding: '40px', width: '100%', maxWidth: '400px',
         fontFamily: cardFont,
       }}>
         <select
           value={lang}
           onChange={e => { setLang(e.target.value); localStorage.setItem('sherlock_lang', e.target.value); }}
-          style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', color: 'white', padding: '4px 8px', fontSize: '13px', cursor: 'pointer', outline: 'none' }}
+          style={{ position: 'absolute', top: '16px', right: '16px', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '6px', color: '#111827', padding: '8px 12px', fontSize: '14px', cursor: 'pointer', outline: 'none' }}
         >
-          {languages.map(l => <option key={l.code} value={l.code} style={{ background: '#1a0533' }}>{l.label}</option>)}
+          {languages.map(l => <option key={l.code} value={l.code} style={{ background: '#ffffff', color: '#111827' }}>{l.label}</option>)}
         </select>
 
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <div style={{
             width: '48px', height: '48px', borderRadius: '12px',
-            background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+            background: '#eff6ff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 16px', fontSize: '24px', fontWeight: 'bold', color: 'white'
+            margin: '0 auto 16px', fontSize: '24px', fontWeight: 'bold', color: '#2563eb'
           }}>S</div>
-          <h1 style={{ color: 'white', fontSize: '24px', margin: 0 }}>{t(lang, 'invited')}</h1>
-          <p style={{ color: 'rgba(255,255,255,0.5)', marginTop: '8px', fontSize: '14px' }}>{t(lang, 'invitedSubtitle')}</p>
+          <h1 style={{ color: '#111827', fontSize: '24px', fontWeight: 700, margin: 0 }}>{t(lang, 'invited')}</h1>
+          <p style={{ color: '#6b7280', marginTop: '8px', fontSize: '14px' }}>{t(lang, 'invitedSubtitle')}</p>
         </div>
 
         {error && (
-          <div style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '12px', marginBottom: '20px', color: '#f87171', fontSize: '14px' }}>
+          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '12px', marginBottom: '20px', color: '#dc2626', fontSize: '14px' }}>
             {error}
           </div>
         )}
@@ -78,18 +79,23 @@ export default function InviteAccept({ token, onSuccess }) {
         <form onSubmit={handleSubmit}>
           {fields.map(field => (
             <div key={field.key} style={{ marginBottom: '16px' }}>
-              <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', display: 'block', marginBottom: '6px' }}>{t(lang, field.labelKey)}</label>
+              <label style={{ color: '#6b7280', fontSize: '14px', fontWeight: 500, display: 'block', marginBottom: '6px' }}>{t(lang, field.labelKey)}</label>
               <input
                 type={field.type} value={form[field.key]} required={field.required}
                 onChange={e => setForm(f => ({ ...f, [field.key]: e.target.value }))}
-                style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', color: 'white', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }}
+                onFocus={e => { e.target.style.border = '1px solid #3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)'; }}
+                onBlur={e => { e.target.style.border = '1px solid #e5e7eb'; e.target.style.boxShadow = 'none'; }}
+                style={{ width: '100%', padding: '10px 14px', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '6px', color: '#111827', fontSize: '16px', boxSizing: 'border-box', outline: 'none', transition: 'border 0.15s ease, box-shadow 0.15s ease' }}
               />
             </div>
           ))}
-          <button type="submit" disabled={loading} style={{
-            width: '100%', padding: '12px', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-            border: 'none', borderRadius: '8px', color: 'white', fontSize: '16px',
-            fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1
+          <button type="submit" disabled={loading}
+            onMouseEnter={e => { if (!loading) e.target.style.background = '#1d4ed8'; }}
+            onMouseLeave={e => { e.target.style.background = '#2563eb'; }}
+            style={{
+            width: '100%', padding: '10px 14px', background: '#2563eb',
+            border: 'none', borderRadius: '6px', color: '#ffffff', fontSize: '14px',
+            fontWeight: '500', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, transition: 'background 0.15s ease'
           }}>
             {loading ? t(lang, 'creatingAccount') : t(lang, 'createAccount')}
           </button>

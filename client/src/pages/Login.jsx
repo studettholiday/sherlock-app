@@ -51,14 +51,14 @@ export default function Login({ onSwitch, onSuccess }) {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #1a0533 0%, #0d0d1a 100%)'
+      background: '#ffffff'
     }}>
       <div style={{
         position: 'relative',
-        background: 'rgba(255,255,255,0.05)',
-        backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255,255,255,0.1)',
-        borderRadius: '16px',
+        background: '#ffffff',
+        border: '1px solid #e5e7eb',
+        borderRadius: '8px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
         padding: '40px',
         width: '100%',
         maxWidth: '400px',
@@ -67,24 +67,24 @@ export default function Login({ onSwitch, onSuccess }) {
         <select
           value={lang}
           onChange={e => { setLang(e.target.value); localStorage.setItem('sherlock_lang', e.target.value); }}
-          style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', color: 'white', padding: '4px 8px', fontSize: '13px', cursor: 'pointer', outline: 'none' }}
+          style={{ position: 'absolute', top: '16px', right: '16px', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '6px', color: '#111827', padding: '8px 12px', fontSize: '14px', cursor: 'pointer', outline: 'none' }}
         >
-          {languages.map(l => <option key={l.code} value={l.code} style={{ background: '#1a0533' }}>{l.label}</option>)}
+          {languages.map(l => <option key={l.code} value={l.code} style={{ background: '#ffffff', color: '#111827' }}>{l.label}</option>)}
         </select>
 
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <div style={{
             width: '48px', height: '48px', borderRadius: '12px',
-            background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+            background: '#eff6ff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 16px', fontSize: '24px', fontWeight: 'bold', color: 'white'
+            margin: '0 auto 16px', fontSize: '24px', fontWeight: 'bold', color: '#2563eb'
           }}>S</div>
-          <h1 style={{ color: 'white', fontSize: '24px', margin: 0 }}>{t(lang, 'welcomeBack')}</h1>
-          <p style={{ color: 'rgba(255,255,255,0.5)', marginTop: '8px', fontSize: '14px' }}>{t(lang, 'signInSubtitle')}</p>
+          <h1 style={{ color: '#111827', fontSize: '24px', fontWeight: 700, margin: 0 }}>{t(lang, 'welcomeBack')}</h1>
+          <p style={{ color: '#6b7280', marginTop: '8px', fontSize: '14px' }}>{t(lang, 'signInSubtitle')}</p>
         </div>
 
         {error && (
-          <div style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '12px', marginBottom: '20px', color: '#f87171', fontSize: '14px' }}>
+          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '12px', marginBottom: '20px', color: '#dc2626', fontSize: '14px' }}>
             {error}
           </div>
         )}
@@ -92,32 +92,37 @@ export default function Login({ onSwitch, onSuccess }) {
         {forgotMode ? (
           forgotStatus === 'sent' ? (
             <div style={{ textAlign: 'center', padding: '12px 0' }}>
-              <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '14px', marginBottom: '8px' }}>Check your email for a reset link.</p>
-              <span onClick={() => { setForgotMode(false); setForgotStatus(''); }} style={{ color: '#7c3aed', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>Back to sign in</span>
+              <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '8px' }}>Check your email for a reset link.</p>
+              <span onClick={() => { setForgotMode(false); setForgotStatus(''); }} style={{ color: '#2563eb', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>Back to sign in</span>
             </div>
           ) : (
             <form onSubmit={handleForgot}>
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', display: 'block', marginBottom: '6px' }}>Email</label>
+                <label style={{ color: '#6b7280', fontSize: '14px', fontWeight: 500, display: 'block', marginBottom: '6px' }}>Email</label>
                 <input
                   type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} required
-                  style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', color: 'white', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }}
+                  onFocus={e => { e.target.style.border = '1px solid #3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)'; }}
+                  onBlur={e => { e.target.style.border = '1px solid #e5e7eb'; e.target.style.boxShadow = 'none'; }}
+                  style={{ width: '100%', padding: '10px 14px', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '6px', color: '#111827', fontSize: '16px', boxSizing: 'border-box', outline: 'none', transition: 'border 0.15s ease, box-shadow 0.15s ease' }}
                 />
               </div>
               {forgotStatus === 'error' && (
-                <div style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '12px', marginBottom: '16px', color: '#f87171', fontSize: '14px' }}>
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '12px', marginBottom: '16px', color: '#dc2626', fontSize: '14px' }}>
                   Something went wrong. Please try again.
                 </div>
               )}
-              <button type="submit" disabled={forgotStatus === 'loading'} style={{
-                width: '100%', padding: '12px', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-                border: 'none', borderRadius: '8px', color: 'white', fontSize: '16px',
-                fontWeight: '600', cursor: forgotStatus === 'loading' ? 'not-allowed' : 'pointer', opacity: forgotStatus === 'loading' ? 0.7 : 1, marginBottom: '16px'
+              <button type="submit" disabled={forgotStatus === 'loading'}
+                onMouseEnter={e => { if (forgotStatus !== 'loading') e.target.style.background = '#1d4ed8'; }}
+                onMouseLeave={e => { e.target.style.background = '#2563eb'; }}
+                style={{
+                width: '100%', padding: '10px 14px', background: '#2563eb',
+                border: 'none', borderRadius: '6px', color: '#ffffff', fontSize: '14px',
+                fontWeight: '500', cursor: forgotStatus === 'loading' ? 'not-allowed' : 'pointer', opacity: forgotStatus === 'loading' ? 0.7 : 1, marginBottom: '16px', transition: 'background 0.15s ease'
               }}>
                 {forgotStatus === 'loading' ? 'Sending…' : 'Send reset link'}
               </button>
-              <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}>
-                <span onClick={() => setForgotMode(false)} style={{ color: '#7c3aed', cursor: 'pointer', fontWeight: '600' }}>Back to sign in</span>
+              <p style={{ textAlign: 'center', color: '#6b7280', fontSize: '14px' }}>
+                <span onClick={() => setForgotMode(false)} style={{ color: '#2563eb', cursor: 'pointer', fontWeight: '500' }}>Back to sign in</span>
               </p>
             </form>
           )
@@ -125,36 +130,43 @@ export default function Login({ onSwitch, onSuccess }) {
           <>
             <form onSubmit={handleSubmit}>
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', display: 'block', marginBottom: '6px' }}>{t(lang, 'email')}</label>
+                <label style={{ color: '#6b7280', fontSize: '14px', fontWeight: 500, display: 'block', marginBottom: '6px' }}>{t(lang, 'email')}</label>
                 <input
                   type="email" value={email} onChange={e => setEmail(e.target.value)} required
-                  style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', color: 'white', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }}
+                  onFocus={e => { e.target.style.border = '1px solid #3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)'; }}
+                  onBlur={e => { e.target.style.border = '1px solid #e5e7eb'; e.target.style.boxShadow = 'none'; }}
+                  style={{ width: '100%', padding: '10px 14px', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '6px', color: '#111827', fontSize: '16px', boxSizing: 'border-box', outline: 'none', transition: 'border 0.15s ease, box-shadow 0.15s ease' }}
                 />
               </div>
               <div style={{ marginBottom: '8px' }}>
-                <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', display: 'block', marginBottom: '6px' }}>{t(lang, 'password')}</label>
+                <label style={{ color: '#6b7280', fontSize: '14px', fontWeight: 500, display: 'block', marginBottom: '6px' }}>{t(lang, 'password')}</label>
                 <input
                   type="password" value={password} onChange={e => setPassword(e.target.value)} required
-                  style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', color: 'white', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }}
+                  onFocus={e => { e.target.style.border = '1px solid #3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)'; }}
+                  onBlur={e => { e.target.style.border = '1px solid #e5e7eb'; e.target.style.boxShadow = 'none'; }}
+                  style={{ width: '100%', padding: '10px 14px', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '6px', color: '#111827', fontSize: '16px', boxSizing: 'border-box', outline: 'none', transition: 'border 0.15s ease, box-shadow 0.15s ease' }}
                 />
               </div>
               <div style={{ textAlign: 'right', marginBottom: '20px' }}>
-                <span onClick={() => { setForgotMode(true); setForgotEmail(email); }} style={{ color: 'rgba(255,255,255,0.45)', fontSize: '13px', cursor: 'pointer' }}>
+                <span onClick={() => { setForgotMode(true); setForgotEmail(email); }} style={{ color: '#6b7280', fontSize: '13px', cursor: 'pointer' }}>
                   Forgot password?
                 </span>
               </div>
-              <button type="submit" disabled={loading} style={{
-                width: '100%', padding: '12px', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-                border: 'none', borderRadius: '8px', color: 'white', fontSize: '16px',
-                fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1
+              <button type="submit" disabled={loading}
+                onMouseEnter={e => { if (!loading) e.target.style.background = '#1d4ed8'; }}
+                onMouseLeave={e => { e.target.style.background = '#2563eb'; }}
+                style={{
+                width: '100%', padding: '10px 14px', background: '#2563eb',
+                border: 'none', borderRadius: '6px', color: '#ffffff', fontSize: '14px',
+                fontWeight: '500', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, transition: 'background 0.15s ease'
               }}>
                 {loading ? t(lang, 'signingIn') : t(lang, 'signIn')}
               </button>
             </form>
 
-            <p style={{ textAlign: 'center', marginTop: '24px', color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}>
+            <p style={{ textAlign: 'center', marginTop: '24px', color: '#6b7280', fontSize: '14px' }}>
               {t(lang, 'noAccount')}{' '}
-              <span onClick={onSwitch} style={{ color: '#7c3aed', cursor: 'pointer', fontWeight: '600' }}>
+              <span onClick={onSwitch} style={{ color: '#2563eb', cursor: 'pointer', fontWeight: '500' }}>
                 {t(lang, 'registerSchool')}
               </span>
             </p>

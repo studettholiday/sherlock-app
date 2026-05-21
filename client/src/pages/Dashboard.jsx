@@ -4,18 +4,18 @@ import { useAuth } from '../AuthContext';
 const BASE_URL = 'https://sherlock-app-production.up.railway.app';
 
 const COLORS = {
-  bg: '#0d0d1a',
-  card: 'rgba(255,255,255,0.04)',
-  border: 'rgba(255,255,255,0.08)',
-  purple: '#7c3aed',
-  text: 'white',
-  muted: 'rgba(255,255,255,0.45)',
+  bg: '#ffffff',
+  card: '#ffffff',
+  border: '#e5e7eb',
+  purple: '#2563eb',
+  text: '#111827',
+  muted: '#6b7280',
 };
 
-const roleColor  = { teacher: '#60a5fa', student: '#34d399' };
-const roleBg     = { teacher: 'rgba(59,130,246,0.2)', student: 'rgba(16,185,129,0.2)' };
-const roleBorder = { teacher: '#3b82f6', student: '#10b981' };
-const roleGlow   = { teacher: 'rgba(59,130,246,0.35)', student: 'rgba(16,185,129,0.35)' };
+const roleColor  = { teacher: '#2563eb', student: '#10b981' };
+const roleBg     = { teacher: '#eff6ff', student: '#ecfdf5' };
+const roleBorder = { teacher: '#2563eb', student: '#10b981' };
+const roleGlow   = { teacher: 'rgba(37,99,235,0.12)', student: 'rgba(16,185,129,0.12)' };
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -139,72 +139,53 @@ export default function Dashboard() {
   };
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #0a0015 0%, #0d0d1a 50%, #050510 100%)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff' }}>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes rainbowBar { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
       `}</style>
-      <div style={{ height: 2, width: '100%', position: 'fixed', top: 0, background: 'linear-gradient(90deg, #7c3aed, #4f46e5, #0891b2, #06b6d4, #7c3aed)', backgroundSize: '200% 100%', animation: 'rainbowBar 4s linear infinite' }} />
-      <div style={{ width: 40, height: 40, borderRadius: '50%', border: '2px solid rgba(124,58,237,0.2)', borderTopColor: '#7c3aed', animation: 'spin 0.8s linear infinite' }} />
+      <div style={{ width: 40, height: 40, borderRadius: '50%', border: '2px solid #e5e7eb', borderTopColor: '#2563eb', animation: 'spin 0.8s linear infinite' }} />
     </div>
   );
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0015 0%, #0d0d1a 50%, #050510 100%)', color: COLORS.text, fontFamily: 'sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#ffffff', color: COLORS.text, fontFamily: "'Inter', system-ui, -apple-system, sans-serif" }}>
       <style>{`
-        @keyframes rainbowBar {
-          0%   { background-position: 0% 50%; }
-          100% { background-position: 200% 50%; }
-        }
-        @keyframes sLogoGlow {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(124,58,237,0.5), 0 0 16px rgba(124,58,237,0.2); }
-          50%       { box-shadow: 0 0 0 9px transparent, 0 0 28px rgba(124,58,237,0.25); }
-        }
-        .member-row { transition: background 0.15s; }
-        .member-row:hover { background: rgba(255,255,255,0.04) !important; }
-        .dash-open-chat { transition: all 0.15s; }
-        .dash-open-chat:hover { filter: brightness(1.1); transform: scale(1.02); }
-        .dash-open-chat:active { transform: scale(0.97); }
-        .dash-signout { transition: all 0.15s; }
-        .dash-signout:hover { background: rgba(255,255,255,0.06) !important; border-color: rgba(255,255,255,0.2) !important; color: rgba(255,255,255,0.7) !important; }
-        .dash-generate { transition: all 0.15s; }
-        .dash-generate:hover { filter: brightness(1.1); transform: scale(1.01); }
-        .dash-generate:active { transform: scale(0.97); }
-        .dash-copy { transition: all 0.15s; }
-        .dash-copy:hover { filter: brightness(1.15); }
-        .dash-revoke { transition: all 0.15s; }
-        .dash-revoke:hover { background: rgba(239,68,68,0.25) !important; }
-        .dash-lib-upload { transition: all 0.15s; }
-        .dash-lib-upload:hover:not(:disabled) { filter: brightness(1.1); transform: scale(1.01); }
-        .dash-lib-upload:active:not(:disabled) { transform: scale(0.97); }
-        .dash-lib-delete { transition: all 0.15s; }
-        .dash-lib-delete:hover { background: rgba(239,68,68,0.25) !important; }
+        .member-row { transition: background 0.15s ease; }
+        .member-row:hover { background: #fafafa !important; }
+        .dash-open-chat { transition: background 0.15s ease; }
+        .dash-open-chat:hover { background: #1d4ed8 !important; }
+        .dash-signout { transition: background 0.15s ease; }
+        .dash-signout:hover { background: #fef2f2 !important; }
+        .dash-generate { transition: background 0.15s ease; }
+        .dash-generate:hover { background: #1d4ed8 !important; }
+        .dash-copy { transition: background 0.15s ease; }
+        .dash-copy:hover { background: #f9fafb !important; }
+        .dash-revoke { transition: background 0.15s ease; }
+        .dash-revoke:hover { background: #fef2f2 !important; }
+        .dash-lib-upload { transition: background 0.15s ease; }
+        .dash-lib-upload:hover:not(:disabled) { background: #1d4ed8 !important; }
+        .dash-lib-delete { transition: background 0.15s ease; }
+        .dash-lib-delete:hover { background: #fef2f2 !important; }
       `}</style>
 
-      {/* Ambient glow */}
-      <div style={{ position: 'fixed', inset: 0, background: 'radial-gradient(ellipse 80% 35% at 50% 0%, rgba(124,58,237,0.14), transparent)', pointerEvents: 'none', zIndex: 0 }} />
-
-      {/* Rainbow bar */}
-      <div style={{ position: 'relative', zIndex: 1, height: 2, width: '100%', background: 'linear-gradient(90deg, #7c3aed, #4f46e5, #0891b2, #06b6d4, #7c3aed)', backgroundSize: '200% 100%', animation: 'rainbowBar 4s linear infinite' }} />
-
       {/* Header */}
-      <div style={{ position: 'relative', zIndex: 1, borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', backdropFilter: 'blur(20px)', background: 'rgba(8,8,20,0.78)' }}>
+      <div style={{ position: 'relative', zIndex: 1, borderBottom: '1px solid #e5e7eb', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', background: '#ffffff' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: 0 }}>
-          <div style={{ width: 44, height: 44, borderRadius: '12px', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 20, flexShrink: 0, animation: 'sLogoGlow 3s ease-in-out infinite' }}>S</div>
+          <div style={{ width: 44, height: 44, borderRadius: '12px', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 20, flexShrink: 0 }}>S</div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: 17, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '-0.01em' }}>{user?.schoolName}</div>
-            <div style={{ color: COLORS.muted, fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}>
-              {user?.email} · <span style={{ color: roleColor[user?.role] || 'white' }}>{user?.role}</span>
+            <div style={{ fontWeight: 700, fontSize: 18, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '-0.01em' }}>{user?.schoolName}</div>
+            <div style={{ color: COLORS.muted, fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}>
+              {user?.email} · <span style={{ color: roleColor[user?.role] || '#6b7280' }}>{user?.role}</span>
             </div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
           <button onClick={() => window.location.href = '/chat'} className="dash-open-chat"
-            style={{ padding: '9px 18px', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', border: 'none', borderRadius: '10px', color: 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '700', boxShadow: '0 4px 20px rgba(124,58,237,0.38)', letterSpacing: '0.01em' }}>
+            style={{ padding: '9px 18px', background: '#2563eb', border: 'none', borderRadius: '6px', color: '#ffffff', cursor: 'pointer', fontSize: '13px', fontWeight: '600', letterSpacing: '0.01em' }}>
             Open Chat
           </button>
           <button onClick={logout} className="dash-signout"
-            style={{ padding: '9px 16px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: COLORS.muted, cursor: 'pointer', fontSize: '13px' }}>
+            style={{ padding: '9px 16px', background: '#ffffff', border: '1px solid #fecaca', borderRadius: '6px', color: '#dc2626', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}>
             Sign out
           </button>
         </div>
@@ -215,51 +196,51 @@ export default function Dashboard() {
         {/* Invite Links */}
         {canManage && (
           <div style={{ marginBottom: '44px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: '700', margin: '0 0 4px 0', letterSpacing: '-0.01em' }}>Invite Links</h2>
+            <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', margin: '0 0 4px 0', letterSpacing: '-0.01em' }}>Invite Links</h2>
             <p style={{ color: COLORS.muted, fontSize: '13px', marginBottom: '20px', marginTop: 4 }}>Generate one-time invite links. Links expire in 7 days.</p>
 
             <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
               <select value={inviteRole} onChange={e => setInviteRole(e.target.value)}
-                style={{ padding: '10px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: 'white', fontSize: '14px', cursor: 'pointer', outline: 'none', colorScheme: 'dark', backdropFilter: 'blur(12px)' }}>
-                <option value="teacher" style={{ background: '#0d0d1a' }}>Teacher</option>
-                <option value="student" style={{ background: '#0d0d1a' }}>Student</option>
+                style={{ padding: '8px 12px', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '6px', color: '#111827', fontSize: '14px', cursor: 'pointer', outline: 'none' }}>
+                <option value="teacher" style={{ background: '#ffffff', color: '#111827' }}>Teacher</option>
+                <option value="student" style={{ background: '#ffffff', color: '#111827' }}>Student</option>
               </select>
               <button onClick={generateInvite} className="dash-generate"
-                style={{ padding: '10px 22px', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', border: 'none', borderRadius: '10px', color: 'white', fontSize: '14px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 16px rgba(124,58,237,0.32)' }}>
+                style={{ padding: '10px 22px', background: '#2563eb', border: 'none', borderRadius: '6px', color: '#ffffff', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
                 Generate Invite Link
               </button>
             </div>
 
             {invites.length === 0 ? (
-              <div style={{ color: COLORS.muted, fontSize: '13px', padding: '16px 0' }}>No active invite links.</div>
+              <div style={{ color: COLORS.muted, fontSize: '14px', fontStyle: 'italic', textAlign: 'center', padding: '24px 0' }}>No active invite links.</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {invites.map(inv => {
                   const url = `${BASE_URL}/join?code=${inv.code}`;
                   const expired = new Date(inv.expires_at) < new Date();
                   const used = !!inv.used_at;
-                  const statusColor = used ? '#34d399' : expired ? '#f87171' : '#fbbf24';
-                  const statusGlow  = used ? 'rgba(52,211,153,0.18)' : expired ? 'rgba(248,113,113,0.18)' : 'rgba(251,191,36,0.18)';
+                  const statusColor = used ? '#6b7280' : expired ? '#dc2626' : '#10b981';
+                  const statusGlow  = used ? '#f3f4f6' : expired ? '#fef2f2' : '#ecfdf5';
                   return (
-                    <div key={inv.id} style={{ background: COLORS.card, border: '1px solid rgba(255,255,255,0.08)', borderLeft: `3px solid ${roleBorder[inv.target_role] || '#7c3aed'}`, borderRadius: '14px', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '12px', backdropFilter: 'blur(20px)' }}>
+                    <div key={inv.id} style={{ background: COLORS.card, border: '1px solid #e5e7eb', borderLeft: `3px solid ${roleBorder[inv.target_role] || '#2563eb'}`, borderRadius: '8px', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                        <span style={{ fontSize: '12px', fontWeight: 600, padding: '4px 12px', borderRadius: '20px', background: roleBg[inv.target_role], color: roleColor[inv.target_role], border: `1px solid ${roleBorder[inv.target_role] || '#7c3aed'}44`, letterSpacing: '0.02em' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 600, padding: '4px 12px', borderRadius: '20px', background: roleBg[inv.target_role], color: roleColor[inv.target_role], border: `1px solid ${roleBorder[inv.target_role] || '#2563eb'}`, letterSpacing: '0.02em' }}>
                           {inv.target_role}
                         </span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <span style={{ fontSize: '12px', color: COLORS.muted }}>{new Date(inv.expires_at).toLocaleDateString()}</span>
-                          <span style={{ fontSize: '12px', fontWeight: 600, color: statusColor, padding: '3px 10px', borderRadius: 20, background: statusGlow, border: `1px solid ${statusColor}44` }}>
+                          <span style={{ fontSize: '12px', fontWeight: 600, color: statusColor, padding: '3px 10px', borderRadius: 20, background: statusGlow, border: `1px solid ${statusColor}` }}>
                             {used ? 'Used' : expired ? 'Expired' : 'Active'}
                           </span>
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         <button onClick={() => copyToClipboard(url, `inv-${inv.id}`)} className="dash-copy"
-                          style={{ flex: 1, minWidth: '120px', padding: '8px 14px', borderRadius: '10px', border: `1px solid ${copied === `inv-${inv.id}` ? 'rgba(52,211,153,0.4)' : 'rgba(99,102,241,0.35)'}`, background: copied === `inv-${inv.id}` ? 'rgba(52,211,153,0.12)' : 'rgba(99,102,241,0.12)', color: copied === `inv-${inv.id}` ? '#34d399' : '#818cf8', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
+                          style={{ flex: 1, minWidth: '120px', padding: '8px 14px', borderRadius: '6px', border: `1px solid ${copied === `inv-${inv.id}` ? '#3b82f6' : '#e5e7eb'}`, background: copied === `inv-${inv.id}` ? '#eff6ff' : '#ffffff', color: copied === `inv-${inv.id}` ? '#2563eb' : '#111827', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>
                           {copied === `inv-${inv.id}` ? '✓ Copied' : '📋 Copy Link'}
                         </button>
                         <button onClick={() => revokeInvite(inv.id)} className="dash-revoke"
-                          style={{ padding: '8px 16px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', color: '#f87171', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
+                          style={{ padding: '8px 16px', background: '#ffffff', border: '1px solid #fecaca', borderRadius: '6px', color: '#dc2626', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>
                           Revoke
                         </button>
                       </div>
@@ -274,8 +255,8 @@ export default function Dashboard() {
         {/* Knowledge Library */}
         {user?.role !== 'student' && <div style={{ marginBottom: '44px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-              <h2 style={{ fontSize: '18px', fontWeight: '700', margin: 0, letterSpacing: '-0.01em' }}>📚 Knowledge Library</h2>
-              <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', margin: 0, letterSpacing: '-0.01em' }}>📚 Knowledge Library</h2>
+              <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: '#eff6ff', color: '#2563eb', border: '1px solid #2563eb' }}>
                 {libFiles.length} {libFiles.length === 1 ? 'file' : 'files'}
               </span>
             </div>
@@ -285,32 +266,32 @@ export default function Dashboard() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: libError ? 10 : 20, flexWrap: 'wrap' }}>
                 <input ref={fileInputRef} type="file" accept=".pdf,.txt,.md" onChange={uploadFile} style={{ display: 'none' }} />
                 <button onClick={() => fileInputRef.current?.click()} disabled={libUploading} className="dash-lib-upload"
-                  style={{ padding: '10px 22px', background: libUploading ? 'rgba(99,102,241,0.25)' : 'linear-gradient(135deg, #4f46e5, #7c3aed)', border: 'none', borderRadius: 10, color: 'white', fontSize: 14, fontWeight: 700, cursor: libUploading ? 'not-allowed' : 'pointer', boxShadow: libUploading ? 'none' : '0 4px 16px rgba(79,70,229,0.32)', opacity: libUploading ? 0.7 : 1 }}>
+                  style={{ padding: '10px 22px', background: '#2563eb', border: 'none', borderRadius: 6, color: '#ffffff', fontSize: 14, fontWeight: 600, cursor: libUploading ? 'not-allowed' : 'pointer', opacity: libUploading ? 0.6 : 1 }}>
                   {libUploading ? 'Uploading…' : '↑ Upload File'}
                 </button>
               </div>
             )}
-            {libError && <div style={{ fontSize: 13, color: '#f87171', marginBottom: 16, padding: '8px 12px', background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 8 }}>{libError}</div>}
+            {libError && <div style={{ fontSize: 13, color: '#dc2626', marginBottom: 16, padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6 }}>{libError}</div>}
 
             {libLoading ? (
-              <div style={{ color: COLORS.muted, fontSize: 13, padding: '16px 0' }}>Loading…</div>
+              <div style={{ color: COLORS.muted, fontSize: 14, fontStyle: 'italic', textAlign: 'center', padding: '24px 0' }}>Loading…</div>
             ) : libFiles.length === 0 ? (
-              <div style={{ background: COLORS.card, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '28px 24px', textAlign: 'center', color: COLORS.muted, fontSize: 13, lineHeight: 1.7, backdropFilter: 'blur(20px)' }}>
+              <div style={{ background: '#fafafa', border: '1px solid #e5e7eb', borderRadius: 8, padding: '28px 24px', textAlign: 'center', color: COLORS.muted, fontSize: 14, fontStyle: 'italic', lineHeight: 1.7 }}>
                 No files uploaded yet. Upload documents, schedules, rules — anything Sherlock should know about your school.
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {libFiles.map(f => (
-                  <div key={f.id} style={{ background: COLORS.card, border: '1px solid rgba(255,255,255,0.08)', borderLeft: '3px solid #4f46e5', borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, backdropFilter: 'blur(20px)' }}>
+                  <div key={f.id} style={{ background: COLORS.card, border: '1px solid #e5e7eb', borderLeft: '3px solid #2563eb', borderRadius: 8, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name || f.filename || 'Unknown'}</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name || f.filename || 'Unknown'}</div>
                       <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 3 }}>
                         {formatFileSize(f.file_size)} · {new Date(f.created_at || f.uploaded_at || f.createdAt).toLocaleDateString()}
                       </div>
                     </div>
                     {canManage && (
                       <button onClick={() => deleteFile(f.id)} className="dash-lib-delete"
-                        style={{ padding: '7px 14px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, color: '#f87171', cursor: 'pointer', fontSize: 13, fontWeight: 600, flexShrink: 0 }}>
+                        style={{ padding: '7px 14px', background: '#ffffff', border: '1px solid #fecaca', borderRadius: 6, color: '#dc2626', cursor: 'pointer', fontSize: 13, fontWeight: 500, flexShrink: 0 }}>
                         Delete
                       </button>
                     )}

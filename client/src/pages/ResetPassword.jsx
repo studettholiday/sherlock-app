@@ -35,13 +35,13 @@ export default function ResetPassword() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #1a0533 0%, #0d0d1a 100%)'
+      background: '#ffffff'
     }}>
       <div style={{
-        background: 'rgba(255,255,255,0.05)',
-        backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255,255,255,0.1)',
-        borderRadius: '16px',
+        background: '#ffffff',
+        border: '1px solid #e5e7eb',
+        borderRadius: '8px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
         padding: '40px',
         width: '100%',
         maxWidth: '400px',
@@ -49,56 +49,63 @@ export default function ResetPassword() {
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <div style={{
             width: '48px', height: '48px', borderRadius: '12px',
-            background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+            background: '#eff6ff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 16px', fontSize: '24px', fontWeight: 'bold', color: 'white'
+            margin: '0 auto 16px', fontSize: '24px', fontWeight: 'bold', color: '#2563eb'
           }}>S</div>
-          <h1 style={{ color: 'white', fontSize: '24px', margin: 0 }}>Reset your password</h1>
-          <p style={{ color: 'rgba(255,255,255,0.5)', marginTop: '8px', fontSize: '14px' }}>Enter your new password below.</p>
+          <h1 style={{ color: '#111827', fontSize: '24px', fontWeight: 700, margin: 0 }}>Reset your password</h1>
+          <p style={{ color: '#6b7280', marginTop: '8px', fontSize: '14px' }}>Enter your new password below.</p>
         </div>
 
         {status === 'success' ? (
           <div style={{ textAlign: 'center' }}>
-            <p style={{ color: '#4ade80', fontSize: '14px', marginBottom: '12px' }}>Password reset successfully! Redirecting to sign in…</p>
+            <p style={{ color: '#10b981', fontSize: '14px', marginBottom: '12px' }}>Password reset successfully! Redirecting to sign in…</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
             {!token && (
-              <div style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '12px', marginBottom: '20px', color: '#f87171', fontSize: '14px' }}>
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '12px', marginBottom: '20px', color: '#dc2626', fontSize: '14px' }}>
                 Invalid or missing reset token. Please request a new password reset link.
               </div>
             )}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', display: 'block', marginBottom: '6px' }}>New password</label>
+              <label style={{ color: '#6b7280', fontSize: '14px', fontWeight: 500, display: 'block', marginBottom: '6px' }}>New password</label>
               <input
                 type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8}
-                style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', color: 'white', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }}
+                onFocus={e => { e.target.style.border = '1px solid #3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)'; }}
+                onBlur={e => { e.target.style.border = '1px solid #e5e7eb'; e.target.style.boxShadow = 'none'; }}
+                style={{ width: '100%', padding: '10px 14px', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '6px', color: '#111827', fontSize: '16px', boxSizing: 'border-box', outline: 'none', transition: 'border 0.15s ease, box-shadow 0.15s ease' }}
               />
             </div>
             <div style={{ marginBottom: '24px' }}>
-              <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', display: 'block', marginBottom: '6px' }}>Confirm password</label>
+              <label style={{ color: '#6b7280', fontSize: '14px', fontWeight: 500, display: 'block', marginBottom: '6px' }}>Confirm password</label>
               <input
                 type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required
-                style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', color: 'white', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }}
+                onFocus={e => { e.target.style.border = '1px solid #3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)'; }}
+                onBlur={e => { e.target.style.border = '1px solid #e5e7eb'; e.target.style.boxShadow = 'none'; }}
+                style={{ width: '100%', padding: '10px 14px', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '6px', color: '#111827', fontSize: '16px', boxSizing: 'border-box', outline: 'none', transition: 'border 0.15s ease, box-shadow 0.15s ease' }}
               />
             </div>
             {errorMsg && (
-              <div style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '12px', marginBottom: '20px', color: '#f87171', fontSize: '14px' }}>
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '12px', marginBottom: '20px', color: '#dc2626', fontSize: '14px' }}>
                 {errorMsg}
               </div>
             )}
-            <button type="submit" disabled={status === 'loading' || !token} style={{
-              width: '100%', padding: '12px', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-              border: 'none', borderRadius: '8px', color: 'white', fontSize: '16px',
-              fontWeight: '600', cursor: (status === 'loading' || !token) ? 'not-allowed' : 'pointer', opacity: (status === 'loading' || !token) ? 0.7 : 1
+            <button type="submit" disabled={status === 'loading' || !token}
+              onMouseEnter={e => { if (!(status === 'loading' || !token)) e.target.style.background = '#1d4ed8'; }}
+              onMouseLeave={e => { e.target.style.background = '#2563eb'; }}
+              style={{
+              width: '100%', padding: '10px 14px', background: '#2563eb',
+              border: 'none', borderRadius: '6px', color: '#ffffff', fontSize: '14px',
+              fontWeight: '500', cursor: (status === 'loading' || !token) ? 'not-allowed' : 'pointer', opacity: (status === 'loading' || !token) ? 0.7 : 1, transition: 'background 0.15s ease'
             }}>
               {status === 'loading' ? 'Resetting…' : 'Reset password'}
             </button>
           </form>
         )}
 
-        <p style={{ textAlign: 'center', marginTop: '24px', color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}>
-          <a href="/" style={{ color: '#7c3aed', textDecoration: 'none', fontWeight: '600' }}>Back to sign in</a>
+        <p style={{ textAlign: 'center', marginTop: '24px', color: '#6b7280', fontSize: '14px' }}>
+          <a href="/" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}>Back to sign in</a>
         </p>
       </div>
     </div>

@@ -105,9 +105,10 @@ function FeatureCarousel({ lang }) {
         {FEATURES.map(f => (
           <div key={f.id} style={{ height: '100%' }}>
             <div style={{
-              background: 'rgba(5, 5, 20, 0.76)',
-              border: '1px solid rgba(99,102,241,0.35)',
-              borderRadius: 16,
+              background: '#ffffff',
+              border: '1px solid #e5e7eb',
+              borderRadius: 8,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
               padding: '28px 16px',
               textAlign: 'center',
               height: '100%',
@@ -118,10 +119,10 @@ function FeatureCarousel({ lang }) {
               boxSizing: 'border-box',
             }}>
               <div style={{ fontSize: '2rem', lineHeight: 1 }}>{f.icon}</div>
-              <p style={{ color: '#fff', fontWeight: 600, fontSize: '0.875rem', margin: '8px 0 0' }}>
+              <p style={{ color: '#111827', fontWeight: 600, fontSize: '0.875rem', margin: '8px 0 0' }}>
                 {f[lang].title}
               </p>
-              <p style={{ color: 'rgb(156,163,175)', fontSize: '0.72rem', margin: '4px 0 0', lineHeight: 1.45 }}>
+              <p style={{ color: '#6b7280', fontSize: '0.72rem', margin: '4px 0 0', lineHeight: 1.45 }}>
                 {f[lang].desc}
               </p>
             </div>
@@ -192,20 +193,18 @@ function FeatureCarousel3D({ lang }) {
           }}
         >
           <div style={{
-            background:           'rgba(5, 5, 20, 0.76)',
-            backdropFilter:       'blur(14px)',
-            WebkitBackdropFilter: 'blur(14px)',
-            border:      `1px solid rgba(99,102,241,${(0.2 + 0.3 * item.depth).toFixed(2)})`,
-            borderRadius: 16,
-            padding:     '20px 16px',
-            textAlign:   'center',
-            boxShadow:   `0 8px 28px rgba(0,0,0,0.5), 0 0 ${Math.round(6 + item.depth * 22)}px rgba(99,102,241,${(0.06 + 0.2 * item.depth).toFixed(2)})`,
+            background:   '#ffffff',
+            border:       '1px solid #e5e7eb',
+            borderRadius: 8,
+            padding:      '20px 16px',
+            textAlign:    'center',
+            boxShadow:    '0 1px 3px rgba(0,0,0,0.05)',
           }}>
             <div style={{ fontSize: '2rem', lineHeight: 1 }}>{item.icon}</div>
-            <p style={{ color: '#fff', fontWeight: 600, fontSize: '0.875rem', margin: '8px 0 0' }}>
+            <p style={{ color: '#111827', fontWeight: 600, fontSize: '0.875rem', margin: '8px 0 0' }}>
               {item[lang].title}
             </p>
-            <p style={{ color: 'rgb(156,163,175)', fontSize: '0.72rem', margin: '4px 0 0', lineHeight: 1.45 }}>
+            <p style={{ color: '#6b7280', fontSize: '0.72rem', margin: '4px 0 0', lineHeight: 1.45 }}>
               {item[lang].desc}
             </p>
           </div>
@@ -216,7 +215,7 @@ function FeatureCarousel3D({ lang }) {
 }
 
 const FIELD_CLS =
-  'w-full rounded-xl border border-white/15 bg-white/[0.05] px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-colors';
+  'w-full rounded-md border border-[#e5e7eb] bg-white px-3.5 py-2.5 text-sm text-[#111827] placeholder-[#9ca3af] focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/10 transition-colors';
 
 function SignupModal({ lang, onClose }) {
   const t = T[lang];
@@ -258,14 +257,14 @@ function SignupModal({ lang, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-md rounded-2xl border border-white/[0.08] bg-[#0f0f1a] p-8 shadow-2xl">
+      <div className="relative w-full max-w-md rounded-xl border border-[#e5e7eb] bg-white p-8 shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
         <button
           onClick={onClose}
           aria-label="Close"
-          className="absolute right-4 top-4 text-gray-500 hover:text-white transition-colors text-lg leading-none"
+          className="absolute right-4 top-4 text-[#9ca3af] hover:text-[#111827] transition-colors text-lg leading-none"
         >
           ✕
         </button>
@@ -273,14 +272,14 @@ function SignupModal({ lang, onClose }) {
         {done ? (
           <div className="py-8 text-center">
             <p className="text-3xl mb-4">🎉</p>
-            <p className="text-white font-medium">{t.thankYou}</p>
+            <p className="text-[#111827] font-medium">{t.thankYou}</p>
           </div>
         ) : (
           <form
             onSubmit={handleSubmit}
             className="flex flex-col gap-4"
           >
-            <h2 className="text-lg font-bold text-white mb-1">{t.getStarted}</h2>
+            <h2 className="text-lg font-bold text-[#111827] mb-1">{t.getStarted}</h2>
 
             <input
               required
@@ -302,27 +301,27 @@ function SignupModal({ lang, onClose }) {
               required
               value={form.type}
               onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-              style={{ colorScheme: 'dark', backgroundColor: '#1e1e2e', color: 'white', border: '1px solid rgba(255,255,255,0.2)' }}
-              className={FIELD_CLS + ' cursor-pointer'}
+              style={{ backgroundColor: '#ffffff', color: '#111827', border: '1px solid #e5e7eb', padding: '8px 12px', fontSize: '14px', borderRadius: '6px' }}
+              className="w-full cursor-pointer focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-[#3b82f6]/10 transition-colors"
             >
-              <option value="" disabled style={{ backgroundColor: '#1e1e2e', color: 'white' }}>{t.typeLabel}</option>
-              <option value="education" style={{ backgroundColor: '#1e1e2e', color: 'white' }}>{lang === 'GEO' ? 'განათლება / აკადემიური' : 'Education / Academic'}</option>
-              <option value="music_arts" style={{ backgroundColor: '#1e1e2e', color: 'white' }}>{lang === 'GEO' ? 'მუსიკა და ხელოვნება' : 'Music & Arts'}</option>
-              <option value="sports_fitness" style={{ backgroundColor: '#1e1e2e', color: 'white' }}>{lang === 'GEO' ? 'სპორტი და ფიტნესი' : 'Sports & Fitness'}</option>
-              <option value="dance_performing" style={{ backgroundColor: '#1e1e2e', color: 'white' }}>{lang === 'GEO' ? 'ცეკვა და სასცენო ხელოვნება' : 'Dance & Performing Arts'}</option>
-              <option value="language" style={{ backgroundColor: '#1e1e2e', color: 'white' }}>{lang === 'GEO' ? 'ენების სკოლა' : 'Language School'}</option>
-              <option value="therapy_wellness" style={{ backgroundColor: '#1e1e2e', color: 'white' }}>{lang === 'GEO' ? 'თერაპია და ჯანმრთელობა' : 'Therapy & Wellness'}</option>
-              <option value="tutoring_coaching" style={{ backgroundColor: '#1e1e2e', color: 'white' }}>{lang === 'GEO' ? 'რეპეტიტორი ან ქოუჩი' : 'Tutoring & Coaching'}</option>
-              <option value="other" style={{ backgroundColor: '#1e1e2e', color: 'white' }}>{lang === 'GEO' ? 'სხვა' : 'Other'}</option>
+              <option value="" disabled style={{ backgroundColor: '#ffffff', color: '#111827' }}>{t.typeLabel}</option>
+              <option value="education" style={{ backgroundColor: '#ffffff', color: '#111827' }}>{lang === 'GEO' ? 'განათლება / აკადემიური' : 'Education / Academic'}</option>
+              <option value="music_arts" style={{ backgroundColor: '#ffffff', color: '#111827' }}>{lang === 'GEO' ? 'მუსიკა და ხელოვნება' : 'Music & Arts'}</option>
+              <option value="sports_fitness" style={{ backgroundColor: '#ffffff', color: '#111827' }}>{lang === 'GEO' ? 'სპორტი და ფიტნესი' : 'Sports & Fitness'}</option>
+              <option value="dance_performing" style={{ backgroundColor: '#ffffff', color: '#111827' }}>{lang === 'GEO' ? 'ცეკვა და სასცენო ხელოვნება' : 'Dance & Performing Arts'}</option>
+              <option value="language" style={{ backgroundColor: '#ffffff', color: '#111827' }}>{lang === 'GEO' ? 'ენების სკოლა' : 'Language School'}</option>
+              <option value="therapy_wellness" style={{ backgroundColor: '#ffffff', color: '#111827' }}>{lang === 'GEO' ? 'თერაპია და ჯანმრთელობა' : 'Therapy & Wellness'}</option>
+              <option value="tutoring_coaching" style={{ backgroundColor: '#ffffff', color: '#111827' }}>{lang === 'GEO' ? 'რეპეტიტორი ან ქოუჩი' : 'Tutoring & Coaching'}</option>
+              <option value="other" style={{ backgroundColor: '#ffffff', color: '#111827' }}>{lang === 'GEO' ? 'სხვა' : 'Other'}</option>
             </select>
 
             {status === 'duplicate' && (
-              <p className="text-sm text-red-400">
+              <p className="text-sm text-[#dc2626]">
                 {lang === 'GEO' ? 'ეს ელ-ფოსტა უკვე რეგისტრირებულია.' : 'This email is already registered.'}
               </p>
             )}
             {status === 'error' && (
-              <p className="text-sm text-red-400">
+              <p className="text-sm text-[#dc2626]">
                 {lang === 'GEO' ? 'შეცდომა. სცადეთ თავიდან.' : 'Something went wrong. Please try again.'}
               </p>
             )}
@@ -330,7 +329,7 @@ function SignupModal({ lang, onClose }) {
             <button
               type="submit"
               disabled={status === 'loading'}
-              className="mt-1 w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 active:scale-95 transition-all duration-150 disabled:opacity-50"
+              className="mt-1 w-full rounded-md bg-[#2563eb] py-2.5 text-sm font-semibold text-white hover:bg-[#1d4ed8] transition-colors duration-150 disabled:opacity-50"
             >
               {status === 'loading' ? '…' : t.joinWaitlist}
             </button>
@@ -401,7 +400,7 @@ function AppInner() {
     };
   }, [modalOpen, chatExpanded]);
   const inviteToken = window.location.pathname.startsWith("/invite/") ? window.location.pathname.split("/invite/")[1] : null;
-  if (loading) return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />;
+  if (loading) return <div style={{ minHeight: "100vh", background: "#ffffff" }} />;
 
   const isPending = user && (
     user.schoolStatus === 'pending' ||
@@ -426,13 +425,13 @@ function AppInner() {
 
   if (window.location.pathname === '/chat') {
     if (!user) return <Login onSwitch={() => setAuthPage('signup')} onSuccess={() => window.location.href = '/chat'} />;
-    if (isPending) { window.location.replace('/pending'); return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />; }
+    if (isPending) { window.location.replace('/pending'); return <div style={{ minHeight: "100vh", background: "#ffffff" }} />; }
     return <Chat />;
   }
 
   if (window.location.pathname === '/dashboard' || window.location.pathname === '/app') {
     window.location.replace('/chat');
-    return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />;
+    return <div style={{ minHeight: "100vh", background: "#ffffff" }} />;
   }
 
   if (user && (window.location.pathname === "/" || window.location.pathname === "")) {
@@ -440,7 +439,7 @@ function AppInner() {
       if (isPending) window.location.replace('/pending');
       else window.location.replace('/chat');
     }
-    return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />;
+    return <div style={{ minHeight: "100vh", background: "#ffffff" }} />;
   }
 
   if (!user) return (
@@ -449,7 +448,7 @@ function AppInner() {
       : <Signup onSwitch={() => setAuthPage('login')} onSuccess={() => window.location.href = '/chat'} />
   );
   window.location.replace("/chat");
-  return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />;
+  return <div style={{ minHeight: "100vh", background: "#ffffff" }} />;
 }
 
 export default function App() {

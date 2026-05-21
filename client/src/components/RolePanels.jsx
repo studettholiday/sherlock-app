@@ -3,13 +3,13 @@ import { useState, useEffect, useRef } from 'react';
 // ─── Theme tokens ─────────────────────────────────────────────────────────────
 
 const TH = {
-  teacher: { border: 'border-white/[0.08]', hdr: 'bg-transparent', accent: 'text-white/80', btn: 'bg-violet-600 hover:bg-violet-500', ring: 'focus:ring-violet-500/30', conf: 'text-emerald-400' },
-  student: { border: 'border-white/[0.08]', hdr: 'bg-transparent', accent: 'text-white/80', btn: 'bg-violet-600 hover:bg-violet-500', ring: 'focus:ring-violet-500/30', conf: 'text-emerald-400' },
+  teacher: { border: 'border-[#e5e7eb]', hdr: 'bg-[#ffffff]', accent: 'text-[#2563eb]', btn: 'bg-[#2563eb] hover:bg-[#1d4ed8]', ring: 'focus:ring-[#3b82f6]/20', conf: 'text-[#10b981]' },
+  student: { border: 'border-[#e5e7eb]', hdr: 'bg-[#ffffff]', accent: 'text-[#10b981]', btn: 'bg-[#2563eb] hover:bg-[#1d4ed8]', ring: 'focus:ring-[#3b82f6]/20', conf: 'text-[#10b981]' },
 };
 
 // ─── Shared field styles ──────────────────────────────────────────────────────
 
-const FIELD = 'w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-white/80 placeholder-white/20 focus:outline-none focus:border-white/25 resize-none';
+const FIELD = 'w-full rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] px-[14px] py-[10px] text-[14px] text-[#111827] placeholder-[#9ca3af] focus:outline-none focus:border-[#3b82f6] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] resize-none transition-colors duration-150';
 
 // ─── Day labels ───────────────────────────────────────────────────────────────
 
@@ -104,18 +104,19 @@ function InvitePanel({ role, lang }) {
   return (
     <div className="space-y-3">
       <select value={targetRole} onChange={e => setTargetRole(e.target.value)}
-        style={{ colorScheme: 'dark' }} className={`${FIELD} cursor-pointer`}>
-        {roleOptions.map(([val, label]) => <option key={val} value={val}>{label}</option>)}
+        style={{ backgroundColor: '#ffffff', color: '#111827', border: '1px solid #e5e7eb', padding: '8px 12px', fontSize: '14px', borderRadius: '6px' }}
+        className="w-full cursor-pointer focus:outline-none">
+        {roleOptions.map(([val, label]) => <option key={val} value={val} style={{ backgroundColor: '#ffffff', color: '#111827' }}>{label}</option>)}
       </select>
       <input type="email" value={email} onChange={e => setEmail(e.target.value)}
         placeholder={lang === 'GEO' ? 'ელ. ფოსტა' : 'Email address'} className={FIELD} />
       {sentEmail
-        ? <p className={`text-sm ${th.conf}`}>{lang === 'GEO' ? `✅ მოწვევა გაიგზავნა: ${sentEmail}!` : `✅ Invitation sent to ${sentEmail}!`}</p>
+        ? <p className={`text-[14px] ${th.conf}`}>{lang === 'GEO' ? `✅ მოწვევა გაიგზავნა: ${sentEmail}!` : `✅ Invitation sent to ${sentEmail}!`}</p>
         : errMsg
-        ? <p className="text-sm text-red-400">{errMsg}</p>
+        ? <p className="text-[14px] text-[#dc2626]">{errMsg}</p>
         : null}
       <button onClick={send} disabled={!email.trim() || sending}
-          className={`rounded-xl ${th.btn} disabled:opacity-40 px-4 py-2 text-sm text-white font-medium transition-colors`}>
+          className={`rounded-[6px] ${th.btn} disabled:opacity-40 px-4 py-2 text-[14px] text-white font-medium transition-colors duration-150`}>
           {sending
             ? (lang === 'GEO' ? 'იგზავნება...' : 'Sending…')
             : (lang === 'GEO' ? 'მოწვევის გაგზავნა' : 'Send Invitation')}
@@ -140,9 +141,9 @@ function SchedulePanel({ lang }) {
       .catch(e => { setError(e.message); setLoading(false); });
   }, []);
 
-  if (loading) return <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
-  if (error)   return <p className="text-xs text-red-400 text-center py-4">{error}</p>;
-  if (!rows.length) return <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'განრიგი ცარიელია.' : 'No schedule yet.'}</p>;
+  if (loading) return <p className="text-[14px] italic text-[#6b7280] text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
+  if (error)   return <p className="text-[14px] text-[#dc2626] text-center py-4">{error}</p>;
+  if (!rows.length) return <p className="text-[14px] italic text-[#6b7280] text-center py-4">{lang === 'GEO' ? 'განრიგი ცარიელია.' : 'No schedule yet.'}</p>;
 
   // Group rows by day, sorted Monday → Sunday.
   const byDay = {};
@@ -160,16 +161,16 @@ function SchedulePanel({ lang }) {
         const sorted = [...day.rows].sort((a, b) =>
           String(a.lesson_time || '').localeCompare(String(b.lesson_time || '')));
         return (
-          <div key={key} className="rounded-xl border border-white/[0.08] overflow-hidden">
-            <div className="px-3 py-2 border-b border-white/[0.06] bg-white/[0.02]">
-              <span className="text-sm text-white font-medium">{day.label}</span>
+          <div key={key} className="rounded-[8px] border border-[#e5e7eb] overflow-hidden">
+            <div className="px-3 py-2 border-b border-[#e5e7eb] bg-[#fafafa]">
+              <span className="text-[14px] text-[#111827] font-semibold">{day.label}</span>
             </div>
-            <div className="px-3 py-2 space-y-1">
+            <div className="px-3 py-2">
               {sorted.map((r, i) => (
-                <div key={r.id ?? i} className="flex items-center gap-2 text-xs py-1 border-b border-white/[0.04] last:border-0">
-                  <span className="text-gray-300 font-mono w-14 flex-shrink-0">{(r.lesson_time || '').slice(0, 5)}</span>
-                  <span className="text-white/80 flex-1 min-w-0 truncate">{r.class_name}</span>
-                  {r.room && <span className="text-gray-500 flex-shrink-0">📍 {r.room}</span>}
+                <div key={r.id ?? i} className="flex items-center gap-2 text-[13px] py-1 border-b border-[#e5e7eb] last:border-0 hover:bg-[#fafafa] transition-colors duration-150">
+                  <span className="text-[#6b7280] font-mono w-14 flex-shrink-0">{(r.lesson_time || '').slice(0, 5)}</span>
+                  <span className="text-[#111827] flex-1 min-w-0 truncate">{r.class_name}</span>
+                  {r.room && <span className="text-[#6b7280] flex-shrink-0">📍 {r.room}</span>}
                 </div>
               ))}
             </div>
@@ -229,8 +230,8 @@ function ScheduleEditorPanel({ lang }) {
     load();
   }
 
-  if (loading) return <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
-  if (error)   return <p className="text-xs text-red-400 text-center py-4">{error}</p>;
+  if (loading) return <p className="text-[14px] italic text-[#6b7280] text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
+  if (error)   return <p className="text-[14px] text-[#dc2626] text-center py-4">{error}</p>;
 
   const days = lang === 'GEO' ? DAYS_GEO : DAYS_EN;
   const sorted = [...rows].sort((a, b) => {
@@ -242,42 +243,43 @@ function ScheduleEditorPanel({ lang }) {
   return (
     <div className="space-y-2">
       {sorted.length === 0 && (
-        <p className="text-xs text-gray-500 text-center py-2">{lang === 'GEO' ? 'განრიგი ცარიელია.' : 'No schedule yet.'}</p>
+        <p className="text-[14px] italic text-[#6b7280] text-center py-2">{lang === 'GEO' ? 'განრიგი ცარიელია.' : 'No schedule yet.'}</p>
       )}
       {sorted.map(r => (
-        <div key={r.id} className="flex items-center gap-2 text-xs py-1.5 border-b border-white/[0.04]">
-          <span className="text-gray-400 w-20 flex-shrink-0 truncate">{dayLabel(r.day_of_week, lang)}</span>
-          <span className="text-gray-300 font-mono w-12 flex-shrink-0">{(r.lesson_time || '').slice(0, 5)}</span>
-          <span className="text-white/80 flex-1 min-w-0 truncate">{r.class_name}</span>
-          {r.room && <span className="text-gray-500 flex-shrink-0">📍 {r.room}</span>}
-          <button onClick={() => del(r.id)} className="text-gray-600 hover:text-red-400 flex-shrink-0">✕</button>
+        <div key={r.id} className="flex items-center gap-2 text-[13px] py-1.5 border-b border-[#e5e7eb] hover:bg-[#fafafa] transition-colors duration-150">
+          <span className="text-[#6b7280] w-20 flex-shrink-0 truncate">{dayLabel(r.day_of_week, lang)}</span>
+          <span className="text-[#6b7280] font-mono w-12 flex-shrink-0">{(r.lesson_time || '').slice(0, 5)}</span>
+          <span className="text-[#111827] flex-1 min-w-0 truncate">{r.class_name}</span>
+          {r.room && <span className="text-[#6b7280] flex-shrink-0">📍 {r.room}</span>}
+          <button onClick={() => del(r.id)} className="rounded-[6px] border border-[#fecaca] bg-[#ffffff] text-[#dc2626] hover:bg-[#fef2f2] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">✕</button>
         </div>
       ))}
       {showAdd ? (
-        <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.02] p-3">
+        <div className="space-y-2 rounded-[8px] border border-[#e5e7eb] bg-[#fafafa] p-3">
           <select value={form.day_of_week} onChange={e => setForm(f => ({ ...f, day_of_week: parseInt(e.target.value, 10) }))}
-            style={{ colorScheme: 'dark' }} className={`${FIELD} py-1.5 text-xs`}>
-            {days.map((d, i) => <option key={i} value={i}>{d}</option>)}
+            style={{ backgroundColor: '#ffffff', color: '#111827', border: '1px solid #e5e7eb', padding: '8px 12px', fontSize: '14px', borderRadius: '6px' }}
+            className="w-full focus:outline-none">
+            {days.map((d, i) => <option key={i} value={i} style={{ backgroundColor: '#ffffff', color: '#111827' }}>{d}</option>)}
           </select>
           <input value={form.lesson_time} onChange={e => setForm(f => ({ ...f, lesson_time: e.target.value }))}
-            placeholder={lang === 'GEO' ? 'დრო (მაგ. 16:00)' : 'Time (e.g. 16:00)'} className={`${FIELD} py-1.5 text-xs`} />
+            placeholder={lang === 'GEO' ? 'დრო (მაგ. 16:00)' : 'Time (e.g. 16:00)'} className={`${FIELD} py-1.5 text-[13px]`} />
           <input value={form.class_name} onChange={e => setForm(f => ({ ...f, class_name: e.target.value }))}
-            placeholder={lang === 'GEO' ? 'კლასი' : 'Class name'} className={`${FIELD} py-1.5 text-xs`} />
+            placeholder={lang === 'GEO' ? 'კლასი' : 'Class name'} className={`${FIELD} py-1.5 text-[13px]`} />
           <input value={form.room} onChange={e => setForm(f => ({ ...f, room: e.target.value }))}
-            placeholder={lang === 'GEO' ? 'ოთახი' : 'Room'} className={`${FIELD} py-1.5 text-xs`} />
-          <div className="flex gap-2">
+            placeholder={lang === 'GEO' ? 'ოთახი' : 'Room'} className={`${FIELD} py-1.5 text-[13px]`} />
+          <div className="flex gap-2 items-center">
             <button onClick={addRow} disabled={saving || !form.lesson_time.trim() || !form.class_name.trim()}
-              className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-3 py-1.5 text-xs text-white">
+              className="rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-40 px-3 py-1.5 text-[13px] text-white font-medium transition-colors duration-150">
               {lang === 'GEO' ? 'დამატება' : 'Add'}
             </button>
-            <button onClick={() => setShowAdd(false)} className="text-xs text-gray-500 hover:text-white">
+            <button onClick={() => setShowAdd(false)} className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] hover:bg-[#f9fafb] px-3 py-1.5 text-[13px] text-[#111827] transition-colors duration-150">
               {lang === 'GEO' ? 'გაუქმება' : 'Cancel'}
             </button>
           </div>
         </div>
       ) : (
         <button onClick={() => setShowAdd(true)}
-          className="w-full rounded-xl border border-dashed border-white/[0.08] py-2 text-xs text-gray-500 hover:text-white transition-colors">
+          className="w-full rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] py-2 text-[13px] text-white font-medium transition-colors duration-150">
           {lang === 'GEO' ? '+ განრიგის დამატება' : '+ Add schedule row'}
         </button>
       )}
@@ -352,24 +354,24 @@ function LibraryManagerPanel({ lang }) {
     return (bytes / 1024).toFixed(1) + ' KB';
   }
 
-  if (loading) return <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
+  if (loading) return <p className="text-[14px] italic text-[#6b7280] text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
 
   return (
     <div className="space-y-2">
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-[14px] text-[#dc2626]">{error}</p>}
       {files.length === 0 && !error && (
-        <p className="text-xs text-gray-500 text-center py-2">{lang === 'GEO' ? 'ფაილები ჯერ არ არის ატვირთული.' : 'No files uploaded yet.'}</p>
+        <p className="text-[14px] italic text-[#6b7280] text-center py-2">{lang === 'GEO' ? 'ფაილები ჯერ არ არის ატვირთული.' : 'No files uploaded yet.'}</p>
       )}
       {files.map(f => (
-        <div key={f.id} className="flex items-center gap-2 text-xs py-1.5 border-b border-white/[0.04]">
-          <span className="text-white/80 flex-1 min-w-0 truncate">{f.name || f.filename || 'Untitled'}</span>
-          <span className="text-gray-500 font-mono flex-shrink-0">{formatSize(f.file_size)}</span>
-          <button onClick={() => del(f.id)} className="text-gray-600 hover:text-red-400 flex-shrink-0">✕</button>
+        <div key={f.id} className="flex items-center gap-2 text-[13px] py-1.5 border-b border-[#e5e7eb] hover:bg-[#fafafa] transition-colors duration-150">
+          <span className="text-[#111827] flex-1 min-w-0 truncate">{f.name || f.filename || 'Untitled'}</span>
+          <span className="text-[#6b7280] font-mono flex-shrink-0">{formatSize(f.file_size)}</span>
+          <button onClick={() => del(f.id)} className="rounded-[6px] border border-[#fecaca] bg-[#ffffff] text-[#dc2626] hover:bg-[#fef2f2] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">✕</button>
         </div>
       ))}
       <input ref={fileInputRef} type="file" accept=".pdf,.txt,.md" onChange={uploadFile} className="hidden" />
       <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
-        className="w-full rounded-xl border border-dashed border-white/[0.08] py-2 text-xs text-gray-500 hover:text-white transition-colors disabled:opacity-40">
+        className="w-full rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] py-2 text-[13px] text-white font-medium transition-colors duration-150 disabled:opacity-40">
         {uploading ? (lang === 'GEO' ? 'იტვირთება…' : 'Uploading…') : (lang === 'GEO' ? '+ ფაილის ატვირთვა' : '+ Upload File')}
       </button>
     </div>
@@ -493,10 +495,10 @@ function KnowledgeLibraryPanel({ role, lang, orgName, orgNameGenitive, libraryFi
       <div className="flex gap-2">
         {tabs.map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+            className={`px-3 py-1 rounded-full text-[13px] font-medium transition-colors duration-150 ${
               tab === id
-                ? `${th.btn} text-white`
-                : 'border border-white/15 text-gray-400 hover:text-white'
+                ? 'bg-[#eff6ff] border border-[#3b82f6] text-[#2563eb]'
+                : 'border border-[#e5e7eb] bg-[#ffffff] text-[#111827] hover:bg-[#f9fafb]'
             }`}>
             {label}
           </button>
@@ -509,21 +511,21 @@ function KnowledgeLibraryPanel({ role, lang, orgName, orgNameGenitive, libraryFi
             onDragOver={e => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
             onDrop={onDrop}
-            className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-5 cursor-pointer transition-colors ${
-              dragOver ? 'border-white/50 bg-white/[0.07]' : 'border-white/20 hover:border-white/40'
+            className={`flex flex-col items-center justify-center rounded-[8px] border-2 border-dashed px-4 py-5 cursor-pointer transition-colors duration-150 ${
+              dragOver ? 'border-[#3b82f6] bg-[#eff6ff]' : 'border-[#e5e7eb] bg-[#fafafa] hover:border-[#3b82f6]'
             } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
             <span className="text-2xl mb-1.5">{uploading ? '⏳' : '📄'}</span>
-            <p className="text-sm text-white font-medium">
+            <p className="text-[14px] text-[#111827] font-semibold">
               {uploading
                 ? (lang === 'GEO' ? 'დამუშავება...' : 'Processing…')
                 : (lang === 'GEO' ? 'ატვირთე ბიბლიოთეკაში' : 'Upload to demo library')}
             </p>
-            <p className="text-xs text-gray-500 mt-1 text-center leading-relaxed">
+            <p className="text-[13px] text-[#6b7280] mt-1 text-center leading-relaxed">
               {lang === 'GEO'
                 ? `აქ შეგიძლია ატვირთო სასწავლო მასალა შენი სკოლისთვის · ხელმისაწვდომია "${orgNameGenitive || 'დაწესებულების'}" ყველა წევრისთვის`
                 : 'Upload study materials for your school · accessible to everyone in your Sherlock environment'}
             </p>
-            <p className="text-xs text-gray-600 mt-2">
+            <p className="text-[13px] text-[#9ca3af] mt-2">
               {lang === 'GEO' ? 'ჩააგდე ან დააჭირე · .pdf .txt .md' : 'Drop here or click · .pdf .txt .md'}
             </p>
             <input type="file" accept=".pdf,.txt,.md"
@@ -531,47 +533,47 @@ function KnowledgeLibraryPanel({ role, lang, orgName, orgNameGenitive, libraryFi
               className="hidden" disabled={uploading} />
           </label>
           {status && (
-            <p className={`text-xs ${status.startsWith('✅') ? 'text-emerald-400' : 'text-red-400'}`}>{status}</p>
+            <p className={`text-[13px] ${status.startsWith('✅') ? 'text-[#10b981]' : 'text-[#dc2626]'}`}>{status}</p>
           )}
           <div className="space-y-1.5">
             {libraryFiles.length === 0 && !uploading && (
-              <p className="text-xs text-gray-600 text-center py-2">
+              <p className="text-[14px] italic text-[#6b7280] text-center py-2">
                 {lang === 'GEO' ? 'ფაილები არ არის ატვირთული.' : 'No files loaded yet.'}
               </p>
             )}
             {libraryFiles.map(f => (
-              <div key={f.id} className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
+              <div key={f.id} className="flex items-center gap-2 rounded-[8px] border border-[#e5e7eb] bg-[#ffffff] px-3 py-2 hover:bg-[#fafafa] transition-colors duration-150">
                 <span className="text-sm flex-shrink-0">📄</span>
-                <p className="text-xs text-white truncate flex-1 min-w-0">{f.filename}</p>
+                <p className="text-[13px] text-[#111827] truncate flex-1 min-w-0">{f.filename}</p>
                 <button onClick={() => onRemoveFile?.(f.id)}
-                  className="text-gray-600 hover:text-red-400 text-sm flex-shrink-0 transition-colors leading-none">🗑</button>
+                  className="rounded-[6px] border border-[#fecaca] bg-[#ffffff] text-[#dc2626] hover:bg-[#fef2f2] text-sm flex-shrink-0 transition-colors duration-150 leading-none px-1.5 py-0.5">🗑</button>
               </div>
             ))}
           </div>
         </div>
       ) : (
         <div className="space-y-2">
-          <p className="text-xs text-gray-500 font-medium">
+          <p className="text-[13px] text-[#6b7280] font-medium">
             {lang === 'GEO' ? 'შეამოწმე ბიბლიოთეკა' : 'Test your library'}
           </p>
-          <div className="h-32 overflow-y-auto rounded-xl border border-white/10 bg-white/[0.02] p-2 space-y-1.5">
+          <div className="h-32 overflow-y-auto rounded-[8px] border border-[#e5e7eb] bg-[#fafafa] p-2 space-y-1.5">
             {previewMsgs.length === 0 && (
-              <p className="text-xs text-gray-600 text-center mt-8">
+              <p className="text-[14px] italic text-[#6b7280] text-center mt-8">
                 {lang === 'GEO' ? 'დასვი კითხვა ატვირთული კონტენტის შესახებ' : 'Ask a question about your uploaded content'}
               </p>
             )}
             {previewMsgs.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] px-2.5 py-1.5 rounded-xl text-xs leading-relaxed ${
+                <div className={`max-w-[85%] px-2.5 py-1.5 rounded-[8px] text-[13px] leading-relaxed ${
                   m.role === 'user'
-                    ? `${th.btn} text-white rounded-br-sm`
-                    : 'bg-white/[0.10] text-gray-200 rounded-bl-sm'
+                    ? 'bg-[#2563eb] text-white rounded-br-sm'
+                    : 'bg-[#ffffff] border border-[#e5e7eb] text-[#111827] rounded-bl-sm'
                 }`}>{m.content}</div>
               </div>
             ))}
             {previewLoading && (
               <div className="flex justify-start">
-                <div className="px-2.5 py-1.5 rounded-xl text-xs bg-white/[0.10] text-gray-500 animate-pulse">
+                <div className="px-2.5 py-1.5 rounded-[8px] text-[13px] bg-[#ffffff] border border-[#e5e7eb] text-[#6b7280] animate-pulse">
                   {lang === 'GEO' ? 'ფიქრობს...' : 'Thinking…'}
                 </div>
               </div>
@@ -584,10 +586,10 @@ function KnowledgeLibraryPanel({ role, lang, orgName, orgNameGenitive, libraryFi
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) sendPreview(e); }}
               placeholder={lang === 'GEO' ? 'კითხვა ბიბლიოთეკიდან...' : 'Ask something from your library...'}
               disabled={previewLoading}
-              className={`${FIELD} py-1.5 flex-1 text-xs`}
+              className={`${FIELD} py-1.5 flex-1 text-[13px]`}
             />
             <button type="submit" disabled={!previewInput.trim() || previewLoading}
-              className={`rounded-xl ${th.btn} disabled:opacity-40 px-3 py-1.5 text-xs text-white font-medium transition-colors flex-shrink-0`}>
+              className={`rounded-[6px] ${th.btn} disabled:opacity-40 px-3 py-1.5 text-[13px] text-white font-medium transition-colors duration-150 flex-shrink-0`}>
               {lang === 'GEO' ? 'გაგზავნა' : 'Send'}
             </button>
           </form>
@@ -613,8 +615,8 @@ function panelContent(role, panel, libraryProps, lang) {
 // ─── Exports ──────────────────────────────────────────────────────────────────
 
 export const PANEL_ACTIVE_CLS = {
-  teacher: 'bg-white/[0.08] text-white border border-white/20',
-  student: 'bg-white/[0.08] text-white border border-white/20',
+  teacher: 'bg-[#eff6ff] text-[#2563eb] border border-[#3b82f6]',
+  student: 'bg-[#eff6ff] text-[#2563eb] border border-[#3b82f6]',
 };
 
 export function RolePanel({ role, panel, onClose, libraryProps, lang = 'EN' }) {
@@ -623,10 +625,10 @@ export function RolePanel({ role, panel, onClose, libraryProps, lang = 'EN' }) {
     ? `${orgName} ბიბლიოთეკა`
     : getPanelTitle(panel, lang);
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-[#0a0a14] overflow-hidden flex flex-col">
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06] flex-shrink-0">
-        <span className="text-sm font-medium text-white/80">{panelTitle}</span>
-        <button onClick={onClose} className="text-white/30 hover:text-white/60 transition-colors text-sm leading-none">✕</button>
+    <div className="rounded-[12px] border border-[#e5e7eb] bg-[#ffffff] shadow-[0_4px_12px_rgba(0,0,0,0.08)] overflow-hidden flex flex-col">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#e5e7eb] flex-shrink-0">
+        <span className="text-[14px] font-semibold text-[#111827]">{panelTitle}</span>
+        <button onClick={onClose} className="text-[#6b7280] hover:text-[#111827] transition-colors duration-150 text-sm leading-none">✕</button>
       </div>
       <div key={panel} className="p-4 overflow-y-auto flex-1">
         {panelContent(role, panel, libraryProps, lang)}
