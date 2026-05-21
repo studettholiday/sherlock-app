@@ -410,13 +410,13 @@ function AppInner() {
   );
 
   if (inviteToken) return (
-    <InviteAccept token={inviteToken} onSuccess={() => window.location.href = '/dashboard'} />
+    <InviteAccept token={inviteToken} onSuccess={() => window.location.href = '/chat'} />
   );
 
   if (window.location.pathname === '/pending') {
     if (!user) return authPage === 'login'
-      ? <Login onSwitch={() => setAuthPage('signup')} onSuccess={() => window.location.href = '/dashboard'} />
-      : <Signup onSwitch={() => setAuthPage('login')} onSuccess={() => window.location.href = '/dashboard'} />;
+      ? <Login onSwitch={() => setAuthPage('signup')} onSuccess={() => window.location.href = '/chat'} />
+      : <Signup onSwitch={() => setAuthPage('login')} onSuccess={() => window.location.href = '/chat'} />;
     return <PendingApproval />;
   }
 
@@ -426,29 +426,29 @@ function AppInner() {
 
   if (window.location.pathname === '/chat') {
     if (!user) return <Login onSwitch={() => setAuthPage('signup')} onSuccess={() => window.location.href = '/chat'} />;
+    if (isPending) { window.location.replace('/pending'); return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />; }
     return <Chat />;
   }
 
   if (window.location.pathname === '/dashboard' || window.location.pathname === '/app') {
-    if (!user) return null;
-    if (isPending) { window.location.replace('/pending'); return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />; }
-    return <AppLayout />;
+    window.location.replace('/chat');
+    return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />;
   }
 
   if (user && (window.location.pathname === "/" || window.location.pathname === "")) {
     if (typeof window !== "undefined") {
       if (isPending) window.location.replace('/pending');
-      else window.location.replace('/dashboard');
+      else window.location.replace('/chat');
     }
     return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />;
   }
 
   if (!user) return (
     authPage === 'login'
-      ? <Login onSwitch={() => setAuthPage('signup')} onSuccess={() => window.location.href = '/dashboard'} />
-      : <Signup onSwitch={() => setAuthPage('login')} onSuccess={() => window.location.href = '/dashboard'} />
+      ? <Login onSwitch={() => setAuthPage('signup')} onSuccess={() => window.location.href = '/chat'} />
+      : <Signup onSwitch={() => setAuthPage('login')} onSuccess={() => window.location.href = '/chat'} />
   );
-  window.location.replace("/dashboard");
+  window.location.replace("/chat");
   return <div style={{ minHeight: "100vh", background: "#0d0d1a" }} />;
 }
 

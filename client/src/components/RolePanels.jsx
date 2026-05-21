@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 // ─── Theme tokens ─────────────────────────────────────────────────────────────
 
@@ -46,6 +46,7 @@ const PANEL_TITLES = {
   'invite':            'Invite',
   'schedule':          'Schedule',
   'schedule-editor':   'Edit Schedule',
+  'library':           'Files',
   'knowledge-library': 'Knowledge Library',
 };
 
@@ -53,6 +54,7 @@ const GEO_PANEL_TITLES = {
   'invite':            'მოწვევა',
   'schedule':          'განრიგი',
   'schedule-editor':   'განრიგის რედაქტირება',
+  'library':           'ფაილები',
   'knowledge-library': 'ცოდნის ბიბლიოთეკა',
 };
 
@@ -279,6 +281,97 @@ function ScheduleEditorPanel({ lang }) {
           {lang === 'GEO' ? '+ განრიგის დამატება' : '+ Add schedule row'}
         </button>
       )}
+    </div>
+  );
+}
+
+// ─── Library manager panel ────────────────────────────────────────────────────
+
+// Owner-only. Self-contained: lists, uploads and deletes school library files.
+function LibraryManagerPanel({ lang }) {
+  const [files, setFiles]         = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState('');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  async function load() {
+    const token = localStorage.getItem('sherlock_token');
+    try {
+      const res  = await fetch('/api/library?t=' + Date.now(), { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+      setFiles(data.files || []);
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function uploadFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) {
+      setError(lang === 'GEO' ? 'ფაილი უნდა იყოს 25MB-ზე ნაკლები.' : 'File must be under 25MB.');
+      return;
+    }
+    setError('');
+    setUploading(true);
+    const token = localStorage.getItem('sherlock_token');
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res  = await fetch('/api/library/upload', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      await load();
+    } catch (e) {
+      setError(e.message);
+    }
+    setUploading(false);
+  }
+
+  async function del(id) {
+    const token = localStorage.getItem('sherlock_token');
+    try {
+      const res = await fetch(`/api/library/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `Delete failed (${res.status})`); }
+      setFiles(prev => prev.filter(f => f.id !== id));
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  function formatSize(bytes) {
+    if (!bytes) return '—';
+    if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    return (bytes / 1024).toFixed(1) + ' KB';
+  }
+
+  if (loading) return <p className="text-xs text-gray-500 text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
+
+  return (
+    <div className="space-y-2">
+      {error && <p className="text-xs text-red-400">{error}</p>}
+      {files.length === 0 && !error && (
+        <p className="text-xs text-gray-500 text-center py-2">{lang === 'GEO' ? 'ფაილები ჯერ არ არის ატვირთული.' : 'No files uploaded yet.'}</p>
+      )}
+      {files.map(f => (
+        <div key={f.id} className="flex items-center gap-2 text-xs py-1.5 border-b border-white/[0.04]">
+          <span className="text-white/80 flex-1 min-w-0 truncate">{f.name || f.filename || 'Untitled'}</span>
+          <span className="text-gray-500 font-mono flex-shrink-0">{formatSize(f.file_size)}</span>
+          <button onClick={() => del(f.id)} className="text-gray-600 hover:text-red-400 flex-shrink-0">✕</button>
+        </div>
+      ))}
+      <input ref={fileInputRef} type="file" accept=".pdf,.txt,.md" onChange={uploadFile} className="hidden" />
+      <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
+        className="w-full rounded-xl border border-dashed border-white/[0.08] py-2 text-xs text-gray-500 hover:text-white transition-colors disabled:opacity-40">
+        {uploading ? (lang === 'GEO' ? 'იტვირთება…' : 'Uploading…') : (lang === 'GEO' ? '+ ფაილის ატვირთვა' : '+ Upload File')}
+      </button>
     </div>
   );
 }
@@ -511,6 +604,7 @@ function panelContent(role, panel, libraryProps, lang) {
     case 'invite':            return <InvitePanel role={role} lang={lang} />;
     case 'schedule':          return <SchedulePanel lang={lang} />;
     case 'schedule-editor':   return <ScheduleEditorPanel lang={lang} />;
+    case 'library':           return <LibraryManagerPanel lang={lang} />;
     case 'knowledge-library': return <KnowledgeLibraryPanel role={role} lang={lang} {...(libraryProps ?? {})} />;
     default:                  return null;
   }

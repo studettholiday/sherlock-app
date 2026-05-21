@@ -393,6 +393,11 @@ export default function Chat() {
                       className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all duration-200 ${activePanel === 'schedule-editor' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
                       {lang === 'GEO' ? '📅 განრიგის რედაქტირება' : '📅 Edit Schedule'}
                     </button>
+                    <button
+                      onClick={() => setActivePanel(activePanel === 'library' ? null : 'library')}
+                      className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all duration-200 ${activePanel === 'library' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
+                      {lang === 'GEO' ? '📁 ფაილები' : '📁 Files'}
+                    </button>
                   </>
                 )}
                 <button
@@ -496,21 +501,6 @@ export default function Chat() {
             onFocus={() => setTimeout(() => messagesRef.current?.scrollTo({ top: messagesRef.current.scrollHeight, behavior: 'smooth' }), 300)}
             className={`flex-1 resize-none rounded-xl px-3 py-2 text-sm focus:outline-none ${theme.ring} max-h-32 ${s.inputCls}`}
           />
-          {user?.role !== 'student' && (
-            <button
-              type="button"
-              title="Knowledge Library"
-              onClick={() => setActivePanel(activePanel === 'knowledge-library' ? null : 'knowledge-library')}
-              style={{ minHeight: 44, minWidth: 44 }}
-              className={`px-3 py-2 rounded-xl text-sm font-medium flex-shrink-0 transition-all duration-150 active:scale-95 ${
-                activePanel === 'knowledge-library'
-                  ? PANEL_ACTIVE_CLS[role]
-                  : 'border border-white/15 text-gray-400 hover:text-white hover:border-white/30'
-              }`}
-            >
-              📚
-            </button>
-          )}
           <button
             type="submit"
             disabled={loading || !input.trim()}
