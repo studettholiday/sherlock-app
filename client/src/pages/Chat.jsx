@@ -3,6 +3,9 @@ import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../AuthContext';
 import { RolePanel, PANEL_ACTIVE_CLS } from '../components/RolePanels';
 
+// Chat is constrained to a centered column of this width (px).
+const CHAT_COLUMN_MAX_WIDTH = 760;
+
 const THEMES = {
   teacher: {
     avatar:     'bg-[#eff6ff] text-[#2563eb]',
@@ -190,16 +193,6 @@ export default function Chat() {
     setAttachedFiles([]);
   }, [role, lang]);
 
-  function clearChat() {
-    setMessages([{ role: 'assistant', content: getGreeting(role, lang, user?.schoolName || '', '') }]);
-    setInput('');
-    setLoading(false);
-    setActivePanel(null);
-    setOpenGroup(null);
-    setAttachedFiles([]);
-    setLibraryFiles([]);
-  }
-
   function addLibraryFile(filename, content) {
     setLibraryFiles(prev => [...prev, { id: Date.now(), filename, content }]);
   }
@@ -307,7 +300,7 @@ export default function Chat() {
       style={{
         position: 'fixed', top: 0, left: 0, right: 0,
         height: '100dvh',
-        background: '#ffffff',
+        background: '#fafafa',
         color: '#111827',
       }}>
 
@@ -317,10 +310,10 @@ export default function Chat() {
       `}</style>
 
       {/* Chat card fills remaining height */}
-      <div className={`relative flex flex-col flex-1 overflow-hidden ${s.wrap}`}>
+      <div className={`relative flex flex-col flex-1 overflow-hidden w-full mx-auto ${s.wrap}`} style={{ maxWidth: CHAT_COLUMN_MAX_WIDTH }}>
 
         {/* Header */}
-        <header className={`flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-3 border-b ${s.headerBorder} flex-shrink-0 bg-[#ffffff]`}>
+        <header className={`flex items-center gap-2 px-4 py-2 sm:py-3 border-b ${s.headerBorder} flex-shrink-0 bg-[#ffffff]`}>
           <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full ${theme.avatar} flex items-center justify-center font-bold flex-shrink-0 text-sm`}>
             S
           </div>
@@ -343,7 +336,7 @@ export default function Chat() {
           const openGroupDef = openGroup ? getButtonGroups(lang)[role].find(g => g.id === openGroup) : null;
           return (
             <div className={`flex flex-col border-b ${s.headerBorder} flex-shrink-0`}>
-              <div className={`flex items-center gap-1.5 px-2 py-1.5 sm:px-4 sm:py-2 overflow-x-auto`}
+              <div className={`flex items-center gap-1.5 px-4 py-1.5 sm:py-2 overflow-x-auto`}
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {getButtonGroups(lang)[role].map(item => {
                   const isMulti = item.children && item.children.length >= 2;
@@ -384,13 +377,6 @@ export default function Chat() {
                     </button>
                   </>
                 )}
-                <button
-                  onClick={clearChat}
-                  title="Start a new conversation"
-                  className="ml-auto text-[13px] font-medium px-2.5 py-1.5 rounded-md text-[#6b7280] hover:bg-[#f9fafb] hover:text-[#111827] transition-colors duration-150 flex-shrink-0"
-                >
-                  {lang === 'GEO' ? '↺ ახალი' : '↺ New'}
-                </button>
               </div>
               {openGroupDef?.children && openGroupDef.children.length >= 2 && (
                 <div className={`flex items-center gap-1.5 px-6 py-1.5 border-t ${s.headerBorder} flex-wrap`}>
@@ -454,7 +440,7 @@ export default function Chat() {
         {/* Input */}
         <form
           onSubmit={sendMessage}
-          className={`flex items-end gap-2 px-2 py-2 sm:px-4 sm:py-3 border-t ${s.footerBorder} flex-shrink-0`}
+          className={`flex items-end gap-2 px-4 py-2 sm:py-3 border-t ${s.footerBorder} flex-shrink-0`}
         >
           <input
             ref={fileInputRef}
