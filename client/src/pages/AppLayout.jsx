@@ -546,13 +546,11 @@ function RightColumn({ members, onMembersRefresh }) {
   const [editTarget, setEditTarget] = useState(null);
   const [editDraft, setEditDraft]   = useState({});
   const [editRoleName, setEditRoleName] = useState('');
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const messagesRef   = useRef(null);
   const fileInputRef  = useRef(null);
   const stylePanelRef = useRef(null);
   const editBtnRef    = useRef(null);
-  const userMenuRef   = useRef(null);
   const s = CHAT_STYLES.glass;
 
   useEffect(() => { setAccentColor(ACCENT_COLORS[role] || '#7c3aed'); }, [role]);
@@ -575,13 +573,6 @@ function RightColumn({ members, onMembersRefresh }) {
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
   }, [editSubmenuOpen]);
-
-  useEffect(() => {
-    if (!userMenuOpen) return;
-    const h = e => { if (userMenuRef.current && !userMenuRef.current.contains(e.target)) setUserMenuOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, [userMenuOpen]);
 
   function handleSignOut() {
     localStorage.removeItem('sherlock_token');
@@ -728,25 +719,7 @@ function RightColumn({ members, onMembersRefresh }) {
 
       {/* Chat header */}
       <header className={`flex items-center gap-2 px-4 py-3 border-b ${s.headerBorder} flex-shrink-0`}>
-        <div className="relative flex-shrink-0" ref={userMenuRef}>
-          <button
-            type="button"
-            onClick={() => setUserMenuOpen(o => !o)}
-            title={lang === 'GEO' ? 'ანგარიში' : 'Account'}
-            className={`w-8 h-8 rounded-full ${THEME.avatar} flex items-center justify-center text-white font-bold cursor-pointer`}>
-            S
-          </button>
-          {userMenuOpen && (
-            <div className="absolute left-0 top-full mt-2 w-40 rounded-xl border border-white/15 bg-[#0f0f1a] shadow-2xl z-50 overflow-hidden">
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-white/[0.05] hover:text-white transition-colors">
-                {lang === 'GEO' ? '🚪 გასვლა' : '🚪 Sign Out'}
-              </button>
-            </div>
-          )}
-        </div>
+        <div className={`w-8 h-8 rounded-full ${THEME.avatar} flex items-center justify-center text-white font-bold flex-shrink-0`}>S</div>
         <h1 className={`text-base font-semibold ${s.titleColor}`}>Sherlock</h1>
         {user?.schoolName && <span className="text-xs ml-1" style={{ color: 'rgba(255,255,255,0.5)' }}>{user.schoolName}</span>}
 
@@ -853,6 +826,14 @@ function RightColumn({ members, onMembersRefresh }) {
               </div>
             )}
           </div>
+
+          {/* Sign out */}
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="text-xs px-2.5 py-1 rounded-lg border border-white/10 text-white/50 hover:text-white/80 hover:border-white/20 transition-colors duration-150 flex-shrink-0">
+            {lang === 'GEO' ? 'გასვლა' : 'Sign Out'}
+          </button>
         </div>
       </header>
 
