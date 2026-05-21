@@ -788,6 +788,7 @@ router.delete('/notes/trash/:id/permanent', authMiddleware, async (req, res) => 
 
 // Student's enrolled groups + their scheduled lesson days, for the report form
 router.get('/my-groups-for-report', authMiddleware, async (req, res) => {
+  console.log('[my-groups-for-report] userId:', req.user.userId, 'schoolId:', req.user.schoolId);
   try {
     const result = await getPool().query(
       `SELECT g.id AS group_id, g.name AS group_name,
