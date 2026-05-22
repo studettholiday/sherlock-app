@@ -49,7 +49,7 @@ router.post('/signup', async (req, res) => {
     if (existing.rows.length > 0) return res.status(409).json({ error: 'Email already registered' });
     const schoolResult = await pool.query(
       'INSERT INTO schools (name, api_key_encrypted, director_name, phone, website, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
-      [schoolName, apiKey || null, directorName || null, phone || null, website || null, 'pending']
+      [schoolName, apiKey || null, directorName || null, phone || null, website || null, 'approved']
     );
     const schoolId = schoolResult.rows[0].id;
     const hash = await bcrypt.hash(password, 12);
@@ -59,17 +59,7 @@ router.post('/signup', async (req, res) => {
     );
     const user = userResult.rows[0];
     const token = jwt.sign({ userId: user.id, schoolId, role: 'student', is_owner: true }, JWT_SECRET, { expiresIn: '7d' });
-    const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
-    const adminId = process.env.TELEGRAM_ADMIN_ID;
-    if (telegramToken && adminId) {
-      const message = `🏫 New school registration!\n\nSchool: ${schoolName}\nDirector: ${directorName}\nPhone: ${phone}\nWebsite: ${website || "not provided"}\nEmail: ${email}\nID: ${schoolId}\n\nApprove: /approve_school_${schoolId}\nReject: /reject_school_${schoolId}`;
-      fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: adminId, text: message })
-      }).catch(console.error);
-    }
-    res.json({ token, user: { ...user, schoolId, schoolName, status: 'pending' }, pending: true });
+    res.json({ token, user: { ...user, schoolId, schoolName, status: 'approved' } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
