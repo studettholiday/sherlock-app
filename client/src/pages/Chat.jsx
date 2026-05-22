@@ -365,6 +365,11 @@ export default function Chat() {
                       {lang === 'GEO' ? '📅 განრიგის რედაქტირება' : '📅 Edit Schedule'}
                     </button>
                     <button
+                      onClick={() => setActivePanel(activePanel === 'students' ? null : 'students')}
+                      className={`px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${activePanel === 'students' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
+                      {lang === 'GEO' ? '👥 მოსწავლეები' : '👥 Students'}
+                    </button>
+                    <button
                       onClick={() => setActivePanel(activePanel === 'library' ? null : 'library')}
                       className={`px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${activePanel === 'library' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
                       {lang === 'GEO' ? '📁 ფაილები' : '📁 Files'}

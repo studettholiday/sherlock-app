@@ -63,9 +63,20 @@ async function notifyScheduleChange(schoolId, action, scheduleRow) {
   let pool;
   try {
     pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
+    // Target: every owner of the school (owners always get all notifications)
+    // plus every student assigned to the changed class.
+    const className = scheduleRow && scheduleRow.class_name ? scheduleRow.class_name : null;
     const { rows } = await pool.query(
-      'SELECT id, endpoint, p256dh_key, auth_key FROM push_subscriptions WHERE school_id = $1',
-      [schoolId]
+      `SELECT ps.id, ps.endpoint, ps.p256dh_key, ps.auth_key
+       FROM push_subscriptions ps
+       WHERE ps.school_id = $1
+         AND ps.user_id IN (
+           SELECT id FROM users WHERE school_id = $1 AND is_owner = true
+           UNION
+           SELECT user_id FROM student_classes
+             WHERE school_id = $1 AND class_name = $2
+         )`,
+      [schoolId, className]
     );
     if (rows.length === 0) return;
 

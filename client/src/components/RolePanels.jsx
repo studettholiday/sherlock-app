@@ -45,6 +45,7 @@ const PANEL_TITLES = {
   'invite':            'Invite',
   'schedule':          'Schedule',
   'schedule-editor':   'Edit Schedule',
+  'students':          'Students',
   'library':           'Files',
   'knowledge-library': 'Knowledge Library',
 };
@@ -53,6 +54,7 @@ const GEO_PANEL_TITLES = {
   'invite':            'მოწვევა',
   'schedule':          'განრიგი',
   'schedule-editor':   'განრიგის რედაქტირება',
+  'students':          'მოსწავლეები',
   'library':           'ფაილები',
   'knowledge-library': 'ცოდნის ბიბლიოთეკა',
 };
@@ -672,6 +674,157 @@ function KnowledgeLibraryPanel({ role, lang, orgName, orgNameGenitive, libraryFi
   );
 }
 
+// ─── Students panel (owner only) ──────────────────────────────────────────────
+
+// Owner-only. Lists every student in the school and lets the owner assign each
+// one to classes that exist in the schedule (fetched from /api/school/classes).
+function StudentsPanel({ lang }) {
+  const [students, setStudents] = useState([]);
+  const [classes, setClasses]   = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState('');
+  const [editing, setEditing]   = useState(null);   // student under edit, or null
+  const [picked, setPicked]     = useState([]);     // class_names checked in edit view
+  const [saving, setSaving]     = useState(false);
+
+  function authHeaders() {
+    const token = localStorage.getItem('sherlock_token');
+    return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  }
+
+  async function load() {
+    setLoading(true);
+    try {
+      const [sRes, cRes] = await Promise.all([
+        fetch('/api/school/students', { headers: authHeaders() }),
+        fetch('/api/school/classes',  { headers: authHeaders() }),
+      ]);
+      const sData = await sRes.json();
+      const cData = await cRes.json();
+      if (!sRes.ok) throw new Error(sData.error || `Request failed (${sRes.status})`);
+      if (!cRes.ok) throw new Error(cData.error || `Request failed (${cRes.status})`);
+      setStudents(sData.students || []);
+      setClasses(cData.classes || []);
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  function startEdit(student) {
+    setEditing(student);
+    setPicked(student.classes || []);
+    setError('');
+  }
+
+  function toggle(className) {
+    setPicked(prev => prev.includes(className)
+      ? prev.filter(c => c !== className)
+      : [...prev, className]);
+  }
+
+  async function save() {
+    if (!editing) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/school/students/${editing.id}/classes`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ classes: picked }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Save failed (${res.status})`);
+      setStudents(prev => prev.map(s =>
+        s.id === editing.id ? { ...s, classes: data.classes || [] } : s));
+      setEditing(null);
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    }
+    setSaving(false);
+  }
+
+  const noClassesMsg = lang === 'GEO'
+    ? 'ჯერ დაამატე კლასები განრიგში, შემდეგ დაბრუნდი აქ მოსწავლეების მისამაგრებლად.'
+    : 'Add classes to the schedule first, then come back here to assign students.';
+
+  if (loading) return <p className="text-[14px] italic text-[#6b7280] text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
+
+  // Edit view ────────────────────────────────────────────────────────────────
+  if (editing) {
+    return (
+      <div className="space-y-3">
+        <div>
+          <p className="text-[14px] font-semibold text-[#111827] truncate">{editing.name || editing.email}</p>
+          <p className="text-[13px] text-[#6b7280] truncate">{editing.email}</p>
+        </div>
+        {error && <p className="text-[14px] text-[#dc2626]">{error}</p>}
+        {classes.length === 0 ? (
+          <p className="text-[14px] italic text-[#6b7280] text-center py-2">{noClassesMsg}</p>
+        ) : (
+          <div className="space-y-1">
+            {classes.map(c => (
+              <label key={c} className="flex items-center gap-2 text-[14px] text-[#111827] py-1 cursor-pointer">
+                <input type="checkbox" checked={picked.includes(c)} onChange={() => toggle(c)}
+                  className="w-4 h-4 accent-[#2563eb] flex-shrink-0" />
+                <span className="truncate">{c}</span>
+              </label>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-2">
+          <button onClick={save} disabled={saving}
+            className="rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-40 px-3 py-1.5 text-[13px] text-white font-medium transition-colors duration-150">
+            {saving ? (lang === 'GEO' ? 'ინახება…' : 'Saving…') : (lang === 'GEO' ? 'შენახვა' : 'Save')}
+          </button>
+          <button onClick={() => { setEditing(null); setError(''); }}
+            className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] hover:bg-[#f9fafb] px-3 py-1.5 text-[13px] text-[#111827] transition-colors duration-150">
+            {lang === 'GEO' ? 'გაუქმება' : 'Cancel'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // List view ─────────────────────────────────────────────────────────────────
+  return (
+    <div className="space-y-2">
+      {error && <p className="text-[14px] text-[#dc2626]">{error}</p>}
+      {classes.length === 0 && (
+        <p className="text-[14px] italic text-[#6b7280] text-center py-2">{noClassesMsg}</p>
+      )}
+      {students.length === 0 ? (
+        <p className="text-[14px] italic text-[#6b7280] text-center py-2">
+          {lang === 'GEO' ? 'მოსწავლეები ჯერ არ არიან.' : 'No students yet.'}
+        </p>
+      ) : (
+        students.map(s => (
+          <button key={s.id} onClick={() => startEdit(s)}
+            className="w-full text-left rounded-[8px] border border-[#e5e7eb] bg-[#ffffff] hover:bg-[#fafafa] px-3 py-2 transition-colors duration-150">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[14px] font-medium text-[#111827] truncate">{s.name || s.email}</span>
+              <span className="text-[13px] text-[#9ca3af] flex-shrink-0">{lang === 'GEO' ? 'რედაქტირება' : 'Edit'}</span>
+            </div>
+            <p className="text-[13px] text-[#6b7280] truncate">{s.email}</p>
+            <div className="flex flex-wrap gap-1 mt-1">
+              {(s.classes || []).length === 0 ? (
+                <span className="text-[12px] italic text-[#9ca3af]">{lang === 'GEO' ? 'კლასები მიუმაგრებელია' : 'No classes assigned'}</span>
+              ) : (
+                s.classes.map(c => (
+                  <span key={c} className="text-[12px] rounded-full bg-[#eff6ff] text-[#2563eb] border border-[#bfdbfe] px-2 py-0.5">{c}</span>
+                ))
+              )}
+            </div>
+          </button>
+        ))
+      )}
+    </div>
+  );
+}
+
 // ─── Panel router ─────────────────────────────────────────────────────────────
 
 function panelContent(role, panel, libraryProps, lang) {
@@ -679,6 +832,7 @@ function panelContent(role, panel, libraryProps, lang) {
     case 'invite':            return <InvitePanel role={role} lang={lang} />;
     case 'schedule':          return <SchedulePanel lang={lang} />;
     case 'schedule-editor':   return <ScheduleEditorPanel lang={lang} />;
+    case 'students':          return <StudentsPanel lang={lang} />;
     case 'library':           return <LibraryManagerPanel lang={lang} />;
     case 'knowledge-library': return <KnowledgeLibraryPanel role={role} lang={lang} {...(libraryProps ?? {})} />;
     default:                  return null;
