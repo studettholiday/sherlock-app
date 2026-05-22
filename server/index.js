@@ -12,6 +12,7 @@ const authRouter = require('./routes/auth');
 const libraryRouter = require('./routes/library');
 const schoolRouter = require('./routes/school');
 const invitesRouter = require('./routes/invites');
+const pushRouter = require('./routes/push');
 
 async function runMigrations() {
   const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
@@ -25,6 +26,9 @@ async function runMigrations() {
     const sql013 = fs.readFileSync(path.join(__dirname, 'migrations/013_auto_approve.sql'), 'utf8');
     await pool.query(sql013);
     console.log('[startup] migration 013 complete');
+    const sql014 = fs.readFileSync(path.join(__dirname, 'migrations/014_push_subscriptions.sql'), 'utf8');
+    await pool.query(sql014);
+    console.log('[startup] migration 014 complete');
   } catch (e) {
     console.error('[startup] migration error:', e.message);
   } finally {
@@ -46,6 +50,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/library', libraryRouter);
 app.use('/api/school', schoolRouter);
 app.use('/api/invites', invitesRouter);
+app.use('/api/push', pushRouter);
 app.use('/api/youtube', youtubeRoutes);
 app.use('/api/search', searchRoutes);
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));

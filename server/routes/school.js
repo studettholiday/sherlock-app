@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
 const authMiddleware = require('../middleware/auth');
+const { notifyScheduleChange } = require('../services/push');
 
 const getPool = () => new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
 
@@ -28,6 +29,8 @@ router.post('/schedule', authMiddleware, async (req, res) => {
       [req.user.schoolId, day_of_week ?? null, lesson_time || null, class_name || null, room || null]
     );
     res.json({ row: result.rows[0] });
+    // Fire-and-forget push broadcast — never blocks or breaks the schedule write.
+    notifyScheduleChange(req.user.schoolId, 'POST', result.rows[0]);
   } catch (err) {
     console.error('[schedule] POST error:', err.message);
     res.status(500).json({ error: err.message });
@@ -37,11 +40,13 @@ router.post('/schedule', authMiddleware, async (req, res) => {
 router.delete('/schedule/:id', authMiddleware, async (req, res) => {
   if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   try {
-    await getPool().query(
-      'DELETE FROM schedule WHERE id = $1 AND school_id = $2',
+    const result = await getPool().query(
+      'DELETE FROM schedule WHERE id = $1 AND school_id = $2 RETURNING *',
       [req.params.id, req.user.schoolId]
     );
     res.json({ success: true });
+    // Fire-and-forget push broadcast — never blocks or breaks the schedule write.
+    if (result.rows[0]) notifyScheduleChange(req.user.schoolId, 'DELETE', result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
@@ -56,6 +61,8 @@ router.patch('/schedule/:id', authMiddleware, async (req, res) => {
       [day_of_week, lesson_time, req.params.id, req.user.schoolId]
     );
     res.json({ row: result.rows[0] });
+    // Fire-and-forget push broadcast — never blocks or breaks the schedule write.
+    if (result.rows[0]) notifyScheduleChange(req.user.schoolId, 'PATCH', result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }

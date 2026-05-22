@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../AuthContext';
 import { RolePanel, PANEL_ACTIVE_CLS } from '../components/RolePanels';
+import { registerServiceWorker, requestPermissionAndSubscribe, isPushSupported } from '../lib/push';
 
 // Chat is constrained to a centered column of this width (px).
 const CHAT_COLUMN_MAX_WIDTH = 760;
@@ -136,6 +137,7 @@ export default function Chat() {
 
   const messagesRef  = useRef(null);
   const fileInputRef = useRef(null);
+  const pushInitRef  = useRef(false);
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [libraryFiles, setLibraryFiles]   = useState([]);
   const s = CHAT_STYLES['glass'];
@@ -158,6 +160,17 @@ export default function Chat() {
   useEffect(() => {
     setAccentColor(ACCENT_COLORS[role] || '#2563eb');
   }, [role]);
+
+  // Web push: on first sign-in, silently register the service worker and
+  // request notification permission. No banner — the native prompt is enough.
+  // If push is unsupported or permission is denied, it just logs and moves on.
+  useEffect(() => {
+    if (pushInitRef.current || !user || !isPushSupported()) return;
+    pushInitRef.current = true;
+    const token = localStorage.getItem('sherlock_token');
+    if (!token) return;
+    registerServiceWorker().then(() => requestPermissionAndSubscribe(token));
+  }, [user]);
 
   useEffect(() => {
     setMessages([{ role: 'assistant', content: getGreeting(role, lang, user?.schoolName || '', '') }]);
