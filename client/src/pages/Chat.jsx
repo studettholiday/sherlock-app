@@ -284,6 +284,12 @@ export default function Chat() {
         .dot-bounce { animation: dotBounce 0.6s ease-in-out infinite; }
       `}</style>
 
+      {/* Brand accent line — 3px decorative bar, full viewport width, above all content */}
+      <div aria-hidden="true" style={{
+        position: 'fixed', top: 0, left: 0, right: 0,
+        height: '3px', background: '#2563eb', zIndex: 50,
+      }} />
+
       {/* Chat card fills remaining height */}
       <div className={`relative flex flex-col flex-1 overflow-hidden w-full mx-auto ${s.wrap}`} style={{ maxWidth: CHAT_COLUMN_MAX_WIDTH }}>
 
