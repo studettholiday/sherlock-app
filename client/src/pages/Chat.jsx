@@ -7,13 +7,6 @@ import { RolePanel, PANEL_ACTIVE_CLS } from '../components/RolePanels';
 const CHAT_COLUMN_MAX_WIDTH = 760;
 
 const THEMES = {
-  teacher: {
-    avatar:     'bg-[#eff6ff] text-[#2563eb]',
-    userBubble: 'bg-[#eff6ff] text-[#111827]',
-    sendBtn:    'bg-[#2563eb] hover:bg-[#1d4ed8]',
-    ring:       'focus:border-[#3b82f6]',
-    glow:       'transparent',
-  },
   student: {
     avatar:     'bg-[#eff6ff] text-[#2563eb]',
     userBubble: 'bg-[#eff6ff] text-[#111827]',
@@ -28,30 +21,19 @@ const BASE_IDENTITY = 'You are Sherlock Is Smart, an AI assistant for school man
 const NO_INFO_INSTRUCTION = `When you cannot find information in the school library or context, respond with one of these naturally, matching the user's language: English: 'Sorry, I couldn\'t find anything on that.' or 'My deductive methods failed me on this one, haha. No information found.' Georgian: 'სამწუხაროდ, ინფორმაცია ვერ მოიძებნა.' or 'ინფორმაცია ვერ ვიპოვე ამ თემაზე.' or 'ჩემი დედუქციის მეთოდი უსარგებლო აღმოჩნდა, ჰაჰაჰა. ინფორმაცია ვერ ვიპოვე.' Vary the response naturally, don't always use the same one.`;
 
 const SYSTEM_PROMPTS = {
-  teacher:   `${BASE_IDENTITY} You are assisting a teacher. Answer questions directly and helpfully. When responding to a greeting or first message, do not list your capabilities. Simply ask how you can help, using variations like: 'How can I help you?', 'How may I assist you?', 'რით შემიძლია დაგეხმაროთ?', 'დღეს რით შემიძლია გემსახუროთ?' — match the language of the user's message. ${NO_INFO_INSTRUCTION}`,
   student:   `${BASE_IDENTITY} You are assisting a student. Answer questions directly and helpfully. When responding to a greeting or first message, do not list your capabilities. Simply ask how you can help, using variations like: 'How can I help you?', 'How may I assist you?', 'რით შემიძლია დაგეხმაროთ?', 'დღეს რით შემიძლია გემსახუროთ?' — match the language of the user's message. ${NO_INFO_INSTRUCTION}`,
 };
 
-const GREETINGS = {
-  teacher:   "Hi! I'm Sherlock, your teaching assistant. I can help with group schedules, student attendance, lesson notes, and group announcements. How can I help today?",
-  student:   "Hey! I'm Sherlock, your school assistant. Ask me about your schedule, upcoming events, notes, or anything in the school library!",
-};
-
-const GEO_GREETINGS = {
-  teacher:   "გამარჯობა! მე ვარ შერლოკი, სკოლის მართვის AI ასისტენტი. რით შემიძლია დაგეხმაროთ დღეს? შემიძლია დაგეხმაროთ განრიგების, ჯგუფური განცხადებების, მოსწავლეთა დასწრების, გაკვეთილის ჩანაწერების მართვაში და ჯგუფებისთვის ინფორმაციის გაგზავნაში.",
-  student:   "გამარჯობა! მე ვარ შერლოკი, თქვენი AI ასისტენტი. რით შემიძლია დაგეხმაროთ დღეს? შემიძლია მოგაწოდოთ ინფორმაცია განრიგის, მომავალი ღონისძიებების, ჩანაწერების შესახებ ან ნებისმიერი სხვა ინფორმაცია სასკოლო ბიბლიოთეკიდან.",
-};
-
+// Unified greeting — no role variants. Interpolates the school name when present.
 function getGreeting(role, lang, orgName = '', orgNameGenitive = '') {
   if (lang === 'GEO') {
-    const base = GEO_GREETINGS[role];
-    if (!orgName) return base;
-    const gen = orgNameGenitive || (orgName + 'ს');
-    return base.replace(/სკოლის/g, gen);
+    return orgName
+      ? `გამარჯობა! მე ვარ შერლოკი, ${orgName}-ის ასისტენტი. რით შემიძლია დაგეხმაროთ?`
+      : 'გამარჯობა! მე ვარ შერლოკი, თქვენი სკოლის ასისტენტი. რით შემიძლია დაგეხმაროთ?';
   }
-  const base = GREETINGS[role];
-  if (!orgName) return base;
-  return base.replace(/school/gi, orgName);
+  return orgName
+    ? `Hi! I'm Sherlock, your ${orgName} assistant. How can I help today?`
+    : "Hi! I'm Sherlock, your school assistant. How can I help today?";
 }
 
 const CHAT_STYLES = {
@@ -113,18 +95,12 @@ function MessageBubble({ message, theme }) {
 }
 
 const BUTTON_GROUPS = {
-  teacher: [
-    { id: 'schedule', label: '📅 Schedule' },
-  ],
   student: [
     { id: 'schedule', label: '📅 Schedule' },
   ],
 };
 
 const GEO_BUTTON_GROUPS = {
-  teacher: [
-    { id: 'schedule', label: '📅 განრიგი' },
-  ],
   student: [
     { id: 'schedule', label: '📅 განრიგი' },
   ],
@@ -135,19 +111,18 @@ function getButtonGroups(lang) {
 }
 
 const GROUP_OPEN_CLS = {
-  teacher:   'bg-[#eff6ff] text-[#2563eb] border border-[#3b82f6]',
   student:   'bg-[#eff6ff] text-[#2563eb] border border-[#3b82f6]',
 };
 
 const ACCENT_COLORS = {
-  teacher: '#2563eb', student: '#2563eb',
+  student: '#2563eb',
 };
 
 export default function Chat() {
   const { user, logout } = useAuth();
   const lang = localStorage.getItem('sherlock_lang') === 'ka' ? 'GEO' : 'EN';
 
-  const role = user?.role || 'teacher';
+  const role = user?.role || 'student';
   const [activePanel, setActivePanel] = useState(null);
   const [openGroup, setOpenGroup] = useState(null);
   const theme = THEMES[role] || THEMES.student;

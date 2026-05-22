@@ -12,15 +12,15 @@ const COLORS = {
   muted: '#6b7280',
 };
 
-const roleColor  = { teacher: '#2563eb', student: '#10b981' };
-const roleBg     = { teacher: '#eff6ff', student: '#ecfdf5' };
-const roleBorder = { teacher: '#2563eb', student: '#10b981' };
-const roleGlow   = { teacher: 'rgba(37,99,235,0.12)', student: 'rgba(16,185,129,0.12)' };
+const roleColor  = { student: '#10b981' };
+const roleBg     = { student: '#ecfdf5' };
+const roleBorder = { student: '#10b981' };
+const roleGlow   = { student: 'rgba(16,185,129,0.12)' };
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const [invites, setInvites] = useState([]);
-  const [inviteRole, setInviteRole] = useState('teacher');
+  const [inviteRole, setInviteRole] = useState('student');
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState('');
   const [libFiles, setLibFiles] = useState([]);
@@ -31,8 +31,8 @@ export default function Dashboard() {
 
   const token = localStorage.getItem('sherlock_token');
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
-  const canManage = user?.role === 'teacher' && user?.is_owner;
-  const canLibrary = user?.role === 'teacher' && user?.is_owner;
+  const canManage = user?.is_owner;
+  const canLibrary = user?.is_owner;
 
   useEffect(() => { fetchData(); }, []);
   useEffect(() => { fetchLibrary(); }, [user?.schoolId]);
@@ -202,7 +202,6 @@ export default function Dashboard() {
             <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
               <select value={inviteRole} onChange={e => setInviteRole(e.target.value)}
                 style={{ padding: '8px 12px', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '6px', color: '#111827', fontSize: '14px', cursor: 'pointer', outline: 'none' }}>
-                <option value="teacher" style={{ background: '#ffffff', color: '#111827' }}>Teacher</option>
                 <option value="student" style={{ background: '#ffffff', color: '#111827' }}>Student</option>
               </select>
               <button onClick={generateInvite} className="dash-generate"

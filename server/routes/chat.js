@@ -47,7 +47,6 @@ function buildSystemPrompt(user, mode, libraryFiles, language) {
   const schoolName = user.schoolName;
 
   const roleContext = {
-    teacher:   `You are assisting a teacher at ${schoolName}.`,
     student:   `You are assisting a student at ${schoolName}.`,
   }[role] || `You are assisting a member of ${schoolName}.`;
 

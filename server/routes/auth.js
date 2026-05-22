@@ -55,10 +55,10 @@ router.post('/signup', async (req, res) => {
     const hash = await bcrypt.hash(password, 12);
     const userResult = await pool.query(
       'INSERT INTO users (school_id, email, password_hash, role, name, is_owner) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, email, role, name',
-      [schoolId, email, hash, 'teacher', email.split('@')[0], true]
+      [schoolId, email, hash, 'student', email.split('@')[0], true]
     );
     const user = userResult.rows[0];
-    const token = jwt.sign({ userId: user.id, schoolId, role: 'teacher', is_owner: true }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: user.id, schoolId, role: 'student', is_owner: true }, JWT_SECRET, { expiresIn: '7d' });
     const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
     const adminId = process.env.TELEGRAM_ADMIN_ID;
     if (telegramToken && adminId) {

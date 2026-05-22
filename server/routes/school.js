@@ -20,7 +20,7 @@ router.get('/schedule', authMiddleware, async (req, res) => {
 });
 
 router.post('/schedule', authMiddleware, async (req, res) => {
-  if (!(req.user.role === 'teacher' && req.user.is_owner)) return res.status(403).json({ error: 'Forbidden' });
+  if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   const { day_of_week, lesson_time, class_name, room } = req.body;
   try {
     const result = await getPool().query(
@@ -35,7 +35,7 @@ router.post('/schedule', authMiddleware, async (req, res) => {
 });
 
 router.delete('/schedule/:id', authMiddleware, async (req, res) => {
-  if (!(req.user.role === 'teacher' && req.user.is_owner)) return res.status(403).json({ error: 'Forbidden' });
+  if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   try {
     await getPool().query(
       'DELETE FROM schedule WHERE id = $1 AND school_id = $2',
@@ -48,7 +48,7 @@ router.delete('/schedule/:id', authMiddleware, async (req, res) => {
 });
 
 router.patch('/schedule/:id', authMiddleware, async (req, res) => {
-  if (!(req.user.role === 'teacher' && req.user.is_owner)) return res.status(403).json({ error: 'Forbidden' });
+  if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   const { day_of_week, lesson_time } = req.body;
   try {
     const result = await getPool().query(

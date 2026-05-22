@@ -32,7 +32,7 @@ async function extractText(buffer, mimetype) {
 // Upload file (owner only)
 router.post('/upload', authMiddleware, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  if (!(req.user.role === 'teacher' && req.user.is_owner)) {
+  if (!req.user.is_owner) {
     return res.status(403).json({ error: 'Forbidden' });
   }
   try {
@@ -78,7 +78,7 @@ router.get('/', authMiddleware, async (req, res) => {
 
 // Delete file (owner only)
 router.delete('/:id', authMiddleware, async (req, res) => {
-  if (!(req.user.role === 'teacher' && req.user.is_owner)) return res.status(403).json({ error: 'Forbidden' });
+  if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   try {
     const result = await getPool().query(
       'SELECT * FROM library_files WHERE id = $1 AND school_id = $2',

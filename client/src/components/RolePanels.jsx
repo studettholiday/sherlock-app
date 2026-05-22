@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from 'react';
 // ─── Theme tokens ─────────────────────────────────────────────────────────────
 
 const TH = {
-  teacher: { border: 'border-[#e5e7eb]', hdr: 'bg-[#ffffff]', accent: 'text-[#2563eb]', btn: 'bg-[#2563eb] hover:bg-[#1d4ed8]', ring: 'focus:ring-[#3b82f6]/20', conf: 'text-[#10b981]' },
   student: { border: 'border-[#e5e7eb]', hdr: 'bg-[#ffffff]', accent: 'text-[#10b981]', btn: 'bg-[#2563eb] hover:bg-[#1d4ed8]', ring: 'focus:ring-[#3b82f6]/20', conf: 'text-[#10b981]' },
 };
 
@@ -71,7 +70,6 @@ const INVITE_BASE_URL = window.location.origin;
 
 function InvitePanel({ lang }) {
   const [invites, setInvites]       = useState([]);
-  const [inviteRole, setInviteRole] = useState('teacher');
   const [loading, setLoading]       = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError]           = useState('');
@@ -104,7 +102,7 @@ function InvitePanel({ lang }) {
       const res  = await fetch('/api/invites/generate', {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ target_role: inviteRole }),
+        body: JSON.stringify({ target_role: 'student' }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to generate link');
@@ -131,27 +129,16 @@ function InvitePanel({ lang }) {
     setTimeout(() => setCopied(''), 2000);
   }
 
-  const roleOptions = lang === 'GEO'
-    ? [['teacher', 'მასწავლებელი'], ['student', 'სტუდენტი']]
-    : [['teacher', 'Teacher'], ['student', 'Student']];
-
   if (loading) return <p className="text-[14px] text-[#6b7280] text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-2 flex-wrap">
-        <select value={inviteRole} onChange={e => setInviteRole(e.target.value)}
-          style={{ backgroundColor: '#ffffff', color: '#111827', border: '1px solid #e5e7eb', padding: '8px 12px', fontSize: '14px', borderRadius: '6px' }}
-          className="cursor-pointer focus:outline-none">
-          {roleOptions.map(([val, label]) => <option key={val} value={val} style={{ backgroundColor: '#ffffff', color: '#111827' }}>{label}</option>)}
-        </select>
-        <button onClick={generateInvite} disabled={generating}
-          className="rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-40 px-4 py-2 text-[14px] text-white font-medium transition-colors duration-150">
-          {generating
-            ? (lang === 'GEO' ? 'იქმნება…' : 'Generating…')
-            : (lang === 'GEO' ? 'მოწვევის ბმულის შექმნა' : 'Generate Invite Link')}
-        </button>
-      </div>
+      <button onClick={generateInvite} disabled={generating}
+        className="w-full rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-40 px-4 py-2 text-[14px] text-white font-medium transition-colors duration-150">
+        {generating
+          ? (lang === 'GEO' ? 'იქმნება…' : 'Generating…')
+          : (lang === 'GEO' ? 'მოწვევის ბმულის შექმნა' : 'Generate Invite Link')}
+      </button>
 
       {error && <p className="text-[14px] text-[#dc2626]">{error}</p>}
 
@@ -172,16 +159,11 @@ function InvitePanel({ lang }) {
               : expired
               ? (lang === 'GEO' ? 'ვადაგასული' : 'Expired')
               : (lang === 'GEO' ? 'აქტიური' : 'Active');
-            const roleAccent = inv.target_role === 'teacher' ? '#2563eb' : '#10b981';
-            const roleBgTint = inv.target_role === 'teacher' ? '#eff6ff' : '#ecfdf5';
             const copiedThis = copied === `inv-${inv.id}`;
             return (
               <div key={inv.id} className="rounded-[8px] border border-[#e5e7eb] p-3 space-y-2"
                 style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: roleBgTint, color: roleAccent, border: `1px solid ${roleAccent}`, textTransform: 'capitalize' }}>
-                    {inv.target_role}
-                  </span>
+                <div className="flex items-center justify-end flex-wrap gap-2">
                   <div className="flex items-center gap-2">
                     <span className="text-[12px] text-[#6b7280]">{new Date(inv.expires_at).toLocaleDateString()}</span>
                     <span style={{ fontSize: 12, fontWeight: 600, color: statusColor, padding: '3px 10px', borderRadius: 20, background: statusBg, border: `1px solid ${statusColor}` }}>
@@ -472,7 +454,7 @@ function LibraryManagerPanel({ lang }) {
 // ─── Knowledge Library panel ──────────────────────────────────────────────────
 
 function KnowledgeLibraryPanel({ role, lang, orgName, orgNameGenitive, libraryFiles = [], onAddFile, onRemoveFile }) {
-  const th = TH[role] ?? TH.teacher;
+  const th = TH[role] ?? TH.student;
   const [tab, setTab] = useState('upload');
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -706,7 +688,6 @@ function panelContent(role, panel, libraryProps, lang) {
 // ─── Exports ──────────────────────────────────────────────────────────────────
 
 export const PANEL_ACTIVE_CLS = {
-  teacher: 'bg-[#eff6ff] text-[#2563eb] border border-[#3b82f6]',
   student: 'bg-[#eff6ff] text-[#2563eb] border border-[#3b82f6]',
 };
 

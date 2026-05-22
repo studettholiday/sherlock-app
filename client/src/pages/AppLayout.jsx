@@ -7,9 +7,9 @@ import Dashboard from './Dashboard';
 /* ── Dashboard palette ─────────────────────────────────────────────────────── */
 const BASE_URL   = 'https://sherlock-app-production.up.railway.app';
 const COLORS     = { card: '#ffffff', border: '#e5e7eb', muted: '#6b7280' };
-const roleColor  = { teacher: '#2563eb', student: '#10b981' };
-const roleBg     = { teacher: '#eff6ff', student: '#eff6ff' };
-const roleBorder = { teacher: '#3b82f6', student: '#10b981' };
+const roleColor  = { student: '#10b981' };
+const roleBg     = { student: '#eff6ff' };
+const roleBorder = { student: '#10b981' };
 
 /* ── Chat constants ────────────────────────────────────────────────────────── */
 const THEME = {
@@ -22,17 +22,14 @@ const BASE_IDENTITY = 'You are Sherlock Is Smart, an AI assistant for school man
 const NO_INFO_INSTRUCTION = `When you cannot find information in the school library or context, respond with one of these naturally, matching the user's language: English: 'Sorry, I couldn\'t find anything on that.' or 'My deductive methods failed me on this one, haha. No information found.' Georgian: 'სამწუხაროდ, ინფორმაცია ვერ მოიძებნა.' or 'ინფორმაცია ვერ ვიპოვე ამ თემაზე.' or 'ჩემი დედუქციის მეთოდი უსარგებლო აღმოჩნდა, ჰაჰაჰა. ინფორმაცია ვერ ვიპოვე.' Vary the response naturally, don't always use the same one.`;
 
 const SYSTEM_PROMPTS = {
-  teacher:   `${BASE_IDENTITY} You are assisting a teacher. Answer questions directly and helpfully. When responding to a greeting or first message, do not list your capabilities. Simply ask how you can help, using variations like: 'How can I help you?', 'How may I assist you?', 'რით შემიძლია დაგეხმაროთ?', 'დღეს რით შემიძლია გემსახუროთ?' — match the language of the user's message. ${NO_INFO_INSTRUCTION}`,
   student:   `${BASE_IDENTITY} You are assisting a student. Answer questions directly and helpfully. When responding to a greeting or first message, do not list your capabilities. Simply ask how you can help, using variations like: 'How can I help you?', 'How may I assist you?', 'რით შემიძლია დაგეხმაროთ?', 'დღეს რით შემიძლია გემსახუროთ?' — match the language of the user's message. ${NO_INFO_INSTRUCTION}`,
 };
 
 const GREETINGS = {
-  teacher:   "Hi! I'm Sherlock, your teaching assistant. How can I help today?",
   student:   "Hey! I'm Sherlock, your school assistant. Ask me anything!",
 };
 
 const GEO_GREETINGS = {
-  teacher:   "გამარჯობა! მე ვარ შერლოკი, სკოლის AI ასისტენტი. რით შემიძლია დაგეხმაროთ?",
   student:   "გამარჯობა! მე ვარ შერლოკი, თქვენი AI ასისტენტი. რით შემიძლია დაგეხმაროთ?",
 };
 
@@ -136,18 +133,12 @@ function MessageBubble({ message, accentColor }) {
 }
 
 const BUTTON_GROUPS = {
-  teacher: [
-    { id: 'schedule', label: '📅 Schedule' },
-  ],
   student: [
     { id: 'schedule', label: '📅 Schedule' },
   ],
 };
 
 const GEO_BUTTON_GROUPS = {
-  teacher: [
-    { id: 'schedule', label: '📅 განრიგი' },
-  ],
   student: [
     { id: 'schedule', label: '📅 განრიგი' },
   ],
@@ -157,18 +148,18 @@ function getButtonGroups(lang) { return lang === 'GEO' ? GEO_BUTTON_GROUPS : BUT
 
 const GROUP_OPEN_CLS = 'bg-[#eff6ff] text-[#2563eb] border border-[#3b82f6]';
 
-const ACCENT_COLORS = { teacher: '#2563eb', student: '#2563eb' };
+const ACCENT_COLORS = { student: '#2563eb' };
 
 /* ── Left Column ─────────────────────────────────────────────────────────────── */
 function LeftColumn() {
   const { user, logout } = useAuth();
   const token      = localStorage.getItem('sherlock_token');
   const headers    = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
-  const canManage  = user?.role === 'teacher' && user?.is_owner;
-  const canLibrary = user?.role === 'teacher' && user?.is_owner;
+  const canManage  = user?.is_owner;
+  const canLibrary = user?.is_owner;
 
   const [invites, setInvites]         = useState([]);
-  const [inviteRole, setInviteRole]   = useState('teacher');
+  const [inviteRole, setInviteRole]   = useState('student');
   const [dataLoading, setDataLoading] = useState(true);
   const [copied, setCopied]           = useState('');
   const [libFiles, setLibFiles]       = useState([]);
@@ -284,7 +275,6 @@ function LeftColumn() {
                 <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
                   <select value={inviteRole} onChange={e => setInviteRole(e.target.value)}
                     style={{ padding: '8px 12px', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: 6, color: '#111827', fontSize: 14, cursor: 'pointer', outline: 'none', colorScheme: 'light', flex: 1 }}>
-                    <option value="teacher" style={{ background: '#ffffff', color: '#111827' }}>Teacher</option>
                     <option value="student" style={{ background: '#ffffff', color: '#111827' }}>Student</option>
                   </select>
                   <button onClick={generateInvite}
@@ -386,7 +376,7 @@ function RightColumn() {
   const { user } = useAuth();
   const lang = localStorage.getItem('sherlock_lang') === 'ka' ? 'GEO' : 'EN';
 
-  const role = user?.role || 'teacher';
+  const role = user?.role || 'student';
   const [activePanel, setActivePanel] = useState(null);
   const [openGroup, setOpenGroup]     = useState(null);
 
