@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../AuthContext';
 import { t, languages } from '../i18n';
+import AuthShell from '../components/AuthShell';
 
 export default function InviteAccept({ token, onSuccess }) {
   const { } = useAuth();
@@ -30,8 +31,6 @@ export default function InviteAccept({ token, onSuccess }) {
     }
   };
 
-  const cardFont = (lang === 'ka' || lang === 'ja') ? 'sans-serif' : undefined;
-
   const fields = [
     { key: 'name',     labelKey: 'yourName', type: 'text',     required: true },
     { key: 'email',    labelKey: 'email',    type: 'email',    required: true },
@@ -39,18 +38,7 @@ export default function InviteAccept({ token, onSuccess }) {
   ];
 
   return (
-    <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', background: '#ffffff'
-    }}>
-      <div style={{
-        position: 'relative',
-        background: '#ffffff',
-        border: '1px solid #e5e7eb', borderRadius: '8px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-        padding: '40px', width: '100%', maxWidth: '400px',
-        fontFamily: cardFont,
-      }}>
+    <AuthShell>
         <select
           value={lang}
           onChange={e => { setLang(e.target.value); localStorage.setItem('sherlock_lang', e.target.value); }}
@@ -66,7 +54,7 @@ export default function InviteAccept({ token, onSuccess }) {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             margin: '0 auto 16px', fontSize: '24px', fontWeight: 'bold', color: '#2563eb'
           }}>S</div>
-          <h1 style={{ color: '#111827', fontSize: '24px', fontWeight: 700, margin: 0 }}>{t(lang, 'invited')}</h1>
+          <h1 style={{ fontFamily: "'Arbutus Slab', serif", fontWeight: 400, fontSize: '32px', color: '#111827', margin: 0 }}>{t(lang, 'invited')}</h1>
           <p style={{ color: '#6b7280', marginTop: '8px', fontSize: '14px' }}>{t(lang, 'invitedSubtitle')}</p>
         </div>
 
@@ -100,7 +88,6 @@ export default function InviteAccept({ token, onSuccess }) {
             {loading ? t(lang, 'creatingAccount') : t(lang, 'createAccount')}
           </button>
         </form>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import AuthShell from '../components/AuthShell';
 
 export default function ResetPassword() {
   const token = new URLSearchParams(window.location.search).get('token') || '';
@@ -30,22 +31,7 @@ export default function ResetPassword() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: '#ffffff'
-    }}>
-      <div style={{
-        background: '#ffffff',
-        border: '1px solid #e5e7eb',
-        borderRadius: '8px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-        padding: '40px',
-        width: '100%',
-        maxWidth: '400px',
-      }}>
+    <AuthShell>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <div style={{
             width: '48px', height: '48px', borderRadius: '12px',
@@ -53,7 +39,7 @@ export default function ResetPassword() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             margin: '0 auto 16px', fontSize: '24px', fontWeight: 'bold', color: '#2563eb'
           }}>S</div>
-          <h1 style={{ color: '#111827', fontSize: '24px', fontWeight: 700, margin: 0 }}>Reset your password</h1>
+          <h1 style={{ fontFamily: "'Arbutus Slab', serif", fontWeight: 400, fontSize: '32px', color: '#111827', margin: 0 }}>Reset your password</h1>
           <p style={{ color: '#6b7280', marginTop: '8px', fontSize: '14px' }}>Enter your new password below.</p>
         </div>
 
@@ -107,7 +93,6 @@ export default function ResetPassword() {
         <p style={{ textAlign: 'center', marginTop: '24px', color: '#6b7280', fontSize: '14px' }}>
           <a href="/" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}>Back to sign in</a>
         </p>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

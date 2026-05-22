@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useAuth } from '../AuthContext';
+import AuthShell from '../components/AuthShell';
 
 export default function PendingApproval() {
   const { user, logout, updateUser } = useAuth();
@@ -34,26 +35,9 @@ export default function PendingApproval() {
   }, []);
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#ffffff',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px',
-    }}>
-      <div style={{
-        background: '#ffffff',
-        border: '1px solid #e5e7eb',
-        borderRadius: 8,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-        padding: '48px 40px',
-        maxWidth: 440,
-        width: '100%',
-        textAlign: 'center',
-      }}>
+    <AuthShell>
         <div style={{ fontSize: '3rem', marginBottom: 16 }}>⏳</div>
-        <h1 style={{ color: '#111827', fontSize: '24px', fontWeight: 700, margin: '0 0 12px' }}>
+        <h1 style={{ fontFamily: "'Arbutus Slab', serif", fontWeight: 400, fontSize: '32px', color: '#111827', margin: '0 0 12px' }}>
           {isStudentRegistrationPending ? 'Request Sent' : 'Pending Approval'}
         </h1>
         <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: 1.6, margin: '0 0 32px' }}>
@@ -80,7 +64,6 @@ export default function PendingApproval() {
         >
           Sign out
         </button>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

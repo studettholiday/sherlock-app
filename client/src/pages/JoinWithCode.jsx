@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { t, languages } from '../i18n';
+import AuthShell from '../components/AuthShell';
 
 export default function JoinWithCode() {
   const [lang, setLang] = useState(localStorage.getItem('sherlock_lang') || 'en');
@@ -50,17 +51,14 @@ export default function JoinWithCode() {
     }
   };
 
-  const cardFont = (lang === 'ka' || lang === 'ja') ? 'sans-serif' : undefined;
-
   if (validating) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff' }}>
+    <div style={{ minHeight: '100vh', background: '#fdfcf8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ color: '#6b7280', fontSize: '14px' }}>Validating invite...</div>
     </div>
   );
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff' }}>
-      <div style={{ position: 'relative', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '40px', width: '100%', maxWidth: '400px', fontFamily: cardFont }}>
+    <AuthShell>
         <select
           value={lang}
           onChange={e => { setLang(e.target.value); localStorage.setItem('sherlock_lang', e.target.value); }}
@@ -71,7 +69,7 @@ export default function JoinWithCode() {
 
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '24px', fontWeight: 'bold', color: '#2563eb' }}>S</div>
-          <h1 style={{ color: '#111827', fontSize: '24px', fontWeight: 700, margin: 0 }}>{t(lang, 'invited')}</h1>
+          <h1 style={{ fontFamily: "'Arbutus Slab', serif", fontWeight: 400, fontSize: '32px', color: '#111827', margin: 0 }}>{t(lang, 'invited')}</h1>
           <p style={{ color: '#6b7280', marginTop: '8px', fontSize: '14px' }}>{t(lang, 'invitedSubtitle')}</p>
         </div>
 
@@ -129,7 +127,6 @@ export default function JoinWithCode() {
             {loading ? t(lang, 'creatingAccount') : t(lang, 'createAccount')}
           </button>
         </form>
-      </div>
-    </div>
+    </AuthShell>
   );
 }
