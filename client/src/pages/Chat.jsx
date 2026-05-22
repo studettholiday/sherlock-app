@@ -38,7 +38,7 @@ function getGreeting(role, lang, orgName = '', orgNameGenitive = '') {
 
 const CHAT_STYLES = {
   glass: {
-    wrap:            'bg-[#ffffff]',
+    wrap:            'bg-[#fdfcf8]',
     headerBorder:    'border-[#e5e7eb]',
     footerBorder:    'border-[#e5e7eb]',
     titleColor:      'text-[#111827]',
@@ -275,7 +275,7 @@ export default function Chat() {
       style={{
         position: 'fixed', top: 0, left: 0, right: 0,
         height: '100dvh',
-        background: '#fafafa',
+        background: '#fdfcf8',
         color: '#111827',
       }}>
 
