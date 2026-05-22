@@ -7,6 +7,7 @@ module.exports = (req, res, next) => {
   try {
     const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
     req.user = decoded;
+    console.log('[DEBUG auth] populated req.user =', JSON.stringify(req.user), 'path =', req.path, 'method =', req.method);
     console.log('[auth] decoded token:', JSON.stringify(decoded));
     next();
   } catch (err) {

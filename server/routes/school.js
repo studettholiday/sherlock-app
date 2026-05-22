@@ -36,6 +36,7 @@ router.get('/schedule', authMiddleware, async (req, res) => {
 });
 
 router.post('/schedule', authMiddleware, async (req, res) => {
+  console.log('[DEBUG POST /schedule] req.user =', JSON.stringify(req.user), 'body =', JSON.stringify(req.body));
   if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   const { day_of_week, lesson_time, class_name, room } = req.body;
   try {
