@@ -424,7 +424,9 @@ function AppInner() {
   if (window.location.pathname === '/reset-password') return <ResetPassword />;
 
   if (window.location.pathname === '/chat') {
-    if (!user) return <Login onSwitch={() => setAuthPage('signup')} onSuccess={() => window.location.href = '/chat'} />;
+    if (!user) return authPage === 'login'
+      ? <Login onSwitch={() => setAuthPage('signup')} onSuccess={() => window.location.href = '/chat'} />
+      : <Signup onSwitch={() => setAuthPage('login')} onSuccess={() => window.location.href = '/chat'} />;
     if (isPending) { window.location.replace('/pending'); return <div style={{ minHeight: "100vh", background: "#ffffff" }} />; }
     return <Chat />;
   }
