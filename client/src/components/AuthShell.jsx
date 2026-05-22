@@ -41,7 +41,7 @@ export default function AuthShell({ children }) {
             width: 720,
             maxWidth: 'none',
             mixBlendMode: 'multiply',
-            opacity: 0.5,
+            opacity: 0.7,
             zIndex: 0,
             pointerEvents: 'none',
           }}
@@ -54,10 +54,9 @@ export default function AuthShell({ children }) {
           style={{
             position: 'relative',
             zIndex: 1,
-            height: 72,
+            height: 120,
             width: 'auto',
             marginBottom: 24,
-            mixBlendMode: 'multiply',
           }}
         />
 

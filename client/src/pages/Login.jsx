@@ -55,12 +55,6 @@ export default function Login({ onSwitch, onSuccess }) {
         </select>
 
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{
-            width: '48px', height: '48px', borderRadius: '12px',
-            background: '#eff6ff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 16px', fontSize: '24px', fontWeight: 'bold', color: '#2563eb'
-          }}>S</div>
           <h1 style={{ fontFamily: "'Arbutus Slab', serif", fontWeight: 400, fontSize: '32px', color: '#111827', margin: 0 }}>{t(lang, 'welcomeBack')}</h1>
           <p style={{ color: '#6b7280', marginTop: '8px', fontSize: '14px' }}>{t(lang, 'signInSubtitle')}</p>
         </div>
