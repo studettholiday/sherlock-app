@@ -65,62 +65,153 @@ function getPanelTitle(panel, lang) {
 
 // ─── Invite panel ─────────────────────────────────────────────────────────────
 
-function InvitePanel({ role, lang }) {
-  const th = TH[role] ?? TH.teacher;
-  const [email, setEmail] = useState('');
-  const [targetRole, setTargetRole] = useState('student');
-  const [status, setStatus] = useState('');
-  const [sending, setSending] = useState(false);
+// Base URL for shareable invite links — whatever domain the app is served from
+// (app.sherlock.school in production, localhost in dev).
+const INVITE_BASE_URL = window.location.origin;
 
-  async function send() {
-    if (!email.trim()) return;
-    setSending(true);
-    setStatus('');
+function InvitePanel({ lang }) {
+  const [invites, setInvites]       = useState([]);
+  const [inviteRole, setInviteRole] = useState('teacher');
+  const [loading, setLoading]       = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [error, setError]           = useState('');
+  const [copied, setCopied]         = useState('');
+
+  function authHeaders() {
+    const token = localStorage.getItem('sherlock_token');
+    return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  }
+
+  async function load() {
     try {
-      const token = localStorage.getItem('sherlock_token');
-      const res = await fetch('/api/invites/generate', {
+      const res  = await fetch('/api/invites', { headers: authHeaders() });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+      setInvites(data.invites || []);
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function generateInvite() {
+    setGenerating(true);
+    setError('');
+    try {
+      const res  = await fetch('/api/invites/generate', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target_role: targetRole, email: email.trim() }),
+        headers: authHeaders(),
+        body: JSON.stringify({ target_role: inviteRole }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed');
-      setStatus('ok:' + email.trim());
-      setEmail('');
-    } catch (err) {
-      setStatus('err:' + err.message);
-    } finally {
-      setSending(false);
+      if (!res.ok) throw new Error(data.error || 'Failed to generate link');
+      await load();
+    } catch (e) {
+      setError(e.message);
+    }
+    setGenerating(false);
+  }
+
+  async function revokeInvite(id) {
+    try {
+      const res = await fetch(`/api/invites/${id}`, { method: 'DELETE', headers: authHeaders() });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `Revoke failed (${res.status})`); }
+      setInvites(prev => prev.filter(i => i.id !== id));
+    } catch (e) {
+      setError(e.message);
     }
   }
 
-  const sentEmail = status.startsWith('ok:') ? status.slice(3) : '';
-  const errMsg    = status.startsWith('err:') ? status.slice(4) : '';
+  function copyLink(url, key) {
+    navigator.clipboard.writeText(url);
+    setCopied(key);
+    setTimeout(() => setCopied(''), 2000);
+  }
 
   const roleOptions = lang === 'GEO'
-    ? [['student', 'სტუდენტი'], ['teacher', 'მასწავლებელი']]
-    : [['student', 'Student'], ['teacher', 'Teacher']];
+    ? [['teacher', 'მასწავლებელი'], ['student', 'სტუდენტი']]
+    : [['teacher', 'Teacher'], ['student', 'Student']];
+
+  if (loading) return <p className="text-[14px] text-[#6b7280] text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
 
   return (
     <div className="space-y-3">
-      <select value={targetRole} onChange={e => setTargetRole(e.target.value)}
-        style={{ backgroundColor: '#ffffff', color: '#111827', border: '1px solid #e5e7eb', padding: '8px 12px', fontSize: '14px', borderRadius: '6px' }}
-        className="w-full cursor-pointer focus:outline-none">
-        {roleOptions.map(([val, label]) => <option key={val} value={val} style={{ backgroundColor: '#ffffff', color: '#111827' }}>{label}</option>)}
-      </select>
-      <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-        placeholder={lang === 'GEO' ? 'ელ. ფოსტა' : 'Email address'} className={FIELD} />
-      {sentEmail
-        ? <p className={`text-[14px] ${th.conf}`}>{lang === 'GEO' ? `✅ მოწვევა გაიგზავნა: ${sentEmail}!` : `✅ Invitation sent to ${sentEmail}!`}</p>
-        : errMsg
-        ? <p className="text-[14px] text-[#dc2626]">{errMsg}</p>
-        : null}
-      <button onClick={send} disabled={!email.trim() || sending}
-          className={`rounded-[6px] ${th.btn} disabled:opacity-40 px-4 py-2 text-[14px] text-white font-medium transition-colors duration-150`}>
-          {sending
-            ? (lang === 'GEO' ? 'იგზავნება...' : 'Sending…')
-            : (lang === 'GEO' ? 'მოწვევის გაგზავნა' : 'Send Invitation')}
-      </button>
+      <div className="flex gap-2 flex-wrap">
+        <select value={inviteRole} onChange={e => setInviteRole(e.target.value)}
+          style={{ backgroundColor: '#ffffff', color: '#111827', border: '1px solid #e5e7eb', padding: '8px 12px', fontSize: '14px', borderRadius: '6px' }}
+          className="cursor-pointer focus:outline-none">
+          {roleOptions.map(([val, label]) => <option key={val} value={val} style={{ backgroundColor: '#ffffff', color: '#111827' }}>{label}</option>)}
+        </select>
+        <button onClick={generateInvite} disabled={generating}
+          className="rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-40 px-4 py-2 text-[14px] text-white font-medium transition-colors duration-150">
+          {generating
+            ? (lang === 'GEO' ? 'იქმნება…' : 'Generating…')
+            : (lang === 'GEO' ? 'მოწვევის ბმულის შექმნა' : 'Generate Invite Link')}
+        </button>
+      </div>
+
+      {error && <p className="text-[14px] text-[#dc2626]">{error}</p>}
+
+      {invites.length === 0 ? (
+        <p className="text-[14px] text-[#6b7280] italic text-center py-4">
+          {lang === 'GEO' ? 'აქტიური მოწვევის ბმულები არ არის.' : 'No active invite links.'}
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {invites.map(inv => {
+            const url     = `${INVITE_BASE_URL}/join?code=${inv.code}`;
+            const expired = new Date(inv.expires_at) < new Date();
+            const used    = !!inv.used_at;
+            const statusColor = used ? '#6b7280' : expired ? '#dc2626' : '#10b981';
+            const statusBg    = used ? '#f3f4f6' : expired ? '#fef2f2' : '#ecfdf5';
+            const statusText  = used
+              ? (lang === 'GEO' ? 'გამოყენებული' : 'Used')
+              : expired
+              ? (lang === 'GEO' ? 'ვადაგასული' : 'Expired')
+              : (lang === 'GEO' ? 'აქტიური' : 'Active');
+            const roleAccent = inv.target_role === 'teacher' ? '#2563eb' : '#10b981';
+            const roleBgTint = inv.target_role === 'teacher' ? '#eff6ff' : '#ecfdf5';
+            const copiedThis = copied === `inv-${inv.id}`;
+            return (
+              <div key={inv.id} className="rounded-[8px] border border-[#e5e7eb] p-3 space-y-2"
+                style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: roleBgTint, color: roleAccent, border: `1px solid ${roleAccent}`, textTransform: 'capitalize' }}>
+                    {inv.target_role}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[12px] text-[#6b7280]">{new Date(inv.expires_at).toLocaleDateString()}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: statusColor, padding: '3px 10px', borderRadius: 20, background: statusBg, border: `1px solid ${statusColor}` }}>
+                      {statusText}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <button onClick={() => copyLink(url, `inv-${inv.id}`)}
+                    className="flex-1 min-w-[120px] rounded-[6px] px-3 py-1.5 text-[13px] font-medium transition-colors duration-150"
+                    style={{
+                      border: `1px solid ${copiedThis ? '#3b82f6' : '#e5e7eb'}`,
+                      background: copiedThis ? '#eff6ff' : '#ffffff',
+                      color: copiedThis ? '#2563eb' : '#111827',
+                    }}>
+                    {copiedThis
+                      ? (lang === 'GEO' ? '✓ დაკოპირდა' : '✓ Copied')
+                      : (lang === 'GEO' ? '📋 ბმულის კოპირება' : '📋 Copy Link')}
+                  </button>
+                  <button onClick={() => revokeInvite(inv.id)}
+                    className="rounded-[6px] px-4 py-1.5 text-[13px] font-medium transition-colors duration-150 hover:bg-[#fef2f2]"
+                    style={{ background: '#ffffff', border: '1px solid #fecaca', color: '#dc2626' }}>
+                    {lang === 'GEO' ? 'გაუქმება' : 'Revoke'}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
