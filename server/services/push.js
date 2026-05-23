@@ -59,6 +59,8 @@ function buildPayload(action, scheduleRow) {
 // Best-effort: all DB + send work is wrapped so it can never reject into the
 // caller. Dead subscriptions (HTTP 404/410) are pruned inline.
 async function notifyScheduleChange(schoolId, action, scheduleRow) {
+  console.log('[notify] called for school=', schoolId, 'action=', action, 'class=', scheduleRow?.class_name);
+  console.log('[notify] pushEnabled=', pushEnabled);
   if (!pushEnabled) return;
   let pool;
   try {
@@ -67,7 +69,7 @@ async function notifyScheduleChange(schoolId, action, scheduleRow) {
     // plus every student assigned to the changed class.
     const className = scheduleRow && scheduleRow.class_name ? scheduleRow.class_name : null;
     const { rows } = await pool.query(
-      `SELECT ps.id, ps.endpoint, ps.p256dh_key, ps.auth_key
+      `SELECT ps.id, ps.user_id, ps.endpoint, ps.p256dh_key, ps.auth_key
        FROM push_subscriptions ps
        WHERE ps.school_id = $1
          AND ps.user_id IN (
@@ -78,6 +80,7 @@ async function notifyScheduleChange(schoolId, action, scheduleRow) {
          )`,
       [schoolId, className]
     );
+    console.log('[notify] subscriber query returned rows=', rows.length, 'class_name filter=', scheduleRow?.class_name);
     if (rows.length === 0) return;
 
     const payload = JSON.stringify(buildPayload(action, scheduleRow));
@@ -87,9 +90,12 @@ async function notifyScheduleChange(schoolId, action, scheduleRow) {
         endpoint: sub.endpoint,
         keys: { p256dh: sub.p256dh_key, auth: sub.auth_key },
       };
+      console.log('[notify] sending to user_id=', sub.user_id);
       try {
-        await webpush.sendNotification(subscription, payload);
+        const result = await webpush.sendNotification(subscription, payload);
+        console.log('[notify] send result for', sub.endpoint.substring(0,40), '=', result?.statusCode || 'ok');
       } catch (err) {
+        console.log('[notify] send FAILED for', sub.endpoint.substring(0,40), 'error=', err.message, 'statusCode=', err.statusCode);
         if (err.statusCode === 410 || err.statusCode === 404) {
           // Subscription is dead — remove it so we stop trying.
           try {
