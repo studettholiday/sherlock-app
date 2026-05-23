@@ -69,11 +69,11 @@ router.delete('/schedule/:id', authMiddleware, async (req, res) => {
 
 router.patch('/schedule/:id', authMiddleware, async (req, res) => {
   if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
-  const { day_of_week, lesson_time } = req.body;
+  const { day_of_week, lesson_time, room } = req.body;
   try {
     const result = await getPool().query(
-      'UPDATE schedule SET day_of_week = $1, lesson_time = $2 WHERE id = $3 AND school_id = $4 RETURNING *',
-      [day_of_week, lesson_time, req.params.id, req.user.schoolId]
+      'UPDATE schedule SET day_of_week = $1, lesson_time = $2, room = $3 WHERE id = $4 AND school_id = $5 RETURNING *',
+      [day_of_week, lesson_time, room ?? null, req.params.id, req.user.schoolId]
     );
     res.json({ row: result.rows[0] });
     // Fire-and-forget push broadcast — never blocks or breaks the schedule write.

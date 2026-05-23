@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 
 // ─── Theme tokens ─────────────────────────────────────────────────────────────
 
@@ -265,6 +265,14 @@ function ScheduleEditorPanel({ lang }) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ day_of_week: 0, lesson_time: '', class_name: '', room: '' });
 
+  // Inline-edit state for existing rows. Only one row can be edited at a time;
+  // clicking ✏️ on a different row implicitly cancels the current edit (single
+  // editingId — assigning a new id discards any in-progress changes).
+  const [editingId, setEditingId]   = useState(null);
+  const [editForm, setEditForm]     = useState({ day_of_week: 0, lesson_time: '', room: '' });
+  const [editError, setEditError]   = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+
   async function load() {
     const token = localStorage.getItem('sherlock_token');
     try {
@@ -305,6 +313,45 @@ function ScheduleEditorPanel({ lang }) {
     load();
   }
 
+  function startEdit(r) {
+    setEditingId(r.id);
+    setEditForm({
+      day_of_week: parseInt(r.day_of_week, 10) || 0,
+      lesson_time: (r.lesson_time || '').slice(0, 5),
+      room: r.room || '',
+    });
+    setEditError('');
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditError('');
+  }
+
+  async function saveEdit(r) {
+    setEditSaving(true);
+    setEditError('');
+    const token = localStorage.getItem('sherlock_token');
+    try {
+      const res = await fetch(`/api/school/schedule/${r.id}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          day_of_week: editForm.day_of_week,
+          lesson_time: editForm.lesson_time.trim(),
+          room: editForm.room.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Save failed (${res.status})`);
+      setEditingId(null);
+      await load();
+    } catch (e) {
+      setEditError(e.message);
+    }
+    setEditSaving(false);
+  }
+
   if (loading) return <p className="text-[14px] italic text-[#6b7280] text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
   if (error)   return <p className="text-[14px] text-[#dc2626] text-center py-4">{error}</p>;
 
@@ -321,13 +368,51 @@ function ScheduleEditorPanel({ lang }) {
         <p className="text-[14px] italic text-[#6b7280] text-center py-2">{lang === 'GEO' ? 'განრიგი ცარიელია.' : 'No schedule yet.'}</p>
       )}
       {sorted.map(r => (
-        <div key={r.id} className="flex items-center gap-2 text-[13px] py-1.5 border-b border-[#e5e7eb] hover:bg-[#fafafa] transition-colors duration-150">
-          <span className="text-[#6b7280] w-20 flex-shrink-0 truncate">{dayLabel(r.day_of_week, lang)}</span>
-          <span className="text-[#6b7280] font-mono w-12 flex-shrink-0">{(r.lesson_time || '').slice(0, 5)}</span>
-          <span className="text-[#111827] flex-1 min-w-0 truncate">{r.class_name}</span>
-          {r.room && <span className="text-[#6b7280] flex-shrink-0">📍 {r.room}</span>}
-          <button onClick={() => del(r.id)} className="rounded-[6px] border border-[#fecaca] bg-[#ffffff] text-[#dc2626] hover:bg-[#fef2f2] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">✕</button>
-        </div>
+        <Fragment key={r.id}>
+          <div className="flex items-center gap-2 text-[13px] py-1.5 border-b border-[#e5e7eb] hover:bg-[#fafafa] transition-colors duration-150">
+            {editingId === r.id ? (
+              <>
+                <select value={editForm.day_of_week}
+                  onChange={e => setEditForm(f => ({ ...f, day_of_week: parseInt(e.target.value, 10) }))}
+                  style={{ backgroundColor: '#ffffff', color: '#111827', border: '1px solid #e5e7eb', padding: '4px 8px', fontSize: '13px', borderRadius: '6px' }}
+                  className="w-24 flex-shrink-0 focus:outline-none">
+                  {days.map((d, i) => <option key={i} value={i} style={{ backgroundColor: '#ffffff', color: '#111827' }}>{d}</option>)}
+                </select>
+                <input value={editForm.lesson_time}
+                  onChange={e => setEditForm(f => ({ ...f, lesson_time: e.target.value }))}
+                  placeholder="HH:MM"
+                  className="w-16 flex-shrink-0 rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#111827] text-[13px] font-mono px-2 py-1 focus:outline-none focus:border-[#3b82f6]" />
+                <span className="text-[#6b7280] flex-1 min-w-0 truncate">{r.class_name}</span>
+                <input value={editForm.room}
+                  onChange={e => setEditForm(f => ({ ...f, room: e.target.value }))}
+                  placeholder={lang === 'GEO' ? 'ოთახი' : 'Room'}
+                  className="w-20 flex-shrink-0 rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#111827] text-[13px] px-2 py-1 focus:outline-none focus:border-[#3b82f6]" />
+                <button onClick={() => saveEdit(r)} disabled={editSaving}
+                  className="rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-40 px-2 py-1 text-[12px] text-white font-medium flex-shrink-0 transition-colors duration-150">
+                  {editSaving ? (lang === 'GEO' ? 'ინახება…' : 'Saving…') : (lang === 'GEO' ? 'შენახვა' : 'Save')}
+                </button>
+                <button onClick={cancelEdit}
+                  className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] hover:bg-[#f9fafb] px-2 py-1 text-[12px] text-[#111827] flex-shrink-0 transition-colors duration-150">
+                  {lang === 'GEO' ? 'გაუქმება' : 'Cancel'}
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="text-[#6b7280] w-20 flex-shrink-0 truncate">{dayLabel(r.day_of_week, lang)}</span>
+                <span className="text-[#6b7280] font-mono w-12 flex-shrink-0">{(r.lesson_time || '').slice(0, 5)}</span>
+                <span className="text-[#111827] flex-1 min-w-0 truncate">{r.class_name}</span>
+                {r.room && <span className="text-[#6b7280] flex-shrink-0">📍 {r.room}</span>}
+                <button onClick={() => startEdit(r)}
+                  title={lang === 'GEO' ? 'რედაქტირება' : 'Edit'}
+                  className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">✏️</button>
+                <button onClick={() => del(r.id)} className="rounded-[6px] border border-[#fecaca] bg-[#ffffff] text-[#dc2626] hover:bg-[#fef2f2] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">✕</button>
+              </>
+            )}
+          </div>
+          {editingId === r.id && editError && (
+            <p className="text-[#dc2626] text-[12px] pl-2 pb-1">{editError}</p>
+          )}
+        </Fragment>
       ))}
       {showAdd ? (
         <div className="space-y-2 rounded-[8px] border border-[#e5e7eb] bg-[#fafafa] p-3">
