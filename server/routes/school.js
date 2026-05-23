@@ -54,17 +54,49 @@ router.post('/schedule', authMiddleware, async (req, res) => {
 
 router.delete('/schedule/:id', authMiddleware, async (req, res) => {
   if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
+  const pool = getPool();
+  const client = await pool.connect();
+  let deletedRow = null;
   try {
-    const result = await getPool().query(
+    await client.query('BEGIN');
+
+    // 1) Delete the schedule row.
+    const delRes = await client.query(
       'DELETE FROM schedule WHERE id = $1 AND school_id = $2 RETURNING *',
       [req.params.id, req.user.schoolId]
     );
-    res.json({ success: true });
-    // Fire-and-forget push broadcast — never blocks or breaks the schedule write.
-    if (result.rows[0]) notifyScheduleChange(req.user.schoolId, 'DELETE', result.rows[0]);
+    deletedRow = delRes.rows[0] || null;
+
+    // 2) If we deleted a row with a real class_name and no other schedule rows
+    //    in this school still hold that class_name, prune student_classes rows
+    //    for it so they don't become invisible orphans.
+    if (deletedRow && deletedRow.class_name && deletedRow.class_name.trim() !== '') {
+      const className = deletedRow.class_name;
+      const countRes = await client.query(
+        'SELECT COUNT(*) AS cnt FROM schedule WHERE school_id = $1 AND class_name = $2',
+        [req.user.schoolId, className]
+      );
+      const remaining = parseInt(countRes.rows[0].cnt, 10);
+      if (remaining === 0) {
+        await client.query(
+          'DELETE FROM student_classes WHERE school_id = $1 AND class_name = $2',
+          [req.user.schoolId, className]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
   } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+    try { await client.query('ROLLBACK'); } catch (_) { /* ignore */ }
+    console.error('[schedule] DELETE error:', err.message);
+    return res.status(500).json({ error: 'Server error' });
+  } finally {
+    client.release();
   }
+
+  res.json({ success: true });
+  // Fire-and-forget push broadcast — never blocks or breaks the schedule write.
+  if (deletedRow) notifyScheduleChange(req.user.schoolId, 'DELETE', deletedRow);
 });
 
 router.patch('/schedule/:id', authMiddleware, async (req, res) => {
