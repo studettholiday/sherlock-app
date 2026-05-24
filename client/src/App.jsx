@@ -3,8 +3,6 @@ import { AuthProvider, useAuth } from './AuthContext';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import InviteAccept from './pages/InviteAccept';
-import Dashboard from './pages/Dashboard';
-import AppLayout from './pages/AppLayout';
 import JoinWithCode from './pages/JoinWithCode';
 import Chat from './pages/Chat';
 import PendingApproval from './pages/PendingApproval';
