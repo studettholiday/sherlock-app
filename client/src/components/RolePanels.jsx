@@ -987,7 +987,11 @@ function FileViewerModal({ file, onClose }) {
             </div>
           )}
           {!loading && !error && isImage && imageUrl && (
-            <div className="space-y-2">
+            <div className="space-y-2"
+              style={imageNaturalSize && imageScale ? {
+                width: `${imageNaturalSize.w * imageScale}px`,
+                minWidth: '280px',
+              } : undefined}>
               <div className="flex items-center justify-center gap-2 text-[13px] flex-wrap">
                 <input type="range" min="0.5" max="3" step="0.1"
                   value={imageScale || 1}
