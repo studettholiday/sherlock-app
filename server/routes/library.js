@@ -13,7 +13,7 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 25 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const allowed = ['.pdf', '.txt', '.md'];
+    const allowed = ['.pdf', '.txt', '.md', '.jpg', '.jpeg', '.png', '.gif', '.webp'];
     const ext = path.extname(file.originalname).toLowerCase();
     if (allowed.includes(ext)) cb(null, true);
     else cb(new Error('Only PDF, TXT, and MD files allowed'));
@@ -26,6 +26,8 @@ async function extractText(buffer, mimetype) {
     const result = await parser.getText();
     return result.text;
   }
+  // Images carry no useful text for the AI context.
+  if ((mimetype || '').startsWith('image/')) return '';
   return buffer.toString('utf8');
 }
 
@@ -38,9 +40,12 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
   try {
     console.log('[library] POST /upload file=%s size=%d schoolId=%s', req.file.originalname, req.file.size, req.user.schoolId);
     const content = await extractText(req.file.buffer, req.file.mimetype);
+    // Store raw bytes in content_binary so the view endpoint can serve them
+    // back for in-app rendering. RETURNING omits the large content / binary
+    // fields so the upload response stays small.
     const result = await getPool().query(
-      'INSERT INTO library_files (school_id, filename, file_path, file_size, mime_type, uploaded_by, content) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [req.user.schoolId, req.file.originalname, '', req.file.size, req.file.mimetype, req.user.userId, content]
+      'INSERT INTO library_files (school_id, filename, file_path, file_size, mime_type, uploaded_by, content, content_binary) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, filename, file_size, mime_type, created_at',
+      [req.user.schoolId, req.file.originalname, '', req.file.size, req.file.mimetype, req.user.userId, content, req.file.buffer]
     );
     console.log('[library] POST /upload inserted id=%s', result.rows[0].id);
     res.json({ file: result.rows[0] });
@@ -83,6 +88,7 @@ router.get('/', authMiddleware, async (req, res) => {
          FROM library_files lf
          LEFT JOIN library_file_classes lfc ON lfc.file_id = lf.id
          WHERE lf.school_id = $1
+           AND (lf.mime_type = 'application/pdf' OR lf.mime_type LIKE 'image/%')
            AND (
              NOT EXISTS (SELECT 1 FROM library_file_classes lfc2 WHERE lfc2.file_id = lf.id)
              OR EXISTS (
@@ -182,6 +188,54 @@ router.put('/:fileId/classes', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/library/:fileId/view — view-only stream of file bytes.
+// Owners may view any file in their school. Students may view only files that
+// are PDF or image/* AND either untagged (public) OR tagged with at least one
+// class they're assigned to. Access denial returns 404 (same response as
+// not-found) so students cannot probe for tagged file_ids they can't reach.
+// Headers force inline rendering and disable caching to keep bytes off disk.
+router.get('/:fileId/view', authMiddleware, async (req, res) => {
+  try {
+    const fileId = parseInt(req.params.fileId, 10);
+    if (!Number.isInteger(fileId)) return res.status(404).json({ error: 'Not found' });
+
+    const sql = req.user.is_owner
+      ? `SELECT filename, mime_type, content_binary
+         FROM library_files
+         WHERE id = $1 AND school_id = $2`
+      : `SELECT lf.filename, lf.mime_type, lf.content_binary
+         FROM library_files lf
+         WHERE lf.id = $1 AND lf.school_id = $2
+           AND (lf.mime_type = 'application/pdf' OR lf.mime_type LIKE 'image/%')
+           AND (
+             NOT EXISTS (SELECT 1 FROM library_file_classes WHERE file_id = lf.id)
+             OR EXISTS (
+               SELECT 1 FROM library_file_classes lfc
+               JOIN student_classes sc ON sc.class_name = lfc.class_name AND sc.school_id = lfc.school_id
+               WHERE lfc.file_id = lf.id AND sc.user_id = $3
+             )
+           )`;
+    const params = req.user.is_owner
+      ? [fileId, req.user.schoolId]
+      : [fileId, req.user.schoolId, req.user.userId];
+    const result = await getPool().query(sql, params);
+    if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
+
+    const file = result.rows[0];
+    // Pre-migration rows had no content_binary; treat as not-viewable.
+    if (!file.content_binary) return res.status(404).json({ error: 'Not found' });
+
+    res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
+    const safeName = (file.filename || 'file').replace(/[\r\n"]/g, '');
+    res.setHeader('Content-Disposition', `inline; filename="${safeName}"`);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.send(file.content_binary);
+  } catch (err) {
+    console.error('[library] GET /:fileId/view error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Get library content for AI context (internal use)
 router.get('/context', authMiddleware, async (req, res) => {
   try {
@@ -198,15 +252,18 @@ router.get('/context', authMiddleware, async (req, res) => {
 // Download file content as text
 router.get('/download/:id', authMiddleware, async (req, res) => {
   try {
-    // Access check: owners always allowed; students only if the file is
-    // untagged (public) or has a tag matching one of their assigned classes.
-    // Access denial returns 404 (same as not-found) so students can't probe
-    // for tagged file_ids that exist but they can't reach.
+    // Access check: owners always allowed. Students only if (a) the file is
+    // PDF or image/* (same view-only restriction as the list + view endpoints
+    // — without this, students could download Word/Excel/zip etc. by guessing
+    // file_ids) AND (b) the file is untagged (public) or has a tag matching
+    // one of their assigned classes. Access denial returns 404 (same as
+    // not-found) so students can't probe for file_ids they can't reach.
     const sql = req.user.is_owner
       ? 'SELECT filename, content, mime_type FROM library_files WHERE id = $1 AND school_id = $2'
       : `SELECT lf.filename, lf.content, lf.mime_type
          FROM library_files lf
          WHERE lf.id = $1 AND lf.school_id = $2
+           AND (lf.mime_type = 'application/pdf' OR lf.mime_type LIKE 'image/%')
            AND (
              NOT EXISTS (SELECT 1 FROM library_file_classes WHERE file_id = lf.id)
              OR EXISTS (

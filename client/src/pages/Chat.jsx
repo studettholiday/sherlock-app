@@ -369,13 +369,14 @@ export default function Chat() {
                       className={`px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${activePanel === 'students' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
                       {lang === 'GEO' ? '👥 მოსწავლეები' : '👥 Students'}
                     </button>
-                    <button
-                      onClick={() => setActivePanel(activePanel === 'library' ? null : 'library')}
-                      className={`px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${activePanel === 'library' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
-                      {lang === 'GEO' ? '📁 ფაილები' : '📁 Files'}
-                    </button>
                   </>
                 )}
+                {/* Files — accessible to every signed-in user; panel content branches on role. */}
+                <button
+                  onClick={() => setActivePanel(activePanel === 'library' ? null : 'library')}
+                  className={`px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${activePanel === 'library' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
+                  {lang === 'GEO' ? '📁 ფაილები' : '📁 Files'}
+                </button>
               </div>
               {openGroupDef?.children && openGroupDef.children.length >= 2 && (
                 <div className={`flex items-center gap-1.5 px-6 py-1.5 border-t ${s.headerBorder} flex-wrap`}>

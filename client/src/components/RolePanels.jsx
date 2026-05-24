@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
+import { useAuth } from '../AuthContext';
 
 // ─── Theme tokens ─────────────────────────────────────────────────────────────
 
@@ -450,11 +451,12 @@ function ScheduleEditorPanel({ lang }) {
 // ─── Library manager panel ────────────────────────────────────────────────────
 
 // Owner-only. Self-contained: lists, uploads and deletes school library files.
-function LibraryManagerPanel({ lang }) {
+function LibraryOwnerPanel({ lang }) {
   const [files, setFiles]         = useState([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState('');
   const [uploading, setUploading] = useState(false);
+  const [viewingFile, setViewingFile] = useState(null);
   const fileInputRef = useRef(null);
 
   // Per-class access tagging state. Only one file can be edited at a time.
@@ -587,6 +589,11 @@ function LibraryManagerPanel({ lang }) {
               )}
             </div>
             <span className="text-[#6b7280] font-mono flex-shrink-0">{formatSize(f.file_size)}</span>
+            {(f.mime_type === 'application/pdf' || (f.mime_type || '').startsWith('image/')) && (
+              <button onClick={() => setViewingFile(f)}
+                title={lang === 'GEO' ? 'ნახვა' : 'View'}
+                className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">👁️</button>
+            )}
             <button onClick={() => editingId === f.id ? cancelEditAccess() : startEditAccess(f)}
               title={lang === 'GEO' ? 'წვდომის რედაქტირება' : 'Edit access'}
               className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">🏷️</button>
@@ -636,8 +643,298 @@ function LibraryManagerPanel({ lang }) {
         className="w-full rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] py-2 text-[13px] text-white font-medium transition-colors duration-150 disabled:opacity-40">
         {uploading ? (lang === 'GEO' ? 'იტვირთება…' : 'Uploading…') : (lang === 'GEO' ? '+ ფაილის ატვირთვა' : '+ Upload File')}
       </button>
+      {viewingFile && <FileViewerModal file={viewingFile} onClose={() => setViewingFile(null)} />}
     </div>
   );
+}
+
+// ─── File viewer (PDF + image, view-only with watermark) ─────────────────────
+
+// Lazy-load PDF.js 4.x ESM from cdnjs on first PDF open. The /* @vite-ignore */
+// pragma tells Vite to leave the runtime URL alone so the browser performs a
+// native dynamic ESM import. Cached on window so subsequent opens reuse it.
+async function loadPdfJsV4() {
+  if (window.pdfjsLibV4) return window.pdfjsLibV4;
+  const mod = await import(/* @vite-ignore */ 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs');
+  mod.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.mjs';
+  window.pdfjsLibV4 = mod;
+  return mod;
+}
+
+// Bake a repeating diagonal watermark into a canvas context. Because the
+// watermark is drawn into the pixel data, it survives DevTools `canvas.toDataURL()`
+// exfiltration and browser print — the resulting bytes always carry the mark.
+// Deterrent + provenance, not DRM.
+function drawWatermark(ctx, w, h, text) {
+  ctx.save();
+  ctx.globalAlpha = 0.3;
+  ctx.fillStyle = '#9ca3af';
+  ctx.font = '14px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.translate(w / 2, h / 2);
+  ctx.rotate(-30 * Math.PI / 180);
+  const spanX = 280;
+  const spanY = 80;
+  const reach = Math.ceil(Math.max(w, h) / 2 / Math.min(spanX, spanY)) + 2;
+  for (let y = -reach * spanY; y <= reach * spanY; y += spanY) {
+    for (let x = -reach * spanX; x <= reach * spanX; x += spanX) {
+      ctx.fillText(text, x, y);
+    }
+  }
+  ctx.restore();
+}
+
+// CSS-overlay watermark used over <img> elements (canvas baking only applies
+// to PDFs). Position: absolute over the parent which must be relative.
+function ImageWatermark({ text }) {
+  const rows = [];
+  for (let i = -4; i <= 4; i++) {
+    rows.push(
+      <div key={i} style={{
+        position: 'absolute',
+        left: 0, right: 0,
+        top: '50%',
+        transform: `translateY(${i * 80}px) rotate(-30deg)`,
+        pointerEvents: 'none',
+        whiteSpace: 'nowrap',
+        color: '#9ca3af',
+        opacity: 0.3,
+        fontSize: '14px',
+        textAlign: 'center',
+        userSelect: 'none',
+      }}>
+        {Array.from({ length: 7 }).map((_, j) => (
+          <span key={j} style={{ marginRight: 80 }}>{text}</span>
+        ))}
+      </div>
+    );
+  }
+  return <>{rows}</>;
+}
+
+function FileViewerModal({ file, onClose }) {
+  const { user } = useAuth();
+  const watermarkText = `${user?.name || user?.email || 'viewer'} — ${user?.email || ''}`;
+  const isPdf   = file?.mime_type === 'application/pdf';
+  const isImage = (file?.mime_type || '').startsWith('image/');
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState('');
+  const [pdfDoc, setPdfDoc]   = useState(null);
+  const [pageNum, setPageNum] = useState(1);
+  const [pageCount, setPageCount] = useState(0);
+  const [imageUrl, setImageUrl]   = useState('');
+  const canvasRef = useRef(null);
+
+  // ESC closes the modal.
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  // Fetch the file bytes once with the bearer token, then either set an
+  // objectURL (image) or hand the arrayBuffer to PDF.js (PDF).
+  useEffect(() => {
+    if (!file?.id) return;
+    let blobUrl = null;
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        setError('');
+        const token = localStorage.getItem('sherlock_token');
+        const res = await fetch(`/api/library/${file.id}/view`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error(`Couldn't load file (${res.status})`);
+        const blob = await res.blob();
+        if (cancelled) return;
+        if (isImage) {
+          blobUrl = URL.createObjectURL(blob);
+          setImageUrl(blobUrl);
+          setLoading(false);
+        } else if (isPdf) {
+          const buf = await blob.arrayBuffer();
+          if (cancelled) return;
+          const pdfjsLib = await loadPdfJsV4();
+          if (cancelled) return;
+          const doc = await pdfjsLib.getDocument({ data: buf }).promise;
+          if (cancelled) return;
+          setPdfDoc(doc);
+          setPageCount(doc.numPages);
+          setPageNum(1);
+          setLoading(false);
+        } else {
+          throw new Error('Unsupported file type');
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError(e.message || "Couldn't load viewer");
+          setLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, [file?.id, isImage, isPdf]);
+
+  // Render the current PDF page to canvas, then bake the watermark.
+  useEffect(() => {
+    if (!pdfDoc || !canvasRef.current) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const page = await pdfDoc.getPage(pageNum);
+        const base = page.getViewport({ scale: 1 });
+        const maxWidth = Math.min(window.innerWidth - 80, 1100);
+        const scale = Math.min(2, maxWidth / base.width);
+        const viewport = page.getViewport({ scale });
+        const canvas = canvasRef.current;
+        if (!canvas || cancelled) return;
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        if (cancelled) return;
+        drawWatermark(ctx, canvas.width, canvas.height, watermarkText);
+      } catch (e) {
+        if (!cancelled) setError(e.message || 'Render failed');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [pdfDoc, pageNum, watermarkText]);
+
+  const blockContext = (e) => e.preventDefault();
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.7)' }}
+      onClick={onClose}
+      onContextMenu={blockContext}
+    >
+      <div
+        className="relative bg-[#ffffff] rounded-[12px] max-w-[100vw] max-h-[100vh] overflow-auto shadow-[0_4px_12px_rgba(0,0,0,0.2)]"
+        onClick={(e) => e.stopPropagation()}
+        onContextMenu={blockContext}
+      >
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute top-2 right-2 z-10 text-[#6b7280] hover:text-[#111827] text-xl leading-none px-2 py-0.5"
+        >✕</button>
+
+        <div className="p-4 pt-8">
+          {loading && (
+            <p className="text-[14px] italic text-[#6b7280] text-center py-8 min-w-[280px]">Loading…</p>
+          )}
+          {error && (
+            <p className="text-[14px] text-[#dc2626] text-center py-8 min-w-[280px]">{error}</p>
+          )}
+          {!loading && !error && isPdf && pdfDoc && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-center gap-2 text-[13px]">
+                <button onClick={() => setPageNum(n => Math.max(1, n - 1))} disabled={pageNum <= 1}
+                  className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] hover:bg-[#f9fafb] disabled:opacity-40 px-2 py-1 text-[#111827] transition-colors duration-150">Prev</button>
+                <span className="text-[#6b7280] font-mono">Page {pageNum} of {pageCount}</span>
+                <button onClick={() => setPageNum(n => Math.min(pageCount, n + 1))} disabled={pageNum >= pageCount}
+                  className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] hover:bg-[#f9fafb] disabled:opacity-40 px-2 py-1 text-[#111827] transition-colors duration-150">Next</button>
+              </div>
+              <canvas ref={canvasRef} onContextMenu={blockContext} className="block mx-auto" />
+            </div>
+          )}
+          {!loading && !error && isImage && imageUrl && (
+            <div className="relative inline-block" onContextMenu={blockContext}>
+              <img src={imageUrl} alt={file.filename || ''} draggable="false"
+                onContextMenu={blockContext}
+                className="block max-w-[90vw] max-h-[80vh]" />
+              <ImageWatermark text={watermarkText} />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Library: student panel (view-only) ───────────────────────────────────────
+
+function LibraryStudentPanel({ lang }) {
+  const [files, setFiles]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]   = useState('');
+  const [viewingFile, setViewingFile] = useState(null);
+
+  async function load() {
+    const token = localStorage.getItem('sherlock_token');
+    try {
+      const res  = await fetch('/api/library?t=' + Date.now(), { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+      setFiles(data.files || []);
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    }
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+
+  function formatSize(bytes) {
+    if (!bytes) return '—';
+    if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    return (bytes / 1024).toFixed(1) + ' KB';
+  }
+  function formatDate(iso) {
+    if (!iso) return '';
+    try { return new Date(iso).toLocaleDateString(); } catch { return ''; }
+  }
+
+  const blockContext = (e) => e.preventDefault();
+
+  if (loading) return <p className="text-[14px] italic text-[#6b7280] text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
+
+  return (
+    <div className="space-y-2" onContextMenu={blockContext}>
+      {error && <p className="text-[14px] text-[#dc2626]">{error}</p>}
+      {files.length === 0 && !error && (
+        <p className="text-[14px] italic text-[#6b7280] text-center py-2">
+          {lang === 'GEO' ? 'მასალები ჯერ არ არის ხელმისაწვდომი.' : 'No materials available yet.'}
+        </p>
+      )}
+      {files.map(f => (
+        <div key={f.id} className="flex items-center gap-2 text-[13px] py-1.5 border-b border-[#e5e7eb] hover:bg-[#fafafa] transition-colors duration-150"
+          onContextMenu={blockContext}>
+          <span className="text-[#111827] flex-shrink-0 truncate max-w-[35%]">{f.filename || 'Untitled'}</span>
+          <div className="flex items-center gap-1 flex-1 min-w-0 flex-wrap">
+            {(f.classes || []).map(c => (
+              <span key={c} className="text-[12px] rounded-full bg-[#eff6ff] text-[#2563eb] border border-[#bfdbfe] px-2 py-0.5">{c}</span>
+            ))}
+          </div>
+          <span className="text-[#6b7280] font-mono flex-shrink-0">{formatSize(f.file_size)}</span>
+          <span className="text-[#9ca3af] flex-shrink-0">{formatDate(f.created_at)}</span>
+          <button onClick={() => setViewingFile(f)}
+            title={lang === 'GEO' ? 'ნახვა' : 'View'}
+            className="rounded-[6px] border border-[#3b82f6] bg-[#eff6ff] text-[#2563eb] hover:bg-[#dbeafe] flex-shrink-0 px-2 py-0.5 text-[12px] font-medium transition-colors duration-150">
+            {lang === 'GEO' ? '👁️ ნახვა' : '👁️ View'}
+          </button>
+        </div>
+      ))}
+      {viewingFile && <FileViewerModal file={viewingFile} onClose={() => setViewingFile(null)} />}
+    </div>
+  );
+}
+
+// Library panel router — owner gets the manager, student gets the view-only.
+function LibraryPanelDispatch({ lang }) {
+  const { user } = useAuth();
+  return user?.is_owner
+    ? <LibraryOwnerPanel lang={lang} />
+    : <LibraryStudentPanel lang={lang} />;
 }
 
 // ─── Knowledge Library panel ──────────────────────────────────────────────────
@@ -1020,7 +1317,7 @@ function panelContent(role, panel, libraryProps, lang) {
     case 'schedule':          return <SchedulePanel lang={lang} />;
     case 'schedule-editor':   return <ScheduleEditorPanel lang={lang} />;
     case 'students':          return <StudentsPanel lang={lang} />;
-    case 'library':           return <LibraryManagerPanel lang={lang} />;
+    case 'library':           return <LibraryPanelDispatch lang={lang} />;
     case 'knowledge-library': return <KnowledgeLibraryPanel role={role} lang={lang} {...(libraryProps ?? {})} />;
     default:                  return null;
   }
