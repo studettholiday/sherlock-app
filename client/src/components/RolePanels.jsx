@@ -753,7 +753,14 @@ function FileViewerModal({ file, onClose }) {
   const [pageCount, setPageCount] = useState(0);
   const [imageUrl, setImageUrl]   = useState('');
   const [pdfScale, setPdfScale]   = useState(null);
+  const [imageScale, setImageScale]             = useState(null);
+  const [imageNaturalSize, setImageNaturalSize] = useState(null);
+  const [editingPage, setEditingPage]           = useState(false);
+  const [pageInput, setPageInput]               = useState('');
   const canvasRef = useRef(null);
+  // Set by the Escape handler so the unmount-blur doesn't accidentally commit
+  // the typed value. Checked-and-cleared in commitPageInput.
+  const cancelPageEditRef = useRef(false);
 
   // ESC closes the modal.
   useEffect(() => {
@@ -781,7 +788,24 @@ function FileViewerModal({ file, onClose }) {
         if (cancelled) return;
         if (isImage) {
           blobUrl = URL.createObjectURL(blob);
+          // Probe natural dimensions so we can default to a fit-to-modal scale
+          // (≤ 1 — we never upscale a small image by default). The same blob
+          // URL is reused for the actual <img> render below; no second fetch.
+          const probe = new Image();
+          probe.src = blobUrl;
+          await new Promise((resolve, reject) => {
+            probe.onload = resolve;
+            probe.onerror = reject;
+          });
+          if (cancelled) return;
+          const natW = probe.naturalWidth;
+          const natH = probe.naturalHeight;
+          const maxW = window.innerWidth - 80;
+          const maxH = window.innerHeight - 120;
+          const fitScale = Math.min(1, maxW / natW, maxH / natH);
           setImageUrl(blobUrl);
+          setImageNaturalSize({ w: natW, h: natH });
+          setImageScale(fitScale);
           setLoading(false);
         } else if (isPdf) {
           const buf = await blob.arrayBuffer();
@@ -842,6 +866,20 @@ function FileViewerModal({ file, onClose }) {
     return () => { cancelled = true; };
   }, [pdfDoc, pageNum, pdfScale, watermarkText]);
 
+  function commitPageInput() {
+    // Escape sets the cancel flag; consume it and bail without changing pageNum.
+    if (cancelPageEditRef.current) {
+      cancelPageEditRef.current = false;
+      return;
+    }
+    const n = parseInt(pageInput, 10);
+    if (Number.isFinite(n)) {
+      const clamped = Math.max(1, Math.min(pageCount, n));
+      setPageNum(clamped);
+    }
+    setEditingPage(false);
+  }
+
   const blockContext = (e) => e.preventDefault();
 
   return (
@@ -874,7 +912,33 @@ function FileViewerModal({ file, onClose }) {
               <div className="flex items-center justify-center gap-2 text-[13px] flex-wrap">
                 <button onClick={() => setPageNum(n => Math.max(1, n - 1))} disabled={pageNum <= 1}
                   className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] hover:bg-[#f9fafb] disabled:opacity-40 px-2 py-1 text-[#111827] transition-colors duration-150">Prev</button>
-                <span className="text-[#6b7280] font-mono">Page {pageNum} of {pageCount}</span>
+                {editingPage ? (
+                  <span className="text-[#6b7280] font-mono inline-flex items-center gap-1">
+                    <span>Page</span>
+                    <input type="number" min="1" max={pageCount}
+                      value={pageInput}
+                      onChange={(e) => setPageInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') commitPageInput();
+                        else if (e.key === 'Escape') {
+                          cancelPageEditRef.current = true;
+                          setEditingPage(false);
+                        }
+                      }}
+                      onBlur={commitPageInput}
+                      autoFocus
+                      onFocus={(e) => e.target.select()}
+                      className="w-14 text-center font-mono bg-[#ffffff] border border-[#e5e7eb] rounded-[6px] px-1 py-0.5 text-[13px] text-[#111827] focus:outline-none focus:border-[#3b82f6]" />
+                    <span>of {pageCount}</span>
+                  </span>
+                ) : (
+                  <button type="button"
+                    onClick={() => { setPageInput(String(pageNum)); setEditingPage(true); }}
+                    title="Jump to page"
+                    className="text-[#6b7280] font-mono hover:text-[#2563eb] hover:underline cursor-pointer bg-transparent border-0 p-0 transition-colors duration-150">
+                    Page {pageNum} of {pageCount}
+                  </button>
+                )}
                 <button onClick={() => setPageNum(n => Math.min(pageCount, n + 1))} disabled={pageNum >= pageCount}
                   className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] hover:bg-[#f9fafb] disabled:opacity-40 px-2 py-1 text-[#111827] transition-colors duration-150">Next</button>
                 <input type="range" min="0.5" max="3" step="0.1"
@@ -888,11 +952,27 @@ function FileViewerModal({ file, onClose }) {
             </div>
           )}
           {!loading && !error && isImage && imageUrl && (
-            <div className="relative inline-block" onContextMenu={blockContext}>
-              <img src={imageUrl} alt={file.filename || ''} draggable="false"
-                onContextMenu={blockContext}
-                className="block max-w-[90vw] max-h-[80vh]" />
-              <ImageWatermark text={watermarkText} />
+            <div className="space-y-2">
+              <div className="flex items-center justify-center gap-2 text-[13px] flex-wrap">
+                <input type="range" min="0.5" max="3" step="0.1"
+                  value={imageScale || 1}
+                  onChange={(e) => setImageScale(parseFloat(e.target.value))}
+                  className="accent-[#2563eb] w-32"
+                  title="Zoom" />
+                <span className="text-[#6b7280] font-mono w-12 text-right">{Math.round((imageScale || 1) * 100)}%</span>
+              </div>
+              <div className="flex justify-center">
+                <div className="relative inline-block" onContextMenu={blockContext}>
+                  <img src={imageUrl} alt={file.filename || ''} draggable="false"
+                    onContextMenu={blockContext}
+                    style={imageNaturalSize && imageScale ? {
+                      width: `${imageNaturalSize.w * imageScale}px`,
+                      height: 'auto',
+                      display: 'block',
+                    } : { display: 'block' }} />
+                  <ImageWatermark text={watermarkText} />
+                </div>
+              </div>
             </div>
           )}
         </div>
