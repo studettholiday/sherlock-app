@@ -13,7 +13,11 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 25 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const allowed = ['.pdf', '.txt', '.md', '.jpg', '.jpeg', '.png', '.gif', '.webp'];
+    // PDF-only viewer policy: image types removed from the upload allow-list.
+    // Pre-existing image rows in the DB stay but are hidden from students by
+    // the mime filters in GET / and friends. Owners still see them in their
+    // list and can download/delete them; they're just unviewable in-app.
+    const allowed = ['.pdf', '.txt', '.md'];
     const ext = path.extname(file.originalname).toLowerCase();
     if (allowed.includes(ext)) cb(null, true);
     else cb(new Error('Only PDF, TXT, and MD files allowed'));
@@ -26,8 +30,6 @@ async function extractText(buffer, mimetype) {
     const result = await parser.getText();
     return result.text;
   }
-  // Images carry no useful text for the AI context.
-  if ((mimetype || '').startsWith('image/')) return '';
   return buffer.toString('utf8');
 }
 
@@ -88,7 +90,7 @@ router.get('/', authMiddleware, async (req, res) => {
          FROM library_files lf
          LEFT JOIN library_file_classes lfc ON lfc.file_id = lf.id
          WHERE lf.school_id = $1
-           AND (lf.mime_type = 'application/pdf' OR lf.mime_type LIKE 'image/%')
+           AND lf.mime_type = 'application/pdf'
            AND (
              NOT EXISTS (SELECT 1 FROM library_file_classes lfc2 WHERE lfc2.file_id = lf.id)
              OR EXISTS (
@@ -206,7 +208,7 @@ router.get('/:fileId/view', authMiddleware, async (req, res) => {
       : `SELECT lf.filename, lf.mime_type, lf.content_binary
          FROM library_files lf
          WHERE lf.id = $1 AND lf.school_id = $2
-           AND (lf.mime_type = 'application/pdf' OR lf.mime_type LIKE 'image/%')
+           AND lf.mime_type = 'application/pdf'
            AND (
              NOT EXISTS (SELECT 1 FROM library_file_classes WHERE file_id = lf.id)
              OR EXISTS (
@@ -263,7 +265,7 @@ router.get('/download/:id', authMiddleware, async (req, res) => {
       : `SELECT lf.filename, lf.content, lf.mime_type
          FROM library_files lf
          WHERE lf.id = $1 AND lf.school_id = $2
-           AND (lf.mime_type = 'application/pdf' OR lf.mime_type LIKE 'image/%')
+           AND lf.mime_type = 'application/pdf'
            AND (
              NOT EXISTS (SELECT 1 FROM library_file_classes WHERE file_id = lf.id)
              OR EXISTS (

@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, Fragment } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { useAuth } from '../AuthContext';
 
 // ─── Theme tokens ─────────────────────────────────────────────────────────────
@@ -599,7 +599,7 @@ function LibraryOwnerPanel({ lang }) {
       {files.map(f => (
         <Fragment key={f.id}>
           <div className="flex items-center gap-2 text-[13px] py-1.5 border-b border-[#e5e7eb] hover:bg-[#fafafa] transition-colors duration-150">
-            {(f.mime_type === 'application/pdf' || (f.mime_type || '').startsWith('image/')) ? (
+            {f.mime_type === 'application/pdf' ? (
               <button onClick={() => setViewingFile(f)}
                 title={lang === 'GEO' ? 'ნახვა' : 'View'}
                 className="text-[#111827] hover:text-[#2563eb] hover:underline cursor-pointer flex-shrink-0 truncate max-w-[35%] text-left bg-transparent border-0 p-0 transition-colors duration-150">
@@ -665,7 +665,7 @@ function LibraryOwnerPanel({ lang }) {
           )}
         </Fragment>
       ))}
-      <input ref={fileInputRef} type="file" accept=".pdf,.txt,.md,.jpg,.jpeg,.png,.gif,.webp,application/pdf,text/plain,text/markdown,image/jpeg,image/png,image/gif,image/webp" onChange={uploadFile} className="hidden" />
+      <input ref={fileInputRef} type="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" onChange={uploadFile} className="hidden" />
       <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
         className="w-full rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] py-2 text-[13px] text-white font-medium transition-colors duration-150 disabled:opacity-40">
         {uploading ? (lang === 'GEO' ? 'იტვირთება…' : 'Uploading…') : (lang === 'GEO' ? '+ ფაილის ატვირთვა' : '+ Upload File')}
@@ -712,53 +712,20 @@ function drawWatermark(ctx, w, h, text) {
   ctx.restore();
 }
 
-// CSS-overlay watermark used over <img> elements (canvas baking only applies
-// to PDFs). Position: absolute over the parent which must be relative.
-function ImageWatermark({ text }) {
-  const rows = [];
-  for (let i = -4; i <= 4; i++) {
-    rows.push(
-      <div key={i} style={{
-        position: 'absolute',
-        left: 0, right: 0,
-        top: '50%',
-        transform: `translateY(${i * 80}px) rotate(-30deg)`,
-        pointerEvents: 'none',
-        whiteSpace: 'nowrap',
-        color: '#9ca3af',
-        opacity: 0.3,
-        fontSize: '14px',
-        textAlign: 'center',
-        userSelect: 'none',
-      }}>
-        {Array.from({ length: 7 }).map((_, j) => (
-          <span key={j} style={{ marginRight: 80 }}>{text}</span>
-        ))}
-      </div>
-    );
-  }
-  return <>{rows}</>;
-}
-
 function FileViewerModal({ file, onClose }) {
   const { user } = useAuth();
   const watermarkText = `${user?.name || user?.email || 'viewer'} — ${user?.email || ''}`;
-  const isPdf   = file?.mime_type === 'application/pdf';
-  const isImage = (file?.mime_type || '').startsWith('image/');
+  const isPdf = file?.mime_type === 'application/pdf';
 
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState('');
   const [pdfDoc, setPdfDoc]   = useState(null);
   const [pageNum, setPageNum] = useState(1);
   const [pageCount, setPageCount] = useState(0);
-  const [imageUrl, setImageUrl]   = useState('');
   const [pdfScale, setPdfScale]   = useState(null);
-  const [imageScale, setImageScale]             = useState(null);
-  const [imageNaturalSize, setImageNaturalSize] = useState(null);
-  const [editingPage, setEditingPage]           = useState(false);
-  const [pageInput, setPageInput]               = useState('');
+  const [editingPage, setEditingPage] = useState(false);
+  const [pageInput, setPageInput]     = useState('');
   const canvasRef = useRef(null);
-  const cardRef   = useRef(null);
   // Set by the Escape handler so the unmount-blur doesn't accidentally commit
   // the typed value. Checked-and-cleared in commitPageInput.
   const cancelPageEditRef = useRef(false);
@@ -777,11 +744,10 @@ function FileViewerModal({ file, onClose }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose, editingPage]);
 
-  // Fetch the file bytes once with the bearer token, then either set an
-  // objectURL (image) or hand the arrayBuffer to PDF.js (PDF).
+  // Fetch the PDF bytes once with the bearer token and hand the arrayBuffer
+  // to PDF.js. (Image support was removed — PDFs only.)
   useEffect(() => {
     if (!file?.id) return;
-    let blobUrl = null;
     let cancelled = false;
     (async () => {
       try {
@@ -794,30 +760,7 @@ function FileViewerModal({ file, onClose }) {
         if (!res.ok) throw new Error(`Couldn't load file (${res.status})`);
         const blob = await res.blob();
         if (cancelled) return;
-        if (isImage) {
-          blobUrl = URL.createObjectURL(blob);
-          // Probe natural dimensions so we can default to a fit-to-modal scale
-          // (≤ 1 — we never upscale a small image by default). The same blob
-          // URL is reused for the actual <img> render below; no second fetch.
-          const probe = new Image();
-          probe.src = blobUrl;
-          await new Promise((resolve, reject) => {
-            probe.onload = resolve;
-            probe.onerror = reject;
-          });
-          if (cancelled) return;
-          const natW = probe.naturalWidth;
-          const natH = probe.naturalHeight;
-          // Conservative initial estimate from viewport — the layout effect
-          // below refines this against the actual modal card size before paint.
-          const maxW = window.innerWidth - 80;
-          const maxH = window.innerHeight - 160;
-          const fitScale = Math.min(1, maxW / natW, maxH / natH);
-          setImageUrl(blobUrl);
-          setImageNaturalSize({ w: natW, h: natH });
-          setImageScale(fitScale);
-          setLoading(false);
-        } else if (isPdf) {
+        if (isPdf) {
           const buf = await blob.arrayBuffer();
           if (cancelled) return;
           const pdfjsLib = await loadPdfJsV4();
@@ -848,9 +791,8 @@ function FileViewerModal({ file, onClose }) {
     })();
     return () => {
       cancelled = true;
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
     };
-  }, [file?.id, isImage, isPdf]);
+  }, [file?.id, isPdf]);
 
   // Render the current PDF page to canvas at the user-controlled scale, then
   // bake the watermark. Re-runs on page change or zoom change.
@@ -876,30 +818,6 @@ function FileViewerModal({ file, onClose }) {
     return () => { cancelled = true; };
   }, [pdfDoc, pageNum, pdfScale, watermarkText]);
 
-  // Once the image branch has mounted with the load-effect's initial estimate,
-  // measure the actual modal card's max-allowed size and refine imageScale
-  // before paint. useLayoutEffect prevents a visible "too big → snap down"
-  // flicker. Runs once per file (deps only change when a new file loads);
-  // user slider changes do not re-trigger it.
-  useLayoutEffect(() => {
-    if (!isImage || !imageUrl || !imageNaturalSize) return;
-    const card  = cardRef.current;
-    const outer = card && card.parentElement;
-    if (!card || !outer) return;
-    // outer is the fixed inset-0 flex container with p-4 (16px each side).
-    // outer.client* gives the viewport area minus the browser scrollbar.
-    // Inside the card: content wrapper p-4 + pt-8 (32 horiz, 48 vert padding)
-    // + ~36px slider toolbar + 8px space-y gap, plus a small safety pad for
-    // scrollbar-gutter and font-metric variance.
-    const cardMaxW = outer.clientWidth  - 32;
-    const cardMaxH = outer.clientHeight - 32;
-    const cw = cardMaxW - 32;
-    const ch = cardMaxH - 48 - 36 - 8 - 16;
-    if (cw <= 0 || ch <= 0) return;
-    const fitScale = Math.min(1, cw / imageNaturalSize.w, ch / imageNaturalSize.h);
-    setImageScale(fitScale);
-  }, [isImage, imageUrl, imageNaturalSize]);
-
   function commitPageInput() {
     // Escape sets the cancel flag; consume it and bail without changing pageNum.
     if (cancelPageEditRef.current) {
@@ -924,7 +842,6 @@ function FileViewerModal({ file, onClose }) {
       onContextMenu={blockContext}
     >
       <div
-        ref={cardRef}
         className="relative bg-[#ffffff] rounded-[12px] max-w-[100vw] max-h-[100vh] overflow-auto shadow-[0_4px_12px_rgba(0,0,0,0.2)]"
         onClick={(e) => e.stopPropagation()}
         onContextMenu={blockContext}
@@ -984,34 +901,6 @@ function FileViewerModal({ file, onClose }) {
                 <span className="text-[#6b7280] font-mono w-12 text-right">{Math.round((pdfScale || 1) * 100)}%</span>
               </div>
               <canvas ref={canvasRef} onContextMenu={blockContext} className="block mx-auto" />
-            </div>
-          )}
-          {!loading && !error && isImage && imageUrl && (
-            <div className="space-y-2"
-              style={imageNaturalSize && imageScale ? {
-                width: `${imageNaturalSize.w * imageScale}px`,
-                minWidth: '280px',
-              } : undefined}>
-              <div className="flex items-center justify-center gap-2 text-[13px] flex-wrap">
-                <input type="range" min="0.5" max="3" step="0.1"
-                  value={imageScale || 1}
-                  onChange={(e) => setImageScale(parseFloat(e.target.value))}
-                  className="accent-[#2563eb] w-32"
-                  title="Zoom" />
-                <span className="text-[#6b7280] font-mono w-12 text-right">{Math.round((imageScale || 1) * 100)}%</span>
-              </div>
-              <div className="flex justify-center">
-                <div className="relative inline-block" onContextMenu={blockContext}>
-                  <img src={imageUrl} alt={file.filename || ''} draggable="false"
-                    onContextMenu={blockContext}
-                    style={imageNaturalSize && imageScale ? {
-                      width: `${imageNaturalSize.w * imageScale}px`,
-                      height: 'auto',
-                      display: 'block',
-                    } : { display: 'block' }} />
-                  <ImageWatermark text={watermarkText} />
-                </div>
-              </div>
             </div>
           )}
         </div>
