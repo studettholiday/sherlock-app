@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, Fragment } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, Fragment } from 'react';
 import { useAuth } from '../AuthContext';
 
 // ─── Theme tokens ─────────────────────────────────────────────────────────────
@@ -758,16 +758,24 @@ function FileViewerModal({ file, onClose }) {
   const [editingPage, setEditingPage]           = useState(false);
   const [pageInput, setPageInput]               = useState('');
   const canvasRef = useRef(null);
+  const cardRef   = useRef(null);
   // Set by the Escape handler so the unmount-blur doesn't accidentally commit
   // the typed value. Checked-and-cleared in commitPageInput.
   const cancelPageEditRef = useRef(false);
 
-  // ESC closes the modal.
+  // ESC closes the modal, EXCEPT while the page-edit input is open — in that
+  // case let the input's own onKeyDown handle the cancel. The dep on
+  // editingPage ensures we always evaluate the latest value.
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        if (editingPage) return;
+        onClose();
+      }
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [onClose, editingPage]);
 
   // Fetch the file bytes once with the bearer token, then either set an
   // objectURL (image) or hand the arrayBuffer to PDF.js (PDF).
@@ -800,8 +808,10 @@ function FileViewerModal({ file, onClose }) {
           if (cancelled) return;
           const natW = probe.naturalWidth;
           const natH = probe.naturalHeight;
+          // Conservative initial estimate from viewport — the layout effect
+          // below refines this against the actual modal card size before paint.
           const maxW = window.innerWidth - 80;
-          const maxH = window.innerHeight - 120;
+          const maxH = window.innerHeight - 160;
           const fitScale = Math.min(1, maxW / natW, maxH / natH);
           setImageUrl(blobUrl);
           setImageNaturalSize({ w: natW, h: natH });
@@ -866,6 +876,30 @@ function FileViewerModal({ file, onClose }) {
     return () => { cancelled = true; };
   }, [pdfDoc, pageNum, pdfScale, watermarkText]);
 
+  // Once the image branch has mounted with the load-effect's initial estimate,
+  // measure the actual modal card's max-allowed size and refine imageScale
+  // before paint. useLayoutEffect prevents a visible "too big → snap down"
+  // flicker. Runs once per file (deps only change when a new file loads);
+  // user slider changes do not re-trigger it.
+  useLayoutEffect(() => {
+    if (!isImage || !imageUrl || !imageNaturalSize) return;
+    const card  = cardRef.current;
+    const outer = card && card.parentElement;
+    if (!card || !outer) return;
+    // outer is the fixed inset-0 flex container with p-4 (16px each side).
+    // outer.client* gives the viewport area minus the browser scrollbar.
+    // Inside the card: content wrapper p-4 + pt-8 (32 horiz, 48 vert padding)
+    // + ~36px slider toolbar + 8px space-y gap, plus a small safety pad for
+    // scrollbar-gutter and font-metric variance.
+    const cardMaxW = outer.clientWidth  - 32;
+    const cardMaxH = outer.clientHeight - 32;
+    const cw = cardMaxW - 32;
+    const ch = cardMaxH - 48 - 36 - 8 - 16;
+    if (cw <= 0 || ch <= 0) return;
+    const fitScale = Math.min(1, cw / imageNaturalSize.w, ch / imageNaturalSize.h);
+    setImageScale(fitScale);
+  }, [isImage, imageUrl, imageNaturalSize]);
+
   function commitPageInput() {
     // Escape sets the cancel flag; consume it and bail without changing pageNum.
     if (cancelPageEditRef.current) {
@@ -890,6 +924,7 @@ function FileViewerModal({ file, onClose }) {
       onContextMenu={blockContext}
     >
       <div
+        ref={cardRef}
         className="relative bg-[#ffffff] rounded-[12px] max-w-[100vw] max-h-[100vh] overflow-auto shadow-[0_4px_12px_rgba(0,0,0,0.2)]"
         onClick={(e) => e.stopPropagation()}
         onContextMenu={blockContext}
