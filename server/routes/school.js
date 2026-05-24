@@ -82,6 +82,10 @@ router.delete('/schedule/:id', authMiddleware, async (req, res) => {
           'DELETE FROM student_classes WHERE school_id = $1 AND class_name = $2',
           [req.user.schoolId, className]
         );
+        await client.query(
+          'DELETE FROM library_file_classes WHERE school_id = $1 AND class_name = $2',
+          [req.user.schoolId, className]
+        );
       }
     }
 

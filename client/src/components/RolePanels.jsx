@@ -457,13 +457,27 @@ function LibraryManagerPanel({ lang }) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
 
+  // Per-class access tagging state. Only one file can be edited at a time.
+  const [availableClasses, setAvailableClasses] = useState([]);
+  const [editingId, setEditingId]   = useState(null);
+  const [editPicked, setEditPicked] = useState([]);
+  const [editError, setEditError]   = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+
   async function load() {
     const token = localStorage.getItem('sherlock_token');
     try {
-      const res  = await fetch('/api/library?t=' + Date.now(), { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
-      setFiles(data.files || []);
+      const [fRes, cRes] = await Promise.all([
+        fetch('/api/library?t=' + Date.now(), { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/school/classes',          { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
+      const fData = await fRes.json();
+      if (!fRes.ok) throw new Error(fData.error || `Request failed (${fRes.status})`);
+      setFiles(fData.files || []);
+      if (cRes.ok) {
+        const cData = await cRes.json();
+        setAvailableClasses(cData.classes || []);
+      }
       setError('');
     } catch (e) {
       setError(e.message);
@@ -508,6 +522,43 @@ function LibraryManagerPanel({ lang }) {
     }
   }
 
+  function startEditAccess(f) {
+    setEditingId(f.id);
+    setEditPicked(f.classes || []);
+    setEditError('');
+  }
+
+  function cancelEditAccess() {
+    setEditingId(null);
+    setEditError('');
+  }
+
+  function toggleClass(className) {
+    setEditPicked(prev => prev.includes(className)
+      ? prev.filter(c => c !== className)
+      : [...prev, className]);
+  }
+
+  async function saveEditAccess(f) {
+    setEditSaving(true);
+    setEditError('');
+    const token = localStorage.getItem('sherlock_token');
+    try {
+      const res = await fetch(`/api/library/${f.id}/classes`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ classes: editPicked }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Save failed (${res.status})`);
+      setFiles(prev => prev.map(x => x.id === f.id ? { ...x, classes: data.classes || [] } : x));
+      setEditingId(null);
+    } catch (e) {
+      setEditError(e.message);
+    }
+    setEditSaving(false);
+  }
+
   function formatSize(bytes) {
     if (!bytes) return '—';
     if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
@@ -523,11 +574,62 @@ function LibraryManagerPanel({ lang }) {
         <p className="text-[14px] italic text-[#6b7280] text-center py-2">{lang === 'GEO' ? 'ფაილები ჯერ არ არის ატვირთული.' : 'No files uploaded yet.'}</p>
       )}
       {files.map(f => (
-        <div key={f.id} className="flex items-center gap-2 text-[13px] py-1.5 border-b border-[#e5e7eb] hover:bg-[#fafafa] transition-colors duration-150">
-          <span className="text-[#111827] flex-1 min-w-0 truncate">{f.name || f.filename || 'Untitled'}</span>
-          <span className="text-[#6b7280] font-mono flex-shrink-0">{formatSize(f.file_size)}</span>
-          <button onClick={() => del(f.id)} className="rounded-[6px] border border-[#fecaca] bg-[#ffffff] text-[#dc2626] hover:bg-[#fef2f2] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">✕</button>
-        </div>
+        <Fragment key={f.id}>
+          <div className="flex items-center gap-2 text-[13px] py-1.5 border-b border-[#e5e7eb] hover:bg-[#fafafa] transition-colors duration-150">
+            <span className="text-[#111827] flex-shrink-0 truncate max-w-[35%]">{f.name || f.filename || 'Untitled'}</span>
+            <div className="flex items-center gap-1 flex-1 min-w-0 flex-wrap">
+              {(f.classes || []).length === 0 ? (
+                <span className="text-[12px] italic text-[#9ca3af]">{lang === 'GEO' ? 'ხელმისაწვდომი ყველასთვის' : 'Visible to all'}</span>
+              ) : (
+                (f.classes || []).map(c => (
+                  <span key={c} className="text-[12px] rounded-full bg-[#eff6ff] text-[#2563eb] border border-[#bfdbfe] px-2 py-0.5">{c}</span>
+                ))
+              )}
+            </div>
+            <span className="text-[#6b7280] font-mono flex-shrink-0">{formatSize(f.file_size)}</span>
+            <button onClick={() => editingId === f.id ? cancelEditAccess() : startEditAccess(f)}
+              title={lang === 'GEO' ? 'წვდომის რედაქტირება' : 'Edit access'}
+              className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">🏷️</button>
+            <button onClick={() => del(f.id)} className="rounded-[6px] border border-[#fecaca] bg-[#ffffff] text-[#dc2626] hover:bg-[#fef2f2] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">✕</button>
+          </div>
+          {editingId === f.id && (
+            <div className="rounded-[8px] border border-[#e5e7eb] bg-[#fafafa] p-3 space-y-2">
+              {availableClasses.length === 0 ? (
+                <p className="text-[13px] italic text-[#6b7280] text-center py-1">
+                  {lang === 'GEO'
+                    ? 'განრიგში კლასები ჯერ არ არის — ჯერ დაამატე განრიგი, შემდეგ მონიშნე.'
+                    : 'No classes in the schedule yet — add some, then tag files.'}
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  {availableClasses.map(c => (
+                    <label key={c} className="flex items-center gap-2 text-[13px] text-[#111827] py-0.5 cursor-pointer">
+                      <input type="checkbox" checked={editPicked.includes(c)} onChange={() => toggleClass(c)}
+                        className="w-4 h-4 accent-[#2563eb] flex-shrink-0" />
+                      <span className="truncate">{c}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              {editError && <p className="text-[#dc2626] text-[12px]">{editError}</p>}
+              <div className="flex gap-2 items-center">
+                <button onClick={() => saveEditAccess(f)} disabled={editSaving}
+                  className="rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-40 px-3 py-1.5 text-[13px] text-white font-medium transition-colors duration-150">
+                  {editSaving ? (lang === 'GEO' ? 'ინახება…' : 'Saving…') : (lang === 'GEO' ? 'შენახვა' : 'Save')}
+                </button>
+                <button onClick={cancelEditAccess}
+                  className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] hover:bg-[#f9fafb] px-3 py-1.5 text-[13px] text-[#111827] transition-colors duration-150">
+                  {lang === 'GEO' ? 'გაუქმება' : 'Cancel'}
+                </button>
+                {editPicked.length === 0 && (
+                  <span className="text-[12px] italic text-[#6b7280] ml-auto">
+                    {lang === 'GEO' ? '(ცარიელი = საჯარო)' : '(empty = public)'}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </Fragment>
       ))}
       <input ref={fileInputRef} type="file" accept=".pdf,.txt,.md" onChange={uploadFile} className="hidden" />
       <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
