@@ -259,7 +259,7 @@ router.get('/download/:id', authMiddleware, async (req, res) => {
     // one of their assigned classes. Access denial returns 404 (same as
     // not-found) so students can't probe for file_ids they can't reach.
     const sql = req.user.is_owner
-      ? 'SELECT filename, content, mime_type FROM library_files WHERE id = $1 AND school_id = $2'
+      ? 'SELECT filename, content, content_binary, mime_type FROM library_files WHERE id = $1 AND school_id = $2'
       : `SELECT lf.filename, lf.content, lf.mime_type
          FROM library_files lf
          WHERE lf.id = $1 AND lf.school_id = $2
@@ -278,10 +278,22 @@ router.get('/download/:id', authMiddleware, async (req, res) => {
     const result = await getPool().query(sql, params);
     if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
     const file = result.rows[0];
-    if (!file.content) return res.status(404).json({ error: 'No content available' });
-    res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.send(file.content);
+    const safeName = (file.filename || 'file').replace(/[\r\n"]/g, '');
+    // Prefer raw bytes (post-migration uploads). Student SELECT doesn't fetch
+    // content_binary so this branch only fires for owners. Fall back to the
+    // extracted text for legacy .txt/.md rows so they still download. 404 if
+    // neither is present.
+    if (file.content_binary) {
+      res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`);
+      res.send(file.content_binary);
+    } else if (file.content) {
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`);
+      res.send(file.content);
+    } else {
+      return res.status(404).json({ error: 'No content available' });
+    }
   } catch (err) {
     console.error('[library/download] error:', err.message);
     res.status(500).json({ error: 'Server error' });

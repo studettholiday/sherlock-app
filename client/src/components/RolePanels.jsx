@@ -524,6 +524,27 @@ function LibraryOwnerPanel({ lang }) {
     }
   }
 
+  async function downloadFile(f) {
+    const token = localStorage.getItem('sherlock_token');
+    try {
+      const res = await fetch(`/api/library/download/${f.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`Download failed (${res.status})`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = f.filename || 'file';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
   function startEditAccess(f) {
     setEditingId(f.id);
     setEditPicked(f.classes || []);
@@ -578,7 +599,15 @@ function LibraryOwnerPanel({ lang }) {
       {files.map(f => (
         <Fragment key={f.id}>
           <div className="flex items-center gap-2 text-[13px] py-1.5 border-b border-[#e5e7eb] hover:bg-[#fafafa] transition-colors duration-150">
-            <span className="text-[#111827] flex-shrink-0 truncate max-w-[35%]">{f.name || f.filename || 'Untitled'}</span>
+            {(f.mime_type === 'application/pdf' || (f.mime_type || '').startsWith('image/')) ? (
+              <button onClick={() => setViewingFile(f)}
+                title={lang === 'GEO' ? 'ნახვა' : 'View'}
+                className="text-[#111827] hover:text-[#2563eb] hover:underline cursor-pointer flex-shrink-0 truncate max-w-[35%] text-left bg-transparent border-0 p-0 transition-colors duration-150">
+                {f.name || f.filename || 'Untitled'}
+              </button>
+            ) : (
+              <span className="text-[#111827] flex-shrink-0 truncate max-w-[35%]">{f.name || f.filename || 'Untitled'}</span>
+            )}
             <div className="flex items-center gap-1 flex-1 min-w-0 flex-wrap">
               {(f.classes || []).length === 0 ? (
                 <span className="text-[12px] italic text-[#9ca3af]">{lang === 'GEO' ? 'ხელმისაწვდომი ყველასთვის' : 'Visible to all'}</span>
@@ -589,14 +618,12 @@ function LibraryOwnerPanel({ lang }) {
               )}
             </div>
             <span className="text-[#6b7280] font-mono flex-shrink-0">{formatSize(f.file_size)}</span>
-            {(f.mime_type === 'application/pdf' || (f.mime_type || '').startsWith('image/')) && (
-              <button onClick={() => setViewingFile(f)}
-                title={lang === 'GEO' ? 'ნახვა' : 'View'}
-                className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">👁️</button>
-            )}
             <button onClick={() => editingId === f.id ? cancelEditAccess() : startEditAccess(f)}
               title={lang === 'GEO' ? 'წვდომის რედაქტირება' : 'Edit access'}
               className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">🏷️</button>
+            <button onClick={() => downloadFile(f)}
+              title={lang === 'GEO' ? 'ჩამოტვირთვა' : 'Download'}
+              className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">⬇️</button>
             <button onClick={() => del(f.id)} className="rounded-[6px] border border-[#fecaca] bg-[#ffffff] text-[#dc2626] hover:bg-[#fef2f2] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">✕</button>
           </div>
           {editingId === f.id && (
@@ -638,7 +665,7 @@ function LibraryOwnerPanel({ lang }) {
           )}
         </Fragment>
       ))}
-      <input ref={fileInputRef} type="file" accept=".pdf,.txt,.md" onChange={uploadFile} className="hidden" />
+      <input ref={fileInputRef} type="file" accept=".pdf,.txt,.md,.jpg,.jpeg,.png,.gif,.webp,application/pdf,text/plain,text/markdown,image/jpeg,image/png,image/gif,image/webp" onChange={uploadFile} className="hidden" />
       <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
         className="w-full rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] py-2 text-[13px] text-white font-medium transition-colors duration-150 disabled:opacity-40">
         {uploading ? (lang === 'GEO' ? 'იტვირთება…' : 'Uploading…') : (lang === 'GEO' ? '+ ფაილის ატვირთვა' : '+ Upload File')}
@@ -725,6 +752,7 @@ function FileViewerModal({ file, onClose }) {
   const [pageNum, setPageNum] = useState(1);
   const [pageCount, setPageCount] = useState(0);
   const [imageUrl, setImageUrl]   = useState('');
+  const [pdfScale, setPdfScale]   = useState(null);
   const canvasRef = useRef(null);
 
   // ESC closes the modal.
@@ -762,9 +790,17 @@ function FileViewerModal({ file, onClose }) {
           if (cancelled) return;
           const doc = await pdfjsLib.getDocument({ data: buf }).promise;
           if (cancelled) return;
+          // Compute default fit-to-width scale from page 1 once. The user can
+          // override via the slider, and the choice persists across pages.
+          const firstPage = await doc.getPage(1);
+          if (cancelled) return;
+          const baseViewport = firstPage.getViewport({ scale: 1 });
+          const maxWidth = Math.min(window.innerWidth - 80, 1100);
+          const fitScale = Math.min(2, maxWidth / baseViewport.width);
           setPdfDoc(doc);
           setPageCount(doc.numPages);
           setPageNum(1);
+          setPdfScale(fitScale);
           setLoading(false);
         } else {
           throw new Error('Unsupported file type');
@@ -782,17 +818,15 @@ function FileViewerModal({ file, onClose }) {
     };
   }, [file?.id, isImage, isPdf]);
 
-  // Render the current PDF page to canvas, then bake the watermark.
+  // Render the current PDF page to canvas at the user-controlled scale, then
+  // bake the watermark. Re-runs on page change or zoom change.
   useEffect(() => {
-    if (!pdfDoc || !canvasRef.current) return;
+    if (!pdfDoc || !canvasRef.current || !pdfScale) return;
     let cancelled = false;
     (async () => {
       try {
         const page = await pdfDoc.getPage(pageNum);
-        const base = page.getViewport({ scale: 1 });
-        const maxWidth = Math.min(window.innerWidth - 80, 1100);
-        const scale = Math.min(2, maxWidth / base.width);
-        const viewport = page.getViewport({ scale });
+        const viewport = page.getViewport({ scale: pdfScale });
         const canvas = canvasRef.current;
         if (!canvas || cancelled) return;
         canvas.width = viewport.width;
@@ -806,7 +840,7 @@ function FileViewerModal({ file, onClose }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [pdfDoc, pageNum, watermarkText]);
+  }, [pdfDoc, pageNum, pdfScale, watermarkText]);
 
   const blockContext = (e) => e.preventDefault();
 
@@ -837,12 +871,18 @@ function FileViewerModal({ file, onClose }) {
           )}
           {!loading && !error && isPdf && pdfDoc && (
             <div className="space-y-2">
-              <div className="flex items-center justify-center gap-2 text-[13px]">
+              <div className="flex items-center justify-center gap-2 text-[13px] flex-wrap">
                 <button onClick={() => setPageNum(n => Math.max(1, n - 1))} disabled={pageNum <= 1}
                   className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] hover:bg-[#f9fafb] disabled:opacity-40 px-2 py-1 text-[#111827] transition-colors duration-150">Prev</button>
                 <span className="text-[#6b7280] font-mono">Page {pageNum} of {pageCount}</span>
                 <button onClick={() => setPageNum(n => Math.min(pageCount, n + 1))} disabled={pageNum >= pageCount}
                   className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] hover:bg-[#f9fafb] disabled:opacity-40 px-2 py-1 text-[#111827] transition-colors duration-150">Next</button>
+                <input type="range" min="0.5" max="3" step="0.1"
+                  value={pdfScale || 1}
+                  onChange={(e) => setPdfScale(parseFloat(e.target.value))}
+                  className="accent-[#2563eb] w-32"
+                  title="Zoom" />
+                <span className="text-[#6b7280] font-mono w-12 text-right">{Math.round((pdfScale || 1) * 100)}%</span>
               </div>
               <canvas ref={canvasRef} onContextMenu={blockContext} className="block mx-auto" />
             </div>
@@ -909,7 +949,11 @@ function LibraryStudentPanel({ lang }) {
       {files.map(f => (
         <div key={f.id} className="flex items-center gap-2 text-[13px] py-1.5 border-b border-[#e5e7eb] hover:bg-[#fafafa] transition-colors duration-150"
           onContextMenu={blockContext}>
-          <span className="text-[#111827] flex-shrink-0 truncate max-w-[35%]">{f.filename || 'Untitled'}</span>
+          <button onClick={() => setViewingFile(f)}
+            title={lang === 'GEO' ? 'ნახვა' : 'View'}
+            className="text-[#111827] hover:text-[#2563eb] hover:underline cursor-pointer flex-shrink-0 truncate max-w-[35%] text-left bg-transparent border-0 p-0 transition-colors duration-150">
+            {f.filename || 'Untitled'}
+          </button>
           <div className="flex items-center gap-1 flex-1 min-w-0 flex-wrap">
             {(f.classes || []).map(c => (
               <span key={c} className="text-[12px] rounded-full bg-[#eff6ff] text-[#2563eb] border border-[#bfdbfe] px-2 py-0.5">{c}</span>
@@ -917,11 +961,6 @@ function LibraryStudentPanel({ lang }) {
           </div>
           <span className="text-[#6b7280] font-mono flex-shrink-0">{formatSize(f.file_size)}</span>
           <span className="text-[#9ca3af] flex-shrink-0">{formatDate(f.created_at)}</span>
-          <button onClick={() => setViewingFile(f)}
-            title={lang === 'GEO' ? 'ნახვა' : 'View'}
-            className="rounded-[6px] border border-[#3b82f6] bg-[#eff6ff] text-[#2563eb] hover:bg-[#dbeafe] flex-shrink-0 px-2 py-0.5 text-[12px] font-medium transition-colors duration-150">
-            {lang === 'GEO' ? '👁️ ნახვა' : '👁️ View'}
-          </button>
         </div>
       ))}
       {viewingFile && <FileViewerModal file={viewingFile} onClose={() => setViewingFile(null)} />}
