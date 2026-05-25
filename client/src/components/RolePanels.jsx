@@ -493,8 +493,8 @@ function LibraryOwnerPanel({ lang }) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (file.size > 25 * 1024 * 1024) {
-      setError(lang === 'GEO' ? 'ფაილი უნდა იყოს 25MB-ზე ნაკლები.' : 'File must be under 25MB.');
+    if (file.size > 50 * 1024 * 1024) {
+      setError(lang === 'GEO' ? 'ფაილი უნდა იყოს 50MB-ზე ნაკლები.' : 'File must be under 50MB.');
       return;
     }
     setError('');

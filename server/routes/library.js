@@ -11,7 +11,7 @@ const getPool = () => new Pool({ connectionString: process.env.DATABASE_PUBLIC_U
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 },
+  limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     // PDF-only viewer policy: image types removed from the upload allow-list.
     // Pre-existing image rows in the DB stay but are hidden from students by
