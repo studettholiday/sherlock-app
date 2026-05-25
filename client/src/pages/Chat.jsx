@@ -621,7 +621,7 @@ export default function Chat() {
           style={{ background: 'rgba(0,0,0,0.5)' }}
           onClick={() => setActivePanel(null)}>
           <div
-            className="relative w-full max-w-[600px] max-h-[90vh] overflow-auto"
+            className="relative w-full max-w-[600px] max-h-[90vh] overflow-hidden flex"
             onClick={(e) => e.stopPropagation()}>
             <RolePanel role={role} panel={activePanel} onClose={() => setActivePanel(null)}
               libraryProps={{ libraryFiles, onAddFile: addLibraryFile, onRemoveFile: removeLibraryFile, orgName: user?.schoolName || '', orgNameGenitive: '' }} lang={lang} />
