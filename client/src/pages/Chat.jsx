@@ -378,7 +378,7 @@ export default function Chat() {
                 aria-label="Settings"
                 className="rounded-md px-2 py-1 text-[#6b7280] hover:bg-[#f9fafb] text-[16px] leading-none transition-colors duration-150">⋯</button>
               {settingsOpen && (
-                <div className="absolute left-0 top-full mt-1 w-72 bg-[#ffffff] border border-[#e5e7eb] rounded-[8px] shadow-[0_4px_12px_rgba(0,0,0,0.08)] z-[55]">
+                <div className="fixed left-4 right-4 top-16 sm:absolute sm:left-0 sm:right-auto sm:top-full sm:mt-1 sm:w-72 bg-[#ffffff] border border-[#e5e7eb] rounded-[8px] shadow-[0_4px_12px_rgba(0,0,0,0.08)] z-[55]">
                   <div className="flex items-center justify-between px-4 py-3 gap-3">
                     <span className="text-[14px] text-[#111827]">{lang === 'GEO' ? 'AI ჩატი მოსწავლეებისთვის' : 'AI chat for students'}</span>
                     <button
