@@ -222,21 +222,42 @@ router.put('/students/:userId/classes', authMiddleware, async (req, res) => {
   }
 });
 
-// PUT /api/school/settings — owner-only school settings update. Currently
-// supports a single field (student_ai_enabled). Validated as a strict
-// boolean. Returns the new persisted value.
+// PUT /api/school/settings — owner-only school settings update. Body keys are
+// all optional; only the keys provided are updated. At least one must be
+// present. Each provided key is strictly type-checked. Returns the full set
+// of current setting values.
 router.put('/settings', authMiddleware, async (req, res) => {
   if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
-  const { student_ai_enabled } = req.body || {};
-  if (typeof student_ai_enabled !== 'boolean') {
-    return res.status(400).json({ error: 'student_ai_enabled must be a boolean' });
+  const { student_ai_enabled, student_downloads_enabled } = req.body || {};
+  const sets = [];
+  const params = [];
+  if (student_ai_enabled !== undefined) {
+    if (typeof student_ai_enabled !== 'boolean') {
+      return res.status(400).json({ error: 'student_ai_enabled must be a boolean' });
+    }
+    params.push(student_ai_enabled);
+    sets.push(`student_ai_enabled = $${params.length}`);
   }
+  if (student_downloads_enabled !== undefined) {
+    if (typeof student_downloads_enabled !== 'boolean') {
+      return res.status(400).json({ error: 'student_downloads_enabled must be a boolean' });
+    }
+    params.push(student_downloads_enabled);
+    sets.push(`student_downloads_enabled = $${params.length}`);
+  }
+  if (sets.length === 0) {
+    return res.status(400).json({ error: 'At least one setting must be provided' });
+  }
+  params.push(req.user.schoolId);
   try {
     const result = await getPool().query(
-      'UPDATE schools SET student_ai_enabled = $1 WHERE id = $2 RETURNING student_ai_enabled',
-      [student_ai_enabled, req.user.schoolId]
+      `UPDATE schools SET ${sets.join(', ')} WHERE id = $${params.length} RETURNING student_ai_enabled, student_downloads_enabled`,
+      params
     );
-    res.json({ student_ai_enabled: result.rows[0].student_ai_enabled });
+    res.json({
+      student_ai_enabled: result.rows[0].student_ai_enabled,
+      student_downloads_enabled: result.rows[0].student_downloads_enabled,
+    });
   } catch (err) {
     console.error('[school] PUT /settings error:', err.message);
     res.status(500).json({ error: 'Server error' });

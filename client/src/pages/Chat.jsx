@@ -136,6 +136,7 @@ export default function Chat() {
   const [accentColor, setAccentColor] = useState(ACCENT_COLORS[role] || '#2563eb');
   const [settingsOpen, setSettingsOpen]   = useState(false);
   const [confirmAiOpen, setConfirmAiOpen] = useState(false);
+  const [confirmDownloadsOpen, setConfirmDownloadsOpen] = useState(false);
 
   const messagesRef  = useRef(null);
   const fileInputRef = useRef(null);
@@ -187,13 +188,19 @@ export default function Chat() {
     return () => document.removeEventListener('mousedown', onClick);
   }, [settingsOpen]);
 
-  // ESC closes the AI-enable confirmation modal (treated as cancel).
+  // ESC closes either enable-confirmation modal (treated as cancel). The two
+  // never coexist, so a single shared handler is sufficient.
   useEffect(() => {
-    if (!confirmAiOpen) return;
-    const onKey = (e) => { if (e.key === 'Escape') setConfirmAiOpen(false); };
+    if (!confirmAiOpen && !confirmDownloadsOpen) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        setConfirmAiOpen(false);
+        setConfirmDownloadsOpen(false);
+      }
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [confirmAiOpen]);
+  }, [confirmAiOpen, confirmDownloadsOpen]);
 
   // ESC closes the active header panel modal (Schedule / Invite / etc.).
   // Caveat: when a FileViewerModal is open inside a Library panel, ESC fires
@@ -295,6 +302,26 @@ export default function Chat() {
     }
   }
 
+  // Flip the school's student_downloads_enabled. Same optimistic + revert
+  // pattern as toggleStudentAi.
+  async function toggleStudentDownloads(nextValue) {
+    const prev = user?.student_downloads_enabled;
+    updateUser({ ...user, student_downloads_enabled: nextValue });
+    try {
+      const token = localStorage.getItem('sherlock_token');
+      const res = await fetch('/api/school/settings', {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_downloads_enabled: nextValue }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Save failed (${res.status})`);
+    } catch (err) {
+      console.error('[settings] toggle downloads failed:', err.message);
+      updateUser({ ...user, student_downloads_enabled: prev });
+    }
+  }
+
   async function sendMessage(e) {
     e.preventDefault();
     const text = input.trim();
@@ -393,6 +420,22 @@ export default function Chat() {
                       }}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-150 flex-shrink-0 ${user.student_ai_enabled ? 'bg-[#2563eb]' : 'bg-[#e5e7eb]'}`}>
                       <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-150 ${user.student_ai_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3 gap-3 border-t border-[#e5e7eb]">
+                    <span className="text-[14px] text-[#111827]">{lang === 'GEO' ? 'მოსწავლეებს ფაილების გადმოწერის უფლება' : 'Allow students to download files'}</span>
+                    <button
+                      role="switch"
+                      aria-checked={!!user.student_downloads_enabled}
+                      onClick={() => {
+                        if (user.student_downloads_enabled) {
+                          toggleStudentDownloads(false);
+                        } else {
+                          setConfirmDownloadsOpen(true);
+                        }
+                      }}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-150 flex-shrink-0 ${user.student_downloads_enabled ? 'bg-[#2563eb]' : 'bg-[#e5e7eb]'}`}>
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-150 ${user.student_downloads_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
                     </button>
                   </div>
                 </div>
@@ -606,6 +649,41 @@ export default function Chat() {
                 </button>
                 <button
                   onClick={() => { setConfirmAiOpen(false); toggleStudentAi(true); }}
+                  className="rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] px-4 py-2 text-[14px] text-white font-medium transition-colors duration-150">
+                  {lang === 'GEO' ? 'ჩართვა' : 'Enable'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation modal for OFF→ON of student downloads. */}
+      {confirmDownloadsOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={() => setConfirmDownloadsOpen(false)}>
+          <div
+            className="relative bg-[#ffffff] rounded-[12px] max-w-[480px] w-full shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="p-6">
+              <h2 className="text-[24px] text-[#111827] mb-3" style={{ fontFamily: '"Arbutus Slab", serif' }}>
+                {lang === 'GEO' ? 'ფაილების გადმოწერა მოსწავლეებისთვის?' : 'Allow students to download files?'}
+              </h2>
+              <p className="text-[14px] text-[#6b7280] mb-6 leading-relaxed">
+                {lang === 'GEO'
+                  ? 'გადმოწერის ჩართვა ნიშნავს, რომ მოსწავლეები მიიღებენ თქვენი ფაილების სუფთა ასლებს (წყლის ნიშნის გარეშე), რომელთა შენახვა და გაზიარება შესაძლებელია. ჩართეთ მხოლოდ იმ შემთხვევაში, თუ თქვენი მასალები არ უნდა დარჩეს დაცული სკოლის ფარგლებში.'
+                  : 'Enabling downloads means students get clean copies of your files (no watermark) that can be saved and shared. Only enable this if your materials don\'t need to stay private to the school.'}
+              </p>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setConfirmDownloadsOpen(false)}
+                  className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] hover:bg-[#f9fafb] px-4 py-2 text-[14px] text-[#6b7280] transition-colors duration-150">
+                  {lang === 'GEO' ? 'გაუქმება' : 'Cancel'}
+                </button>
+                <button
+                  onClick={() => { setConfirmDownloadsOpen(false); toggleStudentDownloads(true); }}
                   className="rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] px-4 py-2 text-[14px] text-white font-medium transition-colors duration-150">
                   {lang === 'GEO' ? 'ჩართვა' : 'Enable'}
                 </button>

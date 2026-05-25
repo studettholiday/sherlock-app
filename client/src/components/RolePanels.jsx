@@ -738,6 +738,12 @@ function FileViewerModal({ file, onClose }) {
   const isPinchingRef   = useRef(false);
   const pinchInitialRef = useRef({ distance: 0, scale: 1 });
   const pinchTargetRef  = useRef(1);
+  // Swipe tracking — single-finger start position + a cancellation flag set
+  // when a 2nd finger lands (pinch took over) so we don't fire page-nav
+  // accidentally after a pinch ends.
+  const touchStartXRef    = useRef(null);
+  const touchStartYRef    = useRef(null);
+  const swipeCancelledRef = useRef(false);
 
   // ESC closes the modal, EXCEPT while the page-edit input is open — in that
   // case let the input's own onKeyDown handle the cancel. The dep on
@@ -851,12 +857,21 @@ function FileViewerModal({ file, onClose }) {
 
     function onStart(e) {
       if (e.touches.length === 2) {
+        // Pinch began — either both fingers landed at once, or a 2nd finger
+        // joined an in-progress 1-finger touch. Either way, cancel any
+        // potential swipe and start the pinch.
         isPinchingRef.current = true;
         pinchInitialRef.current = {
           distance: dist(e.touches),
           scale: pdfScale || 1,
         };
         pinchTargetRef.current = pdfScale || 1;
+        swipeCancelledRef.current = true;
+      } else if (e.touches.length === 1) {
+        // Single finger — arm a swipe candidate.
+        swipeCancelledRef.current = false;
+        touchStartXRef.current = e.touches[0].clientX;
+        touchStartYRef.current = e.touches[0].clientY;
       }
     }
 
@@ -871,14 +886,34 @@ function FileViewerModal({ file, onClose }) {
     }
 
     function onEnd(e) {
-      if (!isPinchingRef.current) return;
-      if (e.touches.length < 2) {
+      // Pinch end: existing logic.
+      if (isPinchingRef.current && e.touches.length < 2) {
         isPinchingRef.current = false;
         const finalScale = pinchTargetRef.current;
         setPinchTransform(1);
         if (finalScale !== pdfScale) {
           setPdfScale(finalScale);
         }
+      }
+      // Swipe end: fires only when all fingers lifted, the gesture was never
+      // cancelled (no pinch took over), and a start position was recorded.
+      // Horizontal-dominant swipe past threshold flips the page. Setter-form
+      // setPageNum(n => …) avoids reading a stale pageNum from closure scope.
+      if (!swipeCancelledRef.current && e.touches.length === 0 && touchStartXRef.current !== null) {
+        const endTouch = e.changedTouches && e.changedTouches[0];
+        if (endTouch) {
+          const dx = endTouch.clientX - touchStartXRef.current;
+          const dy = endTouch.clientY - touchStartYRef.current;
+          if (Math.abs(dx) > 50 && Math.abs(dx) > 2 * Math.abs(dy)) {
+            if (dx < 0) {
+              setPageNum(n => Math.min(pageCount, n + 1));
+            } else {
+              setPageNum(n => Math.max(1, n - 1));
+            }
+          }
+        }
+        touchStartXRef.current = null;
+        touchStartYRef.current = null;
       }
     }
 
@@ -893,7 +928,7 @@ function FileViewerModal({ file, onClose }) {
       canvas.removeEventListener('touchend',    onEnd);
       canvas.removeEventListener('touchcancel', onEnd);
     };
-  }, [isPdf, pdfScale]);
+  }, [isPdf, pdfScale, pageCount]);
 
   function commitPageInput() {
     // Escape sets the cancel flag; consume it and bail without changing pageNum.
@@ -999,6 +1034,7 @@ function FileViewerModal({ file, onClose }) {
 // ─── Library: student panel (view-only) ───────────────────────────────────────
 
 function LibraryStudentPanel({ lang }) {
+  const { user } = useAuth();
   const [files, setFiles]   = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]   = useState('');
@@ -1029,6 +1065,30 @@ function LibraryStudentPanel({ lang }) {
     try { return new Date(iso).toLocaleDateString(); } catch { return ''; }
   }
 
+  // Download fires only when the school's student_downloads_enabled is on
+  // (rendered conditionally below). The backend's GET /download/:id has a
+  // matching gate — 404 if disabled — so a stale toggle won't leak files.
+  async function downloadFile(f) {
+    const token = localStorage.getItem('sherlock_token');
+    try {
+      const res = await fetch(`/api/library/download/${f.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`Download failed (${res.status})`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = f.filename || 'file';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
   const blockContext = (e) => e.preventDefault();
 
   if (loading) return <p className="text-[14px] italic text-[#6b7280] text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
@@ -1056,6 +1116,11 @@ function LibraryStudentPanel({ lang }) {
           </div>
           <span className="text-[#6b7280] font-mono flex-shrink-0">{formatSize(f.file_size)}</span>
           <span className="text-[#9ca3af] flex-shrink-0">{formatDate(f.created_at)}</span>
+          {user?.student_downloads_enabled === true && (
+            <button onClick={() => downloadFile(f)}
+              title={lang === 'GEO' ? 'ჩამოტვირთვა' : 'Download'}
+              className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">⬇️</button>
+          )}
         </div>
       ))}
       {viewingFile && <FileViewerModal file={viewingFile} onClose={() => setViewingFile(null)} />}

@@ -254,6 +254,16 @@ router.get('/context', authMiddleware, async (req, res) => {
 // Download file content as text
 router.get('/download/:id', authMiddleware, async (req, res) => {
   try {
+    // Student download gate: when the school has student_downloads_enabled =
+    // false, students get 404 regardless of mime/class access (don't leak the
+    // setting). Owner branch is unaffected. Same 404 response shape as the
+    // not-found / access-denied paths below.
+    if (!req.user.is_owner) {
+      const gate = await getPool().query('SELECT student_downloads_enabled FROM schools WHERE id = $1', [req.user.schoolId]);
+      if (!gate.rows[0] || gate.rows[0].student_downloads_enabled !== true) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+    }
     // Access check: owners always allowed. Students only if (a) the file is
     // PDF or image/* (same view-only restriction as the list + view endpoints
     // — without this, students could download Word/Excel/zip etc. by guessing

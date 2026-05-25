@@ -41,6 +41,9 @@ async function runMigrations() {
     const sql018 = fs.readFileSync(path.join(__dirname, 'migrations/018_school_settings.sql'), 'utf8');
     await pool.query(sql018);
     console.log('[startup] migration 018 complete');
+    const sql019 = fs.readFileSync(path.join(__dirname, 'migrations/019_student_downloads.sql'), 'utf8');
+    await pool.query(sql019);
+    console.log('[startup] migration 019 complete');
   } catch (e) {
     console.error('[startup] migration error:', e.message);
   } finally {
