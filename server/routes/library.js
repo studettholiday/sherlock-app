@@ -248,6 +248,63 @@ router.get('/:fileId/view', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/library/public — list files in any school marked as a public
+// library. Owner-only. Returns the same shape as GET / but without the large
+// content / content_binary columns (listing only). WHERE filters on the
+// is_public_library flag, not a hard-coded school_id, so future curated
+// libraries are picked up automatically.
+router.get('/public', authMiddleware, async (req, res) => {
+  if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const result = await getPool().query(
+      `SELECT lf.id, lf.filename, lf.file_size, lf.mime_type, lf.created_at
+       FROM library_files lf
+       JOIN schools s ON s.id = lf.school_id
+       WHERE s.is_public_library = true
+       ORDER BY lf.created_at DESC`
+    );
+    res.json({ files: result.rows });
+  } catch (err) {
+    console.error('[library] GET /public error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// GET /api/library/public/:fileId/view — view-only stream of a public-library
+// file's bytes, for preview before commit-3's copy action. Owner-only. The
+// SELECT joins schools and requires is_public_library=true on the file's
+// owning school; mismatch or missing file → 404 (same shape, no leak).
+router.get('/public/:fileId/view', authMiddleware, async (req, res) => {
+  if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const fileId = parseInt(req.params.fileId, 10);
+    if (!Number.isInteger(fileId)) return res.status(404).json({ error: 'Not found' });
+
+    const result = await getPool().query(
+      `SELECT lf.filename, lf.mime_type, lf.content_binary
+       FROM library_files lf
+       JOIN schools s ON s.id = lf.school_id
+       WHERE lf.id = $1 AND s.is_public_library = true`,
+      [fileId]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
+
+    const file = result.rows[0];
+    if (!file.content_binary) return res.status(404).json({ error: 'Not found' });
+
+    const safeName = (file.filename || 'file').replace(/[\r\n"]/g, '');
+    const isPdf = file.mime_type === 'application/pdf' || safeName.toLowerCase().endsWith('.pdf');
+    if (isPdf) assertPdfBytes(file.content_binary, `public/view/${fileId}`);
+    res.setHeader('Content-Type', file.mime_type || 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${safeName}"`);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.send(file.content_binary);
+  } catch (err) {
+    console.error('[library] GET /public/:fileId/view error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Get library content for AI context (internal use)
 router.get('/context', authMiddleware, async (req, res) => {
   try {
