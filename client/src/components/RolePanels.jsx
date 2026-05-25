@@ -730,6 +730,11 @@ function FileViewerModal({ file, onClose }) {
   // is committed and PDF.js re-renders at the new resolution.
   const [pinchTransform, setPinchTransform] = useState(1);
   const canvasRef = useRef(null);
+  // Tracks the in-flight PDF.js page.render() task so we can cancel it before
+  // starting a new one. Without this, fast arrow-key spam or pinch-then-zoom
+  // stacks multiple render() calls on the same canvas and PDF.js throws
+  // "Cannot use the same canvas during multiple render() operations".
+  const renderTaskRef = useRef(null);
   // Set by the Escape handler so the unmount-blur doesn't accidentally commit
   // the typed value. Checked-and-cleared in commitPageInput.
   const cancelPageEditRef = useRef(false);
@@ -847,14 +852,39 @@ function FileViewerModal({ file, onClose }) {
         canvas.width = viewport.width;
         canvas.height = viewport.height;
         const ctx = canvas.getContext('2d');
-        await page.render({ canvasContext: ctx, viewport }).promise;
-        if (cancelled) return;
-        drawWatermark(ctx, canvas.width, canvas.height, watermarkText);
+        // Cancel any in-flight render on this canvas before starting a new
+        // one — PDF.js throws if two render() calls overlap on the same
+        // canvas. Triggered by arrow-key spam, page-input mash, or
+        // pinch-then-zoom rapid sequences.
+        if (renderTaskRef.current) {
+          renderTaskRef.current.cancel();
+          renderTaskRef.current = null;
+        }
+        const task = page.render({ canvasContext: ctx, viewport });
+        renderTaskRef.current = task;
+        try {
+          await task.promise;
+          renderTaskRef.current = null;
+          if (cancelled) return;
+          // Watermark runs AFTER the render await resolves — never parallel.
+          drawWatermark(ctx, canvas.width, canvas.height, watermarkText);
+        } catch (err) {
+          if (err?.name === 'RenderingCancelledException') return;
+          throw err;
+        }
       } catch (e) {
-        if (!cancelled) setError(e.message || 'Render failed');
+        if (!cancelled && e?.name !== 'RenderingCancelledException') {
+          setError(e.message || 'Render failed');
+        }
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (renderTaskRef.current) {
+        renderTaskRef.current.cancel();
+        renderTaskRef.current = null;
+      }
+    };
   }, [pdfDoc, pageNum, pdfScale, watermarkText]);
 
   // Pinch-to-zoom on the PDF canvas (touch devices only). React's synthetic
