@@ -195,6 +195,17 @@ export default function Chat() {
     return () => window.removeEventListener('keydown', onKey);
   }, [confirmAiOpen]);
 
+  // ESC closes the active header panel modal (Schedule / Invite / etc.).
+  // Caveat: when a FileViewerModal is open inside a Library panel, ESC fires
+  // both handlers and closes both. Acceptable for v1 — re-open the panel from
+  // the header button if needed.
+  useEffect(() => {
+    if (!activePanel) return;
+    const onKey = (e) => { if (e.key === 'Escape') setActivePanel(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [activePanel]);
+
   useEffect(() => {
     setMessages([{ role: 'assistant', content: getGreeting(role, lang, user?.schoolName || '', '') }]);
     setInput('');
@@ -466,14 +477,8 @@ export default function Chat() {
           );
         })()}
 
-        {/* Messages + active panel */}
+        {/* Messages — header panels now render as a modal overlay (below). */}
         <div ref={messagesRef} className="flex-1 overflow-y-auto px-4 py-4" style={{ fontSize: 'clamp(13px, 3.5vw, 16px)', minHeight: 0 }}>
-          {activePanel && (
-            <div className="mb-4">
-              <RolePanel role={role} panel={activePanel} onClose={() => setActivePanel(null)}
-                libraryProps={{ libraryFiles, onAddFile: addLibraryFile, onRemoveFile: removeLibraryFile, orgName: user?.schoolName || '', orgNameGenitive: '' }} lang={lang} />
-            </div>
-          )}
           {messages.map((msg, i) => (
             <MessageBubble key={i} message={msg} theme={theme} />
           ))}
@@ -557,6 +562,23 @@ export default function Chat() {
         </form>
         )}
       </div>
+
+      {/* Header panel modal — Schedule / Invite / Edit Schedule / Students / Files.
+          The wrapper is just a sizing/scroll container; RolePanel already provides
+          its own white card + ✕ close header, so nesting another card would double-up. */}
+      {activePanel && (
+        <div
+          className="fixed inset-0 z-[55] flex items-start justify-center p-4 pt-16"
+          style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={() => setActivePanel(null)}>
+          <div
+            className="relative w-full max-w-[600px] max-h-[90vh] overflow-auto"
+            onClick={(e) => e.stopPropagation()}>
+            <RolePanel role={role} panel={activePanel} onClose={() => setActivePanel(null)}
+              libraryProps={{ libraryFiles, onAddFile: addLibraryFile, onRemoveFile: removeLibraryFile, orgName: user?.schoolName || '', orgNameGenitive: '' }} lang={lang} />
+          </div>
+        </div>
+      )}
 
       {/* Confirmation modal for OFF→ON of student AI. */}
       {confirmAiOpen && (
