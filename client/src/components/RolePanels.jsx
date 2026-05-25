@@ -759,6 +759,30 @@ function FileViewerModal({ file, onClose }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose, editingPage]);
 
+  // Arrow-key page nav for PDFs. Active only when a PDF is loaded inside the
+  // viewer. Ignores keystrokes whose target is a typing surface (input,
+  // textarea, or contenteditable) so the page-jump input and any other text
+  // fields keep their native arrow behavior. Setter-form setPageNum avoids
+  // needing pageNum in deps and matches the existing Prev/Next + swipe
+  // handlers. ESC is handled by its own effect above — independent listener.
+  useEffect(() => {
+    if (!isPdf || !pdfDoc) return;
+    const onKey = (e) => {
+      const t = e.target;
+      if (!t) return;
+      const tag = t.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (t.isContentEditable) return;
+      if (e.key === 'ArrowRight') {
+        setPageNum(n => Math.min(pageCount, n + 1));
+      } else if (e.key === 'ArrowLeft') {
+        setPageNum(n => Math.max(1, n - 1));
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isPdf, pdfDoc, pageCount]);
+
   // Fetch the PDF bytes once with the bearer token and hand the arrayBuffer
   // to PDF.js. (Image support was removed — PDFs only.)
   useEffect(() => {
