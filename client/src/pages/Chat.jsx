@@ -562,7 +562,7 @@ export default function Chat() {
         {(user?.is_owner || user?.student_ai_enabled === true) && (
         <form
           onSubmit={sendMessage}
-          className={`flex items-end gap-2 px-4 py-2 sm:py-3 border-t ${s.footerBorder} flex-shrink-0`}
+          className={`px-4 py-2 sm:py-3 border-t ${s.footerBorder} flex-shrink-0`}
         >
           <input
             ref={fileInputRef}
@@ -571,37 +571,43 @@ export default function Chat() {
             onChange={handleFileSelect}
             className="hidden"
           />
-          <button
-            type="button"
-            title="Attach document for this conversation only (.pdf, .txt, .md) — not saved to Library"
-            onClick={() => fileInputRef.current?.click()}
-            style={{ minHeight: 44, minWidth: 44 }}
-            className={`px-3 py-2 rounded-md text-sm flex-shrink-0 transition-colors duration-150 ${
-              attachedFiles.length > 0
-                ? PANEL_ACTIVE_CLS[role]
-                : 'bg-[#ffffff] border border-[#e5e7eb] text-[#111827] hover:bg-[#f9fafb]'
-            }`}
+          <div
+            className="bg-[#ffffff] border border-[#e5e7eb] rounded-[24px] p-3 flex flex-col gap-2"
+            style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
           >
-            📎
-          </button>
-          <textarea
-            rows={1}
-            placeholder={lang === 'GEO' ? 'შეიყვანეთ შეტყობინება...' : 'Type a message…'}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) sendMessage(e); }}
-            onFocus={() => setTimeout(() => messagesRef.current?.scrollTo({ top: messagesRef.current.scrollHeight, behavior: 'smooth' }), 300)}
-            className={`flex-1 resize-none rounded-md text-[16px] focus:outline-none ${theme.ring} focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] max-h-32 ${s.inputCls}`}
-            style={{ padding: '10px 14px' }}
-          />
-          <button
-            type="submit"
-            disabled={loading || !input.trim()}
-            style={{ minHeight: 44, minWidth: 44 }}
-            className={`px-4 py-2 rounded-md text-white text-sm font-medium disabled:opacity-40 transition-colors duration-150 ${theme.sendBtn}`}
-          >
-            {lang === 'GEO' ? 'გაგზავნა' : 'Send'}
-          </button>
+            <textarea
+              rows={1}
+              placeholder={lang === 'GEO' ? 'შეიყვანეთ შეტყობინება...' : 'Type a message…'}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) sendMessage(e); }}
+              onFocus={() => setTimeout(() => messagesRef.current?.scrollTo({ top: messagesRef.current.scrollHeight, behavior: 'smooth' }), 300)}
+              className="w-full resize-none bg-transparent border-0 outline-none focus:outline-none focus:ring-0 text-[16px] text-[#111827] placeholder-[#9ca3af] max-h-32"
+              style={{ fieldSizing: 'content' }}
+            />
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                title="Attach document for this conversation only (.pdf, .txt, .md) — not saved to Library"
+                onClick={() => fileInputRef.current?.click()}
+                className="h-8 w-8 rounded-full flex items-center justify-center bg-transparent hover:bg-[#f3f4f6] text-[#6b7280] transition-colors duration-150"
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+              </button>
+              <button
+                type="submit"
+                disabled={loading || !input.trim()}
+                aria-label={lang === 'GEO' ? 'გაგზავნა' : 'Send'}
+                className="h-8 w-8 rounded-full flex items-center justify-center bg-[#2563eb] text-white hover:bg-[#1d4ed8] disabled:bg-[#e5e7eb] disabled:text-[#9ca3af] disabled:cursor-not-allowed transition-colors duration-150"
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 19V5M5 12l7-7 7 7"/>
+                </svg>
+              </button>
+            </div>
+          </div>
         </form>
         )}
       </div>
