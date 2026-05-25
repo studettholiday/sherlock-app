@@ -257,11 +257,16 @@ router.get('/public', authMiddleware, async (req, res) => {
   if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   try {
     const result = await getPool().query(
-      `SELECT lf.id, lf.filename, lf.file_size, lf.mime_type, lf.created_at
+      `SELECT lf.id, lf.filename, lf.file_size, lf.mime_type, lf.created_at,
+              EXISTS (
+                SELECT 1 FROM library_files own
+                WHERE own.school_id = $1 AND own.filename = lf.filename
+              ) AS copied
        FROM library_files lf
        JOIN schools s ON s.id = lf.school_id
        WHERE s.is_public_library = true
-       ORDER BY lf.created_at DESC`
+       ORDER BY lf.created_at DESC`,
+      [req.user.schoolId]
     );
     res.json({ files: result.rows });
   } catch (err) {
@@ -302,6 +307,60 @@ router.get('/public/:fileId/view', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('[library] GET /public/:fileId/view error:', err.message);
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/library/public/:fileId/copy — copy a public-library file into the
+// requester's school. Owner-only. Transactional: SELECT source (must be in a
+// public-library school), check duplicate by filename within the requester's
+// school, then INSERT. 404 if source isn't public; 409 with existing_id if a
+// same-filename row already exists in the requester's library.
+router.post('/public/:fileId/copy', authMiddleware, async (req, res) => {
+  if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
+  const fileId = parseInt(req.params.fileId, 10);
+  if (!Number.isInteger(fileId)) return res.status(404).json({ error: 'Not found' });
+
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const src = await client.query(
+      `SELECT lf.filename, lf.mime_type, lf.file_size, lf.content_binary, lf.content
+       FROM library_files lf
+       JOIN schools s ON s.id = lf.school_id
+       WHERE lf.id = $1 AND s.is_public_library = true`,
+      [fileId]
+    );
+    if (src.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Not found' });
+    }
+    const source = src.rows[0];
+
+    const dup = await client.query(
+      'SELECT id FROM library_files WHERE school_id = $1 AND filename = $2',
+      [req.user.schoolId, source.filename]
+    );
+    if (dup.rows.length > 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Already copied', existing_id: dup.rows[0].id });
+    }
+
+    const ins = await client.query(
+      `INSERT INTO library_files (school_id, filename, file_path, file_size, mime_type, uploaded_by, content, content_binary)
+       VALUES ($1, $2, '', $3, $4, $5, $6, $7)
+       RETURNING id, filename, file_size`,
+      [req.user.schoolId, source.filename, source.file_size, source.mime_type, req.user.userId, source.content, source.content_binary]
+    );
+    await client.query('COMMIT');
+    res.status(201).json(ins.rows[0]);
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch (_) { /* ignore */ }
+    console.error('[library] POST /public/:fileId/copy error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  } finally {
+    client.release();
   }
 });
 

@@ -438,6 +438,11 @@ export default function Chat() {
                       <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-150 ${user.student_downloads_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
                     </button>
                   </div>
+                  <button
+                    onClick={() => { setSettingsOpen(false); setActivePanel('public-library'); }}
+                    className="w-full text-left px-4 py-3 border-t border-[#e5e7eb] text-[14px] text-[#111827] hover:bg-[#f9fafb] transition-colors duration-150">
+                    {lang === 'GEO' ? 'საჯარო ბიბლიოთეკის დათვალიერება' : 'Browse Public Library'}
+                  </button>
                 </div>
               )}
             </div>

@@ -48,6 +48,7 @@ const PANEL_TITLES = {
   'schedule-editor':   'Edit Schedule',
   'students':          'Students',
   'library':           'Files',
+  'public-library':    'Public Library',
   'knowledge-library': 'Knowledge Library',
 };
 
@@ -57,6 +58,7 @@ const GEO_PANEL_TITLES = {
   'schedule-editor':   'განრიგის რედაქტირება',
   'students':          'მოსწავლეები',
   'library':           'ფაილები',
+  'public-library':    'საჯარო ბიბლიოთეკა',
   'knowledge-library': 'ცოდნის ბიბლიოთეკა',
 };
 
@@ -720,7 +722,7 @@ function drawWatermark(ctx, w, h, text) {
   ctx.restore();
 }
 
-function FileViewerModal({ file, onClose }) {
+function FileViewerModal({ file, onClose, viewUrl }) {
   const { user } = useAuth();
   const watermarkText = `${user?.name || user?.email || 'viewer'} — ${user?.email || ''}`;
   const isPdf = file?.mime_type === 'application/pdf';
@@ -806,7 +808,7 @@ function FileViewerModal({ file, onClose }) {
         setLoading(true);
         setError('');
         const token = localStorage.getItem('sherlock_token');
-        const res = await fetch(`/api/library/${file.id}/view`, {
+        const res = await fetch(viewUrl || `/api/library/${file.id}/view`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) throw new Error(`Couldn't load file (${res.status})`);
@@ -844,7 +846,7 @@ function FileViewerModal({ file, onClose }) {
     return () => {
       cancelled = true;
     };
-  }, [file?.id, isPdf]);
+  }, [file?.id, isPdf, viewUrl]);
 
   // Render the current PDF page to canvas at the user-controlled scale, then
   // bake the watermark. Re-runs on page change or zoom change.
@@ -1186,6 +1188,112 @@ function LibraryStudentPanel({ lang }) {
         </div>
       ))}
       {viewingFile && <FileViewerModal file={viewingFile} onClose={() => setViewingFile(null)} />}
+    </div>
+  );
+}
+
+// PublicLibraryPanel — browse curated public-library files and copy them into
+// the owner's school library. Triggered by the "Browse Public Library" item
+// in Chat.jsx's three-dot dropdown. Owner-only by virtue of the dropdown
+// gate. Uses the new GET /api/library/public list + POST /public/:id/copy
+// endpoints. Preview goes through FileViewerModal pointed at /public/:id/view.
+function PublicLibraryPanel({ lang }) {
+  const [files, setFiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [viewingFile, setViewingFile] = useState(null);
+  const [copyingId, setCopyingId] = useState(null);
+
+  async function load() {
+    const token = localStorage.getItem('sherlock_token');
+    try {
+      const res = await fetch('/api/library/public?t=' + Date.now(), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+      setFiles(data.files || []);
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    }
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+
+  function formatSize(bytes) {
+    if (!bytes) return '—';
+    if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    return (bytes / 1024).toFixed(1) + ' KB';
+  }
+
+  async function copyToMyLibrary(f) {
+    setCopyingId(f.id);
+    setError('');
+    const token = localStorage.getItem('sherlock_token');
+    try {
+      const res = await fetch(`/api/library/public/${f.id}/copy`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      // 409 (already copied) is treated as success — mark the row as copied
+      // so the button disables, no scary error shown to the user.
+      if (res.status === 409 || res.ok) {
+        setFiles(prev => prev.map(x => x.id === f.id ? { ...x, copied: true } : x));
+      } else {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Copy failed (${res.status})`);
+      }
+    } catch (e) {
+      setError(e.message);
+    }
+    setCopyingId(null);
+  }
+
+  if (loading) {
+    return <p className="text-[14px] italic text-[#6b7280] text-center py-4">
+      {lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}
+    </p>;
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto min-h-0 space-y-2">
+        {error && <p className="text-[14px] text-[#dc2626]">{error}</p>}
+        {files.length === 0 && !error && (
+          <p className="text-[14px] italic text-[#6b7280] text-center py-2">
+            {lang === 'GEO' ? 'საჯარო ბიბლიოთეკა ცარიელია.' : 'The public library is empty.'}
+          </p>
+        )}
+        {files.map(f => (
+          <div key={f.id} className="flex items-center gap-2 text-[13px] py-1.5 border-b border-[#e5e7eb] hover:bg-[#fafafa] transition-colors duration-150">
+            <span className="text-[#111827] flex-1 min-w-0 truncate">{f.filename || 'Untitled'}</span>
+            <span className="text-[#6b7280] font-mono flex-shrink-0">{formatSize(f.file_size)}</span>
+            <button onClick={() => setViewingFile(f)}
+              title={lang === 'GEO' ? 'ნახვა' : 'View'}
+              className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-2 py-0.5 text-[12px] transition-colors duration-150">
+              {lang === 'GEO' ? 'ნახვა' : 'View'}
+            </button>
+            <button onClick={() => copyToMyLibrary(f)}
+              disabled={f.copied || copyingId === f.id}
+              title={lang === 'GEO' ? 'დამატება ჩემს ბიბლიოთეკაში' : 'Add to my library'}
+              className="rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] disabled:bg-[#e5e7eb] disabled:text-[#9ca3af] disabled:cursor-not-allowed text-white flex-shrink-0 px-2 py-0.5 text-[12px] font-medium transition-colors duration-150">
+              {f.copied
+                ? (lang === 'GEO' ? 'დამატებულია' : 'Added')
+                : copyingId === f.id
+                  ? (lang === 'GEO' ? 'ემატება…' : 'Adding…')
+                  : (lang === 'GEO' ? '+ დამატება' : '+ Add')}
+            </button>
+          </div>
+        ))}
+      </div>
+      {viewingFile && (
+        <FileViewerModal
+          file={viewingFile}
+          viewUrl={`/api/library/public/${viewingFile.id}/view`}
+          onClose={() => setViewingFile(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1579,6 +1687,7 @@ function panelContent(role, panel, libraryProps, lang) {
     case 'schedule-editor':   return <ScheduleEditorPanel lang={lang} />;
     case 'students':          return <StudentsPanel lang={lang} />;
     case 'library':           return <LibraryPanelDispatch lang={lang} />;
+    case 'public-library':    return <PublicLibraryPanel lang={lang} />;
     case 'knowledge-library': return <KnowledgeLibraryPanel role={role} lang={lang} {...(libraryProps ?? {})} />;
     default:                  return null;
   }
