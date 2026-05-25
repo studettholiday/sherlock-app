@@ -222,4 +222,25 @@ router.put('/students/:userId/classes', authMiddleware, async (req, res) => {
   }
 });
 
+// PUT /api/school/settings — owner-only school settings update. Currently
+// supports a single field (student_ai_enabled). Validated as a strict
+// boolean. Returns the new persisted value.
+router.put('/settings', authMiddleware, async (req, res) => {
+  if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
+  const { student_ai_enabled } = req.body || {};
+  if (typeof student_ai_enabled !== 'boolean') {
+    return res.status(400).json({ error: 'student_ai_enabled must be a boolean' });
+  }
+  try {
+    const result = await getPool().query(
+      'UPDATE schools SET student_ai_enabled = $1 WHERE id = $2 RETURNING student_ai_enabled',
+      [student_ai_enabled, req.user.schoolId]
+    );
+    res.json({ student_ai_enabled: result.rows[0].student_ai_enabled });
+  } catch (err) {
+    console.error('[school] PUT /settings error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;

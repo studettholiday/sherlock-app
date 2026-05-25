@@ -120,7 +120,7 @@ const ACCENT_COLORS = {
 };
 
 export default function Chat() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const lang = localStorage.getItem('sherlock_lang') === 'ka' ? 'GEO' : 'EN';
 
   const role = user?.role || 'student';
@@ -134,10 +134,13 @@ export default function Chat() {
   const [input, setInput]     = useState('');
   const [loading, setLoading] = useState(false);
   const [accentColor, setAccentColor] = useState(ACCENT_COLORS[role] || '#2563eb');
+  const [settingsOpen, setSettingsOpen]   = useState(false);
+  const [confirmAiOpen, setConfirmAiOpen] = useState(false);
 
   const messagesRef  = useRef(null);
   const fileInputRef = useRef(null);
   const pushInitRef  = useRef(false);
+  const settingsRef  = useRef(null);
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [libraryFiles, setLibraryFiles]   = useState([]);
   const s = CHAT_STYLES['glass'];
@@ -171,6 +174,26 @@ export default function Chat() {
     if (!token) return;
     registerServiceWorker().then(() => requestPermissionAndSubscribe(token));
   }, [user]);
+
+  // Close the settings dropdown when clicking outside it.
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const onClick = (e) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target)) {
+        setSettingsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [settingsOpen]);
+
+  // ESC closes the AI-enable confirmation modal (treated as cancel).
+  useEffect(() => {
+    if (!confirmAiOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') setConfirmAiOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [confirmAiOpen]);
 
   useEffect(() => {
     setMessages([{ role: 'assistant', content: getGreeting(role, lang, user?.schoolName || '', '') }]);
@@ -236,6 +259,28 @@ export default function Chat() {
       setMessages(prev => [...prev, { role: 'assistant', content: `📄 "${file.name}" ${lang === 'GEO' ? 'წაკითხულია. შეგიძლიათ კითხვები დასვათ.' : 'loaded. Ask me anything about it!'}` }]);
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: lang === 'GEO' ? 'ფაილი ვერ წავიკითხე.' : 'Sorry, I could not read that file.' }]);
+    }
+  }
+
+  // Flip the school's student_ai_enabled. Optimistic: update local user
+  // state immediately, revert on server error. OFF→ON goes through the
+  // confirmation modal (callers handle that); this fn assumes the decision
+  // has been made.
+  async function toggleStudentAi(nextValue) {
+    const prev = user?.student_ai_enabled;
+    updateUser({ ...user, student_ai_enabled: nextValue });
+    try {
+      const token = localStorage.getItem('sherlock_token');
+      const res = await fetch('/api/school/settings', {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_ai_enabled: nextValue }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Save failed (${res.status})`);
+    } catch (err) {
+      console.error('[settings] toggle failed:', err.message);
+      updateUser({ ...user, student_ai_enabled: prev });
     }
   }
 
@@ -314,6 +359,34 @@ export default function Chat() {
           <h1 className="text-[18px] font-semibold text-[#111827]">Sherlock</h1>
           {user?.schoolName && (
             <span className="hidden sm:inline text-[14px] font-normal text-[#6b7280] ml-0.5">{user.schoolName}</span>
+          )}
+          {user?.is_owner && (
+            <div ref={settingsRef} className="relative">
+              <button
+                onClick={() => setSettingsOpen(o => !o)}
+                aria-label="Settings"
+                className="rounded-md px-2 py-1 text-[#6b7280] hover:bg-[#f9fafb] text-[16px] leading-none transition-colors duration-150">⋯</button>
+              {settingsOpen && (
+                <div className="absolute left-0 top-full mt-1 w-72 bg-[#ffffff] border border-[#e5e7eb] rounded-[8px] shadow-[0_4px_12px_rgba(0,0,0,0.08)] z-[55]">
+                  <div className="flex items-center justify-between px-4 py-3 gap-3">
+                    <span className="text-[14px] text-[#111827]">{lang === 'GEO' ? 'AI ჩატი მოსწავლეებისთვის' : 'AI chat for students'}</span>
+                    <button
+                      role="switch"
+                      aria-checked={!!user.student_ai_enabled}
+                      onClick={() => {
+                        if (user.student_ai_enabled) {
+                          toggleStudentAi(false);
+                        } else {
+                          setConfirmAiOpen(true);
+                        }
+                      }}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-150 flex-shrink-0 ${user.student_ai_enabled ? 'bg-[#2563eb]' : 'bg-[#e5e7eb]'}`}>
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-150 ${user.student_ai_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           <div className="ml-auto flex items-center gap-2">
@@ -437,7 +510,8 @@ export default function Chat() {
           </div>
         )}
 
-        {/* Input */}
+        {/* Input — hidden for students when the owner has disabled student AI. */}
+        {(user?.is_owner || user?.student_ai_enabled === true) && (
         <form
           onSubmit={sendMessage}
           className={`flex items-end gap-2 px-4 py-2 sm:py-3 border-t ${s.footerBorder} flex-shrink-0`}
@@ -481,7 +555,43 @@ export default function Chat() {
             {lang === 'GEO' ? 'გაგზავნა' : 'Send'}
           </button>
         </form>
+        )}
       </div>
+
+      {/* Confirmation modal for OFF→ON of student AI. */}
+      {confirmAiOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={() => setConfirmAiOpen(false)}>
+          <div
+            className="relative bg-[#ffffff] rounded-[12px] max-w-[480px] w-full shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="p-6">
+              <h2 className="text-[24px] text-[#111827] mb-3" style={{ fontFamily: '"Arbutus Slab", serif' }}>
+                {lang === 'GEO' ? 'ჩართოთ AI ჩატი მოსწავლეებისთვის?' : 'Enable AI chat for students?'}
+              </h2>
+              <p className="text-[14px] text-[#6b7280] mb-6 leading-relaxed">
+                {lang === 'GEO'
+                  ? 'AI შეიძლება დაეხმაროს სწავლაში, მაგრამ მასზე გადაჭარბებულმა დამოკიდებულებამ შეიძლება გავლენა იქონიოს მოსწავლეების დამოუკიდებელ აზროვნებასა და პრობლემების გადაჭრის უნარებზე. იფიქრეთ, როგორ ჯდება ეს თქვენს სასწავლო ფილოსოფიაში.'
+                  : 'AI can support learning, but over-reliance may affect students\' independent reasoning and problem-solving skills. Consider how it fits your teaching philosophy.'}
+              </p>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setConfirmAiOpen(false)}
+                  className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] hover:bg-[#f9fafb] px-4 py-2 text-[14px] text-[#6b7280] transition-colors duration-150">
+                  {lang === 'GEO' ? 'გაუქმება' : 'Cancel'}
+                </button>
+                <button
+                  onClick={() => { setConfirmAiOpen(false); toggleStudentAi(true); }}
+                  className="rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] px-4 py-2 text-[14px] text-white font-medium transition-colors duration-150">
+                  {lang === 'GEO' ? 'ჩართვა' : 'Enable'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

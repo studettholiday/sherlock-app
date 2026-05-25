@@ -94,12 +94,12 @@ router.get('/me', async (req, res) => {
   try {
     const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
     const result = await pool.query(
-      'SELECT u.id, u.email, u.role, u.name, u.is_owner, u.school_id, s.name as school_name, s.api_key_encrypted, s.status as school_status FROM users u JOIN schools s ON u.school_id = s.id WHERE u.id = $1',
+      'SELECT u.id, u.email, u.role, u.name, u.is_owner, u.school_id, s.name as school_name, s.api_key_encrypted, s.status as school_status, s.student_ai_enabled FROM users u JOIN schools s ON u.school_id = s.id WHERE u.id = $1',
       [decoded.userId]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     const user = result.rows[0];
-    res.json({ id: user.id, email: user.email, role: user.role, name: user.name, is_owner: user.is_owner, schoolId: user.school_id, schoolName: user.school_name, schoolStatus: user.school_status, hasApiKey: !!user.api_key_encrypted });
+    res.json({ id: user.id, email: user.email, role: user.role, name: user.name, is_owner: user.is_owner, schoolId: user.school_id, schoolName: user.school_name, schoolStatus: user.school_status, hasApiKey: !!user.api_key_encrypted, student_ai_enabled: user.student_ai_enabled });
   } catch (err) {
     res.status(401).json({ error: 'Invalid token' });
   }

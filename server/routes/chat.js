@@ -80,6 +80,21 @@ function buildSystemPrompt(user, mode, libraryFiles, language) {
 router.post('/', authMiddleware, async (req, res) => {
   const user = req.user;
 
+  // Student AI gate: owners are always allowed; students only if the school
+  // has student_ai_enabled = true. Per-request DB read (not JWT-baked) so a
+  // student doesn't need to re-login to feel an owner toggle.
+  if (!user.is_owner) {
+    try {
+      const r = await pool.query('SELECT student_ai_enabled FROM schools WHERE id = $1', [user.schoolId]);
+      if (!r.rows[0] || r.rows[0].student_ai_enabled !== true) {
+        return res.status(403).json({ error: 'AI chat is disabled for students at this school.' });
+      }
+    } catch (err) {
+      console.error('[chat] student AI gate check error:', err.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  }
+
   if (!checkRateLimit(user.userId)) {
     return res.status(429).json({ error: 'Too many messages. Please wait before sending more.' });
   }
