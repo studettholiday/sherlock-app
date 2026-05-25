@@ -725,10 +725,19 @@ function FileViewerModal({ file, onClose }) {
   const [pdfScale, setPdfScale]   = useState(null);
   const [editingPage, setEditingPage] = useState(false);
   const [pageInput, setPageInput]     = useState('');
+  // Pinch-zoom: CSS scale applied to the canvas during a gesture for smooth
+  // GPU-accelerated visual feedback. Resets to 1 on touchend after pdfScale
+  // is committed and PDF.js re-renders at the new resolution.
+  const [pinchTransform, setPinchTransform] = useState(1);
   const canvasRef = useRef(null);
   // Set by the Escape handler so the unmount-blur doesn't accidentally commit
   // the typed value. Checked-and-cleared in commitPageInput.
   const cancelPageEditRef = useRef(false);
+  // Pinch tracking — refs (not state) because touchmove fires synchronously
+  // up to ~60×/sec and React state would cause stale-closure bugs.
+  const isPinchingRef   = useRef(false);
+  const pinchInitialRef = useRef({ distance: 0, scale: 1 });
+  const pinchTargetRef  = useRef(1);
 
   // ESC closes the modal, EXCEPT while the page-edit input is open — in that
   // case let the input's own onKeyDown handle the cancel. The dep on
@@ -818,6 +827,74 @@ function FileViewerModal({ file, onClose }) {
     return () => { cancelled = true; };
   }, [pdfDoc, pageNum, pdfScale, watermarkText]);
 
+  // Pinch-to-zoom on the PDF canvas (touch devices only). React's synthetic
+  // onTouchMove is passive — preventDefault is a no-op there. We use native
+  // addEventListener with passive: false on touchmove so the browser's
+  // default page-zoom gesture is suppressed for 2-finger pinches.
+  //
+  // During the gesture: apply CSS transform: scale to the canvas — smooth
+  // GPU-accelerated visual feedback, no PDF.js re-render mid-pinch.
+  // On touchend: commit the final scale to pdfScale (triggers a fresh PDF.js
+  // render at the new resolution for sharp output) and reset the CSS scale.
+  //
+  // Single-finger touches are left alone so native scrolling still works.
+  useEffect(() => {
+    if (!isPdf) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    function dist(touches) {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function onStart(e) {
+      if (e.touches.length === 2) {
+        isPinchingRef.current = true;
+        pinchInitialRef.current = {
+          distance: dist(e.touches),
+          scale: pdfScale || 1,
+        };
+        pinchTargetRef.current = pdfScale || 1;
+      }
+    }
+
+    function onMove(e) {
+      if (!isPinchingRef.current || e.touches.length !== 2) return;
+      e.preventDefault();
+      const newDist = dist(e.touches);
+      const ratio = newDist / pinchInitialRef.current.distance;
+      const target = Math.max(0.5, Math.min(3, pinchInitialRef.current.scale * ratio));
+      pinchTargetRef.current = target;
+      setPinchTransform(target / pinchInitialRef.current.scale);
+    }
+
+    function onEnd(e) {
+      if (!isPinchingRef.current) return;
+      if (e.touches.length < 2) {
+        isPinchingRef.current = false;
+        const finalScale = pinchTargetRef.current;
+        setPinchTransform(1);
+        if (finalScale !== pdfScale) {
+          setPdfScale(finalScale);
+        }
+      }
+    }
+
+    canvas.addEventListener('touchstart',  onStart, { passive: true });
+    canvas.addEventListener('touchmove',   onMove,  { passive: false });
+    canvas.addEventListener('touchend',    onEnd,   { passive: true });
+    canvas.addEventListener('touchcancel', onEnd,   { passive: true });
+
+    return () => {
+      canvas.removeEventListener('touchstart',  onStart);
+      canvas.removeEventListener('touchmove',   onMove);
+      canvas.removeEventListener('touchend',    onEnd);
+      canvas.removeEventListener('touchcancel', onEnd);
+    };
+  }, [isPdf, pdfScale]);
+
   function commitPageInput() {
     // Escape sets the cancel flag; consume it and bail without changing pageNum.
     if (cancelPageEditRef.current) {
@@ -900,7 +977,17 @@ function FileViewerModal({ file, onClose }) {
                   title="Zoom" />
                 <span className="text-[#6b7280] font-mono w-12 text-right">{Math.round((pdfScale || 1) * 100)}%</span>
               </div>
-              <canvas ref={canvasRef} onContextMenu={blockContext} className="block mx-auto" />
+              <canvas
+                ref={canvasRef}
+                onContextMenu={blockContext}
+                className="block mx-auto"
+                style={{
+                  transform: `scale(${pinchTransform})`,
+                  transformOrigin: 'center center',
+                  transition: 'none',
+                  touchAction: 'pan-x pan-y',
+                }}
+              />
             </div>
           )}
         </div>
