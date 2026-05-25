@@ -33,6 +33,16 @@ async function extractText(buffer, mimetype) {
   return buffer.toString('utf8');
 }
 
+// Defensive: confirm a buffer actually starts with the %PDF signature before
+// streaming it as a PDF download. Catches the class of bug where the wrong
+// column (e.g. extracted text) gets served with Content-Type: application/pdf,
+// producing corrupt files on the client.
+function assertPdfBytes(buffer, context) {
+  if (!buffer || buffer.length < 4) throw new Error(`[${context}] empty buffer`);
+  const sig = buffer.slice(0, 4).toString('ascii');
+  if (sig !== '%PDF') throw new Error(`[${context}] not a PDF, got: ${sig}`);
+}
+
 // Upload file (owner only)
 router.post('/upload', authMiddleware, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
@@ -272,7 +282,7 @@ router.get('/download/:id', authMiddleware, async (req, res) => {
     // not-found) so students can't probe for file_ids they can't reach.
     const sql = req.user.is_owner
       ? 'SELECT filename, content, content_binary, mime_type FROM library_files WHERE id = $1 AND school_id = $2'
-      : `SELECT lf.filename, lf.content, lf.mime_type
+      : `SELECT lf.filename, lf.content, lf.content_binary, lf.mime_type
          FROM library_files lf
          WHERE lf.id = $1 AND lf.school_id = $2
            AND lf.mime_type = 'application/pdf'
@@ -291,14 +301,18 @@ router.get('/download/:id', authMiddleware, async (req, res) => {
     if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
     const file = result.rows[0];
     const safeName = (file.filename || 'file').replace(/[\r\n"]/g, '');
-    // Prefer raw bytes (post-migration uploads). Student SELECT doesn't fetch
-    // content_binary so this branch only fires for owners. Fall back to the
-    // extracted text for legacy .txt/.md rows so they still download. 404 if
-    // neither is present.
+    // Prefer raw bytes (post-migration uploads, available to both owner and
+    // student branches). Fall back to extracted text only when no binary is
+    // stored (legacy .txt/.md rows). 404 if neither is present. The assert
+    // guard catches the class of bug where the wrong column (e.g. extracted
+    // text) would have been served as application/pdf.
     if (file.content_binary) {
-      res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
+      const isPdf = file.mime_type === 'application/pdf' || (file.filename || '').toLowerCase().endsWith('.pdf');
+      if (isPdf) assertPdfBytes(file.content_binary, `download/${req.params.id}`);
+      res.setHeader('Content-Type', file.mime_type || 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`);
-      res.send(file.content_binary);
+      res.setHeader('Content-Length', file.content_binary.length);
+      res.end(file.content_binary);
     } else if (file.content) {
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`);
