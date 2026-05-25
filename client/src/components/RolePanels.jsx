@@ -591,11 +591,16 @@ function LibraryOwnerPanel({ lang }) {
   if (loading) return <p className="text-[14px] italic text-[#6b7280] text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
 
   return (
-    <div className="space-y-2">
-      {error && <p className="text-[14px] text-[#dc2626]">{error}</p>}
-      {files.length === 0 && !error && (
-        <p className="text-[14px] italic text-[#6b7280] text-center py-2">{lang === 'GEO' ? 'ფაილები ჯერ არ არის ატვირთული.' : 'No files uploaded yet.'}</p>
-      )}
+    <div className="flex flex-col h-full">
+      {/* Scrolling middle — error, empty state, and the file list scroll
+          between the fixed header (provided by RolePanel) and the fixed
+          upload footer below. min-h-0 lets flex-1 shrink below content size
+          so the inner overflow-y-auto actually engages. */}
+      <div className="flex-1 overflow-y-auto min-h-0 space-y-2">
+        {error && <p className="text-[14px] text-[#dc2626]">{error}</p>}
+        {files.length === 0 && !error && (
+          <p className="text-[14px] italic text-[#6b7280] text-center py-2">{lang === 'GEO' ? 'ფაილები ჯერ არ არის ატვირთული.' : 'No files uploaded yet.'}</p>
+        )}
       {files.map(f => (
         <Fragment key={f.id}>
           <div className="flex items-center gap-2 text-[13px] py-1.5 border-b border-[#e5e7eb] hover:bg-[#fafafa] transition-colors duration-150">
@@ -665,11 +670,14 @@ function LibraryOwnerPanel({ lang }) {
           )}
         </Fragment>
       ))}
-      <input ref={fileInputRef} type="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" onChange={uploadFile} className="hidden" />
-      <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
-        className="w-full rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] py-2 text-[13px] text-white font-medium transition-colors duration-150 disabled:opacity-40">
-        {uploading ? (lang === 'GEO' ? 'იტვირთება…' : 'Uploading…') : (lang === 'GEO' ? '+ ფაილის ატვირთვა' : '+ Upload File')}
-      </button>
+      </div>
+      <div className="shrink-0 pt-3 border-t border-[#e5e7eb]">
+        <input ref={fileInputRef} type="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" onChange={uploadFile} className="hidden" />
+        <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
+          className="w-full rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] py-2 text-[13px] text-white font-medium transition-colors duration-150 disabled:opacity-40">
+          {uploading ? (lang === 'GEO' ? 'იტვირთება…' : 'Uploading…') : (lang === 'GEO' ? '+ ფაილის ატვირთვა' : '+ Upload File')}
+        </button>
+      </div>
       {viewingFile && <FileViewerModal file={viewingFile} onClose={() => setViewingFile(null)} />}
     </div>
   );
