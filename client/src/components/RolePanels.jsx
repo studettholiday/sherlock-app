@@ -792,6 +792,14 @@ function FileViewerModal({ file, onClose, viewUrl }) {
         setPageNum(n => Math.min(pageCount, n + 1));
       } else if (e.key === 'ArrowLeft') {
         setPageNum(n => Math.max(1, n - 1));
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        // canvas.parentElement is the toolbar+canvas wrapper; walk up to
+        // the first ancestor that actually overflows (the modal panel).
+        let el = canvasRef.current?.parentElement;
+        while (el && el.scrollHeight <= el.clientHeight) el = el.parentElement;
+        if (!el) return;
+        e.preventDefault();
+        el.scrollBy({ top: e.key === 'ArrowDown' ? 80 : -80, behavior: 'auto' });
       }
     };
     window.addEventListener('keydown', onKey);
