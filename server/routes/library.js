@@ -43,6 +43,18 @@ function assertPdfBytes(buffer, context) {
   if (sig !== '%PDF') throw new Error(`[${context}] not a PDF, got: ${sig}`);
 }
 
+// RFC 5987 encoding for filenames in Content-Disposition. Non-ASCII bytes in
+// raw header values get rejected by Railway's edge proxy (HTTP/2 reframing is
+// stricter than HTTP/1.1's obs-text tolerance), producing 502s with
+// x-railway-fallback: true. Browsers prefer `filename*=UTF-8''<percent>` when
+// present; `filename=` stays ASCII as a fallback for ancient clients.
+function buildContentDisposition(disposition, filename) {
+  const safeName = (filename || 'file').replace(/[\r\n"]/g, '');
+  const asciiFallback = safeName.replace(/[^\x20-\x7E]/g, '_');
+  const utf8Encoded = encodeURIComponent(safeName);
+  return `${disposition}; filename="${asciiFallback}"; filename*=UTF-8''${utf8Encoded}`;
+}
+
 // Upload file (owner only)
 router.post('/upload', authMiddleware, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
@@ -239,7 +251,7 @@ router.get('/:fileId/view', authMiddleware, async (req, res) => {
 
     res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
     const safeName = (file.filename || 'file').replace(/[\r\n"]/g, '');
-    res.setHeader('Content-Disposition', `inline; filename="${safeName}"`);
+    res.setHeader('Content-Disposition', buildContentDisposition('inline', file.filename));
     res.setHeader('Cache-Control', 'private, no-store');
     res.send(file.content_binary);
   } catch (err) {
@@ -301,7 +313,7 @@ router.get('/public/:fileId/view', authMiddleware, async (req, res) => {
     const isPdf = file.mime_type === 'application/pdf' || safeName.toLowerCase().endsWith('.pdf');
     if (isPdf) assertPdfBytes(file.content_binary, `public/view/${fileId}`);
     res.setHeader('Content-Type', file.mime_type || 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${safeName}"`);
+    res.setHeader('Content-Disposition', buildContentDisposition('inline', file.filename));
     res.setHeader('Cache-Control', 'private, no-store');
     res.send(file.content_binary);
   } catch (err) {
@@ -426,12 +438,12 @@ router.get('/download/:id', authMiddleware, async (req, res) => {
       const isPdf = file.mime_type === 'application/pdf' || (file.filename || '').toLowerCase().endsWith('.pdf');
       if (isPdf) assertPdfBytes(file.content_binary, `download/${req.params.id}`);
       res.setHeader('Content-Type', file.mime_type || 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`);
+      res.setHeader('Content-Disposition', buildContentDisposition('attachment', file.filename));
       res.setHeader('Content-Length', file.content_binary.length);
       res.end(file.content_binary);
     } else if (file.content) {
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`);
+      res.setHeader('Content-Disposition', buildContentDisposition('attachment', file.filename));
       res.send(file.content);
     } else {
       return res.status(404).json({ error: 'No content available' });
