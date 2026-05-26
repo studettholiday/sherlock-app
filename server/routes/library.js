@@ -62,14 +62,19 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
     return res.status(403).json({ error: 'Forbidden' });
   }
   try {
-    console.log('[library] POST /upload file=%s size=%d schoolId=%s', req.file.originalname, req.file.size, req.user.schoolId);
+    // multer decodes multipart field bytes as Latin-1, so a UTF-8 filename
+    // like "Köhler.pdf" arrives as the Latin-1 view of its UTF-8 bytes
+    // ("KÃ¶hler.pdf"). Round-trip the raw bytes back through UTF-8 before any
+    // logging or INSERT so the DB stores the real name.
+    const originalName = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
+    console.log('[library] POST /upload file=%s size=%d schoolId=%s', originalName, req.file.size, req.user.schoolId);
     const content = await extractText(req.file.buffer, req.file.mimetype);
     // Store raw bytes in content_binary so the view endpoint can serve them
     // back for in-app rendering. RETURNING omits the large content / binary
     // fields so the upload response stays small.
     const result = await getPool().query(
       'INSERT INTO library_files (school_id, filename, file_path, file_size, mime_type, uploaded_by, content, content_binary) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, filename, file_size, mime_type, created_at',
-      [req.user.schoolId, req.file.originalname, '', req.file.size, req.file.mimetype, req.user.userId, content, req.file.buffer]
+      [req.user.schoolId, originalName, '', req.file.size, req.file.mimetype, req.user.userId, content, req.file.buffer]
     );
     console.log('[library] POST /upload inserted id=%s', result.rows[0].id);
     res.json({ file: result.rows[0] });
