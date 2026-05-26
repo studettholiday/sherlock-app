@@ -120,7 +120,7 @@ const ACCENT_COLORS = {
 };
 
 export default function Chat() {
-  const { user, logout, updateUser } = useAuth();
+  const { user, logout, updateUser, selfDelete } = useAuth();
   const lang = localStorage.getItem('sherlock_lang') === 'ka' ? 'GEO' : 'EN';
 
   const role = user?.role || 'student';
@@ -137,6 +137,9 @@ export default function Chat() {
   const [settingsOpen, setSettingsOpen]   = useState(false);
   const [confirmAiOpen, setConfirmAiOpen] = useState(false);
   const [confirmDownloadsOpen, setConfirmDownloadsOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const messagesRef  = useRef(null);
   const fileInputRef = useRef(null);
@@ -191,16 +194,17 @@ export default function Chat() {
   // ESC closes either enable-confirmation modal (treated as cancel). The two
   // never coexist, so a single shared handler is sufficient.
   useEffect(() => {
-    if (!confirmAiOpen && !confirmDownloadsOpen) return;
+    if (!confirmAiOpen && !confirmDownloadsOpen && !confirmDeleteOpen) return;
     const onKey = (e) => {
       if (e.key === 'Escape') {
         setConfirmAiOpen(false);
         setConfirmDownloadsOpen(false);
+        setConfirmDeleteOpen(false);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [confirmAiOpen, confirmDownloadsOpen]);
+  }, [confirmAiOpen, confirmDownloadsOpen, confirmDeleteOpen]);
 
   // ESC closes the active header panel modal (Schedule / Invite / etc.).
   // Caveat: when a FileViewerModal is open inside a Library panel, ESC fires
@@ -398,7 +402,7 @@ export default function Chat() {
           {user?.schoolName && (
             <span className="hidden sm:inline text-[14px] font-normal text-[#6b7280] ml-0.5">{user.schoolName}</span>
           )}
-          {user?.is_owner && (
+          {!!user && (
             <div ref={settingsRef} className="relative">
               <button
                 onClick={() => setSettingsOpen(o => !o)}
@@ -406,42 +410,51 @@ export default function Chat() {
                 className="rounded-md px-2 py-1 text-[#6b7280] hover:bg-[#f9fafb] text-[16px] leading-none transition-colors duration-150">⋯</button>
               {settingsOpen && (
                 <div className="fixed left-4 right-4 top-16 sm:absolute sm:left-0 sm:right-auto sm:top-full sm:mt-1 sm:w-72 bg-[#ffffff] border border-[#e5e7eb] rounded-[8px] shadow-[0_4px_12px_rgba(0,0,0,0.08)] z-[55]">
-                  <div className="flex items-center justify-between px-4 py-3 gap-3">
-                    <span className="text-[14px] text-[#111827]">{lang === 'GEO' ? 'AI ჩატი მოსწავლეებისთვის' : 'AI chat for students'}</span>
-                    <button
-                      role="switch"
-                      aria-checked={!!user.student_ai_enabled}
-                      onClick={() => {
-                        if (user.student_ai_enabled) {
-                          toggleStudentAi(false);
-                        } else {
-                          setConfirmAiOpen(true);
-                        }
-                      }}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-150 flex-shrink-0 ${user.student_ai_enabled ? 'bg-[#2563eb]' : 'bg-[#e5e7eb]'}`}>
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-150 ${user.student_ai_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between px-4 py-3 gap-3 border-t border-[#e5e7eb]">
-                    <span className="text-[14px] text-[#111827]">{lang === 'GEO' ? 'მოსწავლეებს ფაილების გადმოწერის უფლება' : 'Allow students to download files'}</span>
-                    <button
-                      role="switch"
-                      aria-checked={!!user.student_downloads_enabled}
-                      onClick={() => {
-                        if (user.student_downloads_enabled) {
-                          toggleStudentDownloads(false);
-                        } else {
-                          setConfirmDownloadsOpen(true);
-                        }
-                      }}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-150 flex-shrink-0 ${user.student_downloads_enabled ? 'bg-[#2563eb]' : 'bg-[#e5e7eb]'}`}>
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-150 ${user.student_downloads_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                    </button>
-                  </div>
+                  {user?.is_owner && (
+                    <>
+                      <div className="flex items-center justify-between px-4 py-3 gap-3">
+                        <span className="text-[14px] text-[#111827]">{lang === 'GEO' ? 'AI ჩატი მოსწავლეებისთვის' : 'AI chat for students'}</span>
+                        <button
+                          role="switch"
+                          aria-checked={!!user.student_ai_enabled}
+                          onClick={() => {
+                            if (user.student_ai_enabled) {
+                              toggleStudentAi(false);
+                            } else {
+                              setConfirmAiOpen(true);
+                            }
+                          }}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-150 flex-shrink-0 ${user.student_ai_enabled ? 'bg-[#2563eb]' : 'bg-[#e5e7eb]'}`}>
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-150 ${user.student_ai_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between px-4 py-3 gap-3 border-t border-[#e5e7eb]">
+                        <span className="text-[14px] text-[#111827]">{lang === 'GEO' ? 'მოსწავლეებს ფაილების გადმოწერის უფლება' : 'Allow students to download files'}</span>
+                        <button
+                          role="switch"
+                          aria-checked={!!user.student_downloads_enabled}
+                          onClick={() => {
+                            if (user.student_downloads_enabled) {
+                              toggleStudentDownloads(false);
+                            } else {
+                              setConfirmDownloadsOpen(true);
+                            }
+                          }}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-150 flex-shrink-0 ${user.student_downloads_enabled ? 'bg-[#2563eb]' : 'bg-[#e5e7eb]'}`}>
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-150 ${user.student_downloads_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => { setSettingsOpen(false); setActivePanel('public-library'); }}
+                        className="w-full text-left px-4 py-3 border-t border-[#e5e7eb] text-[14px] text-[#111827] hover:bg-[#f9fafb] transition-colors duration-150">
+                        {lang === 'GEO' ? 'საჯარო ბიბლიოთეკის დათვალიერება' : 'Browse Public Library'}
+                      </button>
+                    </>
+                  )}
                   <button
-                    onClick={() => { setSettingsOpen(false); setActivePanel('public-library'); }}
-                    className="w-full text-left px-4 py-3 border-t border-[#e5e7eb] text-[14px] text-[#111827] hover:bg-[#f9fafb] transition-colors duration-150">
-                    {lang === 'GEO' ? 'საჯარო ბიბლიოთეკის დათვალიერება' : 'Browse Public Library'}
+                    onClick={() => { setSettingsOpen(false); setDeleteError(''); setConfirmDeleteOpen(true); }}
+                    className={`w-full text-left px-4 py-3 text-[14px] text-[#dc2626] hover:bg-[#fef2f2] transition-colors duration-150 ${user?.is_owner ? 'border-t border-[#e5e7eb]' : ''}`}>
+                    {lang === 'GEO' ? 'ანგარიშის წაშლა' : 'Delete my account'}
                   </button>
                 </div>
               )}
@@ -697,6 +710,70 @@ export default function Chat() {
                   onClick={() => { setConfirmDownloadsOpen(false); toggleStudentDownloads(true); }}
                   className="rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] px-4 py-2 text-[14px] text-white font-medium transition-colors duration-150">
                   {lang === 'GEO' ? 'ჩართვა' : 'Enable'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Self-delete confirmation. Owner copy warns about cascading deletion
+          of the whole school; student copy clarifies the school is untouched. */}
+      {confirmDeleteOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={() => { if (!deleteLoading) setConfirmDeleteOpen(false); }}>
+          <div
+            className="relative bg-[#ffffff] rounded-[12px] max-w-[480px] w-full shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="p-6">
+              <h2 className="text-[24px] text-[#111827] mb-3" style={{ fontFamily: '"Arbutus Slab", serif' }}>
+                {lang === 'GEO' ? 'ანგარიშის წაშლა?' : 'Delete your account?'}
+              </h2>
+              <p className="text-[14px] text-[#6b7280] mb-3 leading-relaxed">
+                {user?.is_owner
+                  ? (lang === 'GEO'
+                      ? 'თქვენი სკოლა, ბიბლიოთეკა, ცხრილი და ყველა მოსწავლის ანგარიში წაიშლება 21 დღის შემდეგ. ამ ვადაში შეგიძლიათ აღდგენა ხელახალი შესვლით.'
+                      : 'Your school, library, schedule, and all student accounts will be deleted after 21 days. You can recover by signing back in within that window.')
+                  : (lang === 'GEO'
+                      ? 'თქვენი ანგარიში წაიშლება 21 დღის შემდეგ. სკოლის მონაცემები არ შეიცვლება. ამ ვადაში შეგიძლიათ აღდგენა ხელახალი შესვლით.'
+                      : 'Your account will be deleted after 21 days. The school\'s data is not affected. You can recover by signing back in within that window.')}
+              </p>
+              <p className="text-[14px] text-[#6b7280] mb-6 leading-relaxed">
+                {lang === 'GEO'
+                  ? '21 დღის შემდეგ მონაცემები საბოლოოდ წაიშლება და აღდგენა შეუძლებელია.'
+                  : 'After 21 days, all data is permanently deleted and cannot be recovered.'}
+              </p>
+              {deleteError && (
+                <div className="mb-4 rounded-[6px] border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-[13px] text-[#dc2626]">
+                  {deleteError}
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setConfirmDeleteOpen(false)}
+                  disabled={deleteLoading}
+                  className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] hover:bg-[#f9fafb] px-4 py-2 text-[14px] text-[#6b7280] transition-colors duration-150 disabled:opacity-50">
+                  {lang === 'GEO' ? 'გაუქმება' : 'Cancel'}
+                </button>
+                <button
+                  onClick={async () => {
+                    setDeleteLoading(true);
+                    setDeleteError('');
+                    try {
+                      await selfDelete();
+                      window.location.replace('/?signup=1');
+                    } catch (err) {
+                      setDeleteError(err.message);
+                      setDeleteLoading(false);
+                    }
+                  }}
+                  disabled={deleteLoading}
+                  className="rounded-[6px] bg-[#dc2626] hover:bg-[#b91c1c] px-4 py-2 text-[14px] text-white font-medium transition-colors duration-150 disabled:opacity-50">
+                  {deleteLoading
+                    ? (lang === 'GEO' ? 'წაიშლება...' : 'Deleting...')
+                    : (lang === 'GEO' ? 'ანგარიშის წაშლა' : 'Delete account')}
                 </button>
               </div>
             </div>

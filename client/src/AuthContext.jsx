@@ -41,9 +41,11 @@ export function AuthProvider({ children }) {
       fetch('/api/auth/me', {
         headers: { Authorization: `Bearer ${token}` }
       })
-        .then(r => r.json())
-        .then(data => {
-          if (data.id) {
+        .then(async r => ({ status: r.status, data: await r.json() }))
+        .then(({ status, data }) => {
+          if (status === 423 && data?.deleted) {
+            setUser({ recovery_required: true, scope: data.scope, deleted_at: data.deleted_at });
+          } else if (data.id) {
             setUser(data);
             if (data.status === 'pending') startPolling();
           } else {
@@ -67,6 +69,11 @@ export function AuthProvider({ children }) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Login failed');
     localStorage.setItem('sherlock_token', data.token);
+    if (data.recovery_required) {
+      const recoveryUser = { recovery_required: true, scope: data.scope, deleted_at: data.deleted_at };
+      setUser(recoveryUser);
+      return recoveryUser;
+    }
     setUser(data.user);
     if (data.user?.status === 'pending') startPolling();
     return data.user;
@@ -79,11 +86,58 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ schoolName, email, password, apiKey })
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Signup failed');
+    if (!res.ok) {
+      const e = new Error(data.error || 'Signup failed');
+      if (data.recently_deleted) {
+        e.recently_deleted = true;
+        e.available_at = data.available_at;
+      }
+      throw e;
+    }
     localStorage.setItem('sherlock_token', data.token);
     setUser(data.user);
     if (data.user?.status === 'pending') startPolling();
     return data.user;
+  };
+
+  const selfDelete = async () => {
+    const token = localStorage.getItem('sherlock_token');
+    const res = await fetch('/api/auth/self-delete', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'Self-delete failed');
+    }
+    stopPolling();
+    localStorage.removeItem('sherlock_token');
+    setUser(null);
+  };
+
+  const recover = async () => {
+    const token = localStorage.getItem('sherlock_token');
+    const res = await fetch('/api/auth/recover', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Recovery failed');
+    localStorage.setItem('sherlock_token', data.token);
+    setUser(data.user);
+    return data.user;
+  };
+
+  const recoverCancel = async () => {
+    const token = localStorage.getItem('sherlock_token');
+    try {
+      await fetch('/api/auth/recover-cancel', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch (_) { /* stateless on server; ignore */ }
+    localStorage.removeItem('sherlock_token');
+    setUser(null);
   };
 
   const logout = () => {
@@ -96,7 +150,7 @@ export function AuthProvider({ children }) {
   const updateUser = (userData) => setUser(userData);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, logout, updateUser, selfDelete, recover, recoverCancel }}>
       {children}
     </AuthContext.Provider>
   );

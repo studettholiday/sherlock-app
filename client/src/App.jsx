@@ -7,6 +7,7 @@ import JoinWithCode from './pages/JoinWithCode';
 import Chat from './pages/Chat';
 import PendingApproval from './pages/PendingApproval';
 import ResetPassword from './pages/ResetPassword';
+import RecoveryScreen from './pages/RecoveryScreen';
 
 const T = {
   EN: {
@@ -341,7 +342,11 @@ function SignupModal({ lang, onClose }) {
 
 function AppInner() {
   const { user, loading } = useAuth();
-  const [authPage, setAuthPage] = useState('login');
+  // `?signup=1` jumps directly into the signup form (used by RecoveryScreen's
+  // "No, complete deletion" branch to send the user to fresh-account creation).
+  const initialAuthPage = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('signup') === '1'
+    ? 'signup' : 'login';
+  const [authPage, setAuthPage] = useState(initialAuthPage);
   const [lang, setLang] = useState(() => localStorage.getItem('sherlock_lang') || 'EN');
   const [modalOpen, setModalOpen] = useState(false);
   const [chatExpanded, setChatExpanded] = useState(false);
@@ -399,6 +404,10 @@ function AppInner() {
   }, [modalOpen, chatExpanded]);
   const inviteToken = window.location.pathname.startsWith("/invite/") ? window.location.pathname.split("/invite/")[1] : null;
   if (loading) return <div style={{ minHeight: "100vh", background: "#ffffff" }} />;
+
+  // Soft-delete recovery takes precedence over all other routing — including
+  // invite tokens, /chat, /pending — until the user accepts or cancels.
+  if (user?.recovery_required) return <RecoveryScreen />;
 
   const isPending = user && (
     user.schoolStatus === 'pending' ||

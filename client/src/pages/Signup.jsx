@@ -40,7 +40,14 @@ export default function Signup({ onSwitch, onSuccess }) {
       });
       onSuccess();
     } catch (err) {
-      setError(err.message);
+      if (err.recently_deleted && err.available_at) {
+        const date = err.available_at.slice(0, 10);
+        setError(isKa
+          ? `ეს ელ-ფოსტა ცოტა ხნის წინ წაშლილ ანგარიშს ეკუთვნის. ხელახლა გამოყენებადი იქნება ${date}-დან.`
+          : `This email belongs to a recently deleted account. It becomes available again on ${date}.`);
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }
