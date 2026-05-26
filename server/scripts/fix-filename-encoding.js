@@ -2,16 +2,25 @@
 /**
  * fix-filename-encoding.js — one-shot repair for double-encoded library_files
  * filenames. Pre-fix uploads passed multer's Latin-1-decoded originalname
- * straight into Postgres, producing mojibake like "KÃ¶hler.pdf" for any
- * non-ASCII byte. Reverses the encoding using Postgres's convert_to/convert_from
- * pair, inside a transaction guarded by a confirmation prompt.
+ * straight into Postgres, producing mojibake whose exact form depends on the
+ * original character: "Köhler" → "KÃ¶hler" (Ã prefix), em-dash bytes "— " →
+ * "â<80><94>" (â prefix + control bytes), smart quotes similar.
+ *
+ * Detection works by re-running the original corruption in reverse: encode the
+ * stored string's codepoints as Latin-1, decode the resulting bytes as UTF-8.
+ * For genuine mojibake this produces the real filename. For an already-correct
+ * filename the round-trip either equals the original (pure ASCII) or produces
+ * U+FFFD replacement chars (because correctly-encoded chars like "ö" become
+ * single Latin-1 byte 0xF6, which isn't a valid UTF-8 start byte). Both cases
+ * are skipped, so the script is safe to re-run.
+ *
+ * Done in JS rather than SQL because Postgres convert_from raises an error on
+ * invalid UTF-8 sequences — it would crash the SELECT the moment any
+ * correctly-encoded row exists in the table.
  *
  * Usage:
  *   node server/scripts/fix-filename-encoding.js          # preview + prompt
  *   node server/scripts/fix-filename-encoding.js --yes    # skip prompt
- *
- * Idempotent: matches only rows whose filename contains 'Ã' (the c3 byte
- * signature of UTF-8-mistaken-as-Latin-1). Safe to re-run.
  */
 
 const path = require('path');
@@ -47,29 +56,35 @@ async function main() {
   try {
     await client.query('BEGIN');
 
-    // Pair each candidate row with its corrected filename so the operator can
-    // eyeball the change before COMMIT. convert_to(..., 'LATIN1') throws if
-    // any character is outside Latin-1 — in that case the whole SELECT bails,
-    // ROLLBACK runs, and the operator investigates manually.
-    const preview = await client.query(`
-      SELECT id, filename AS before_name,
-             convert_from(convert_to(filename, 'LATIN1'), 'UTF8') AS after_name
+    // Pre-filter: only rows containing any Latin-1 supplement codepoint
+    // (U+0080–U+00FF). Mojibake always produces codepoints in that range, and
+    // pure-ASCII filenames can't be mojibake'd at all.
+    const rows = await client.query(`
+      SELECT id, filename
       FROM library_files
-      WHERE filename LIKE '%Ã%'
+      WHERE filename ~ '[\\x80-\\xff]'
       ORDER BY id
     `);
 
-    if (preview.rows.length === 0) {
-      console.log('No rows match the mojibake signature. Nothing to do.');
+    const candidates = [];
+    for (const r of rows.rows) {
+      const decoded = Buffer.from(r.filename, 'latin1').toString('utf8');
+      if (decoded === r.filename) continue;        // unchanged → not mojibake
+      if (decoded.includes('�')) continue;    // invalid UTF-8 → already correct
+      candidates.push({ id: r.id, before: r.filename, after: decoded });
+    }
+
+    if (candidates.length === 0) {
+      console.log('No mojibake rows found. Nothing to do.');
       await client.query('ROLLBACK');
       return;
     }
 
-    console.log(`Found ${preview.rows.length} candidate row(s):\n`);
-    for (const r of preview.rows) {
-      console.log(`  id=${r.id}`);
-      console.log(`    before: ${r.before_name}`);
-      console.log(`    after : ${r.after_name}`);
+    console.log(`Found ${candidates.length} candidate row(s):\n`);
+    for (const c of candidates) {
+      console.log(`  id=${c.id}`);
+      console.log(`    before: ${c.before}`);
+      console.log(`    after : ${c.after}`);
     }
     console.log('');
 
@@ -82,13 +97,14 @@ async function main() {
       }
     }
 
-    const result = await client.query(`
-      UPDATE library_files
-      SET filename = convert_from(convert_to(filename, 'LATIN1'), 'UTF8')
-      WHERE filename LIKE '%Ã%'
-    `);
+    for (const c of candidates) {
+      await client.query(
+        'UPDATE library_files SET filename = $1 WHERE id = $2',
+        [c.after, c.id]
+      );
+    }
     await client.query('COMMIT');
-    console.log(`Updated ${result.rowCount} row(s).`);
+    console.log(`Updated ${candidates.length} row(s).`);
   } catch (err) {
     try { await client.query('ROLLBACK'); } catch (_) { /* ignore */ }
     throw err;
