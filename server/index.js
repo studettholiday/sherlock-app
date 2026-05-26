@@ -47,6 +47,12 @@ async function runMigrations() {
     const sql020 = fs.readFileSync(path.join(__dirname, 'migrations/020_public_library.sql'), 'utf8');
     await pool.query(sql020);
     console.log('[startup] migration 020 complete');
+    const sql021 = fs.readFileSync(path.join(__dirname, 'migrations/021_fix_fk_cascades.sql'), 'utf8');
+    await pool.query(sql021);
+    console.log('[startup] migration 021 complete');
+    const sql022 = fs.readFileSync(path.join(__dirname, 'migrations/022_soft_delete.sql'), 'utf8');
+    await pool.query(sql022);
+    console.log('[startup] migration 022 complete');
   } catch (e) {
     console.error('[startup] migration error:', e.message);
   } finally {
