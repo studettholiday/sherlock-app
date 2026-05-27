@@ -13,12 +13,14 @@ const JWT_SECRET = process.env.JWT_SECRET || 'sherlock-secret-change-in-producti
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Looks up `email` against (users JOIN schools) and reports its signup-eligibility:
-//   null                          → no row, free to sign up
-//   { exists_but_active: true }   → row exists and isn't soft-deleted → 'Email already registered'
-//   { recently_deleted: true, … } → row exists but is within 21-day grace → 409 payload ready to return
+//   null                              → no row, free to sign up
+//   { recently_deleted: true, … }     → row exists but is within 21-day grace → 409 payload ready to return
+//   { exists_but_active: true }       → verified row exists and isn't soft-deleted → 'Email already registered'
+//   { unverified_takeover: true, … }  → unverified squatter row; caller should run cleanupUnverifiedAccount before INSERT
 async function checkEmailRecentlyDeleted(email) {
   const existing = await pool.query(
-    `SELECT u.deleted_at AS user_deleted_at, s.deleted_at AS school_deleted_at
+    `SELECT u.id AS user_id, u.is_owner, u.school_id, u.email_verified,
+            u.deleted_at AS user_deleted_at, s.deleted_at AS school_deleted_at
      FROM users u JOIN schools s ON u.school_id = s.id
      WHERE u.email = $1`,
     [email]
@@ -26,13 +28,64 @@ async function checkEmailRecentlyDeleted(email) {
   if (existing.rows.length === 0) return null;
   const row = existing.rows[0];
   const dt = row.school_deleted_at || row.user_deleted_at;
-  if (!dt) return { exists_but_active: true };
-  const availDate = new Date(new Date(dt).getTime() + 21 * 24 * 3600 * 1000);
-  return {
-    recently_deleted: true,
-    error: `This email is associated with a recently deleted account. It will be available for new signups after ${availDate.toISOString().slice(0,10)}.`,
-    available_at: availDate.toISOString(),
-  };
+  if (dt) {
+    const availDate = new Date(new Date(dt).getTime() + 21 * 24 * 3600 * 1000);
+    return {
+      recently_deleted: true,
+      error: `This email is associated with a recently deleted account. It will be available for new signups after ${availDate.toISOString().slice(0,10)}.`,
+      available_at: availDate.toISOString(),
+    };
+  }
+  if (row.email_verified === false) {
+    return {
+      unverified_takeover: true,
+      user_id: row.user_id,
+      is_owner: row.is_owner,
+      school_id: row.school_id,
+    };
+  }
+  return { exists_but_active: true };
+}
+
+// Reclaim an email squatted by an unverified signup. The WHERE clause re-checks
+// email_verified=false inside the transaction so a verify-race can't lose work.
+// If the squatter is a school owner, deleting the school cascades to the user
+// (and the school's invites/library_files/etc. per existing FKs).
+async function cleanupUnverifiedAccount({ user_id, is_owner, school_id }) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    if (is_owner) {
+      await client.query(
+        `DELETE FROM schools
+         WHERE id = $1
+           AND deleted_at IS NULL
+           AND EXISTS (
+             SELECT 1 FROM users
+             WHERE id = $2
+               AND email_verified = false
+               AND deleted_at IS NULL
+               AND created_at < NOW() - INTERVAL '0 seconds'
+           )`,
+        [school_id, user_id]
+      );
+    } else {
+      await client.query(
+        `DELETE FROM users
+         WHERE id = $1
+           AND email_verified = false
+           AND deleted_at IS NULL
+           AND created_at < NOW() - INTERVAL '0 seconds'`,
+        [user_id]
+      );
+    }
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 async function sendVerificationEmail(email, token) {
@@ -71,6 +124,7 @@ router.post('/signup', async (req, res) => {
         return res.status(409).json({ error: emailCheck.error, recently_deleted: true, available_at: emailCheck.available_at });
       }
       if (emailCheck?.exists_but_active) return res.status(409).json({ error: 'Email already registered' });
+      if (emailCheck?.unverified_takeover) await cleanupUnverifiedAccount(emailCheck);
       const hash = await bcrypt.hash(password, 12);
       const verificationToken = crypto.randomBytes(32).toString('hex');
       const userResult = await pool.query(
@@ -99,6 +153,7 @@ router.post('/signup', async (req, res) => {
       return res.status(409).json({ error: emailCheck.error, recently_deleted: true, available_at: emailCheck.available_at });
     }
     if (emailCheck?.exists_but_active) return res.status(409).json({ error: 'Email already registered' });
+    if (emailCheck?.unverified_takeover) await cleanupUnverifiedAccount(emailCheck);
     const schoolResult = await pool.query(
       'INSERT INTO schools (name, api_key_encrypted, director_name, phone, website, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
       [schoolName, apiKey || null, directorName || null, phone || null, website || null, 'approved']
@@ -265,6 +320,7 @@ router.post('/invite/accept', async (req, res) => {
       return res.status(409).json({ error: emailCheck.error, recently_deleted: true, available_at: emailCheck.available_at });
     }
     if (emailCheck?.exists_but_active) return res.status(409).json({ error: 'Email already registered' });
+    if (emailCheck?.unverified_takeover) await cleanupUnverifiedAccount(emailCheck);
     const hash = await bcrypt.hash(password, 12);
     const verificationToken = crypto.randomBytes(32).toString('hex');
     const userResult = await pool.query(
