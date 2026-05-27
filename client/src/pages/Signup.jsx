@@ -33,11 +33,15 @@ export default function Signup({ onSwitch, onSuccess }) {
     setError('');
     setLoading(true);
     try {
-      await signup(form.schoolName, form.email, form.password, '', {
+      const result = await signup(form.schoolName, form.email, form.password, '', {
         directorName: form.directorName,
         phone: form.phone,
         website: form.website,
       });
+      if (result?.verification_required) {
+        window.location.href = `/check-your-email?email=${encodeURIComponent(result.email)}`;
+        return;
+      }
       onSuccess();
     } catch (err) {
       if (err.recently_deleted && err.available_at) {

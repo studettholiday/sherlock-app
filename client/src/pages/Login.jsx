@@ -13,18 +13,39 @@ export default function Login({ onSwitch, onSuccess }) {
   const [forgotMode, setForgotMode] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotStatus, setForgotStatus] = useState(''); // '' | 'loading' | 'sent' | 'error'
+  const [unverifiedEmail, setUnverifiedEmail] = useState('');
+  const [resendStatus, setResendStatus] = useState(''); // '' | 'loading' | 'sent'
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setUnverifiedEmail('');
     setLoading(true);
     try {
       await login(email, password);
       onSuccess();
     } catch (err) {
-      setError(err.message);
+      if (err.email_verified === false) {
+        setUnverifiedEmail(err.email || email);
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setResendStatus('loading');
+    try {
+      await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: unverifiedEmail }),
+      });
+      setResendStatus('sent');
+    } catch {
+      setResendStatus('');
     }
   };
 
@@ -62,6 +83,24 @@ export default function Login({ onSwitch, onSuccess }) {
         {error && (
           <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '12px', marginBottom: '20px', color: '#dc2626', fontSize: '14px' }}>
             {error}
+          </div>
+        )}
+
+        {unverifiedEmail && (
+          <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '6px', padding: '12px', marginBottom: '20px', color: '#92400e', fontSize: '14px' }}>
+            <p style={{ margin: 0, marginBottom: '8px' }}>{t(lang, 'emailNotVerified')}</p>
+            {resendStatus === 'sent' ? (
+              <p style={{ margin: 0, color: '#10b981' }}>{t(lang, 'verifyResendSent')}</p>
+            ) : (
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                disabled={resendStatus === 'loading'}
+                style={{ background: 'none', border: 'none', padding: 0, color: '#2563eb', cursor: resendStatus === 'loading' ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: '500', textDecoration: 'underline' }}
+              >
+                {resendStatus === 'loading' ? t(lang, 'sending') : t(lang, 'resendVerification')}
+              </button>
+            )}
           </div>
         )}
 

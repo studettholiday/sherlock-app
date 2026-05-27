@@ -67,7 +67,14 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ email, password })
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Login failed');
+    if (!res.ok) {
+      const e = new Error(data.error || 'Login failed');
+      if (data.email_verified === false) {
+        e.email_verified = false;
+        e.email = data.email;
+      }
+      throw e;
+    }
     localStorage.setItem('sherlock_token', data.token);
     if (data.recovery_required) {
       const recoveryUser = { recovery_required: true, scope: data.scope, deleted_at: data.deleted_at };
@@ -93,6 +100,9 @@ export function AuthProvider({ children }) {
         e.available_at = data.available_at;
       }
       throw e;
+    }
+    if (data.verification_required) {
+      return { verification_required: true, email: data.email };
     }
     localStorage.setItem('sherlock_token', data.token);
     setUser(data.user);

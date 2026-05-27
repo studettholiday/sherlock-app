@@ -22,6 +22,10 @@ export default function InviteAccept({ token, onSuccess }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to accept invite');
+      if (data.verification_required) {
+        window.location.href = `/check-your-email?email=${encodeURIComponent(data.email)}`;
+        return;
+      }
       localStorage.setItem('sherlock_token', data.token);
       onSuccess(data.user?.role);
     } catch (err) {

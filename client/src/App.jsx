@@ -8,6 +8,8 @@ import Chat from './pages/Chat';
 import PendingApproval from './pages/PendingApproval';
 import ResetPassword from './pages/ResetPassword';
 import RecoveryScreen from './pages/RecoveryScreen';
+import VerifyEmail from './pages/VerifyEmail';
+import CheckYourEmail from './pages/CheckYourEmail';
 
 const T = {
   EN: {
@@ -429,6 +431,10 @@ function AppInner() {
   if (window.location.pathname === '/join') return <JoinWithCode />;
 
   if (window.location.pathname === '/reset-password') return <ResetPassword />;
+
+  if (window.location.pathname === '/verify-email') return <VerifyEmail />;
+
+  if (window.location.pathname === '/check-your-email') return <CheckYourEmail />;
 
   if (window.location.pathname === '/chat') {
     if (!user) return authPage === 'login'
