@@ -1,0 +1,13 @@
+# Force Railway to rebuild the React client on every deploy.
+# Without this, Railway skips the build phase and serves whatever
+# bundle is committed under server/public/ — which is how the auth-
+# verification work ended up not being live after deploy.
+
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npm start"

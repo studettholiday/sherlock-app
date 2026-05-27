@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   build: {
     outDir: '../server/public',
-    emptyOutDir: false,
+    emptyOutDir: true,
   },
   server: {
     port: 5173,

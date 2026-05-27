@@ -2,3 +2,7 @@ node_modules/
 dist/
 server/.env
 server/.env.save
+
+# Vite build output — Railway rebuilds these on every deploy
+server/public/assets/
+server/public/index.html
