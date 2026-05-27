@@ -6,6 +6,7 @@ const { Pool } = require('pg');
 const { Resend } = require('resend');
 const crypto = require('crypto');
 const authMiddleware = require('../middleware/auth');
+const { renderEmail } = require('../lib/emailTemplate');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
 const JWT_SECRET = process.env.JWT_SECRET || 'sherlock-secret-change-in-production';
@@ -178,7 +179,13 @@ router.post('/forgot-password', async (req, res) => {
         from: 'Sherlock <noreply@sherlock.school>',
         to: email,
         subject: 'Reset your Sherlock password',
-        html: `<p>You requested a password reset for your Sherlock account.</p><p><a href="${resetLink}">Click here to reset your password</a></p><p>Or copy this link: ${resetLink}</p><p>This link expires in 1 hour.</p><p>If you didn't request this, you can safely ignore this email.</p>`,
+        html: renderEmail({
+          title: 'Reset your password',
+          bodyHtml: '<p>You requested a password reset for your Sherlock account.</p>',
+          buttonText: 'Reset password',
+          buttonUrl: resetLink,
+          footerNote: "This link expires in 1 hour. Didn't request this? Ignore this email.",
+        }),
       });
     } catch (emailErr) {
       console.error('[forgot-password] email send failed:', emailErr.message);

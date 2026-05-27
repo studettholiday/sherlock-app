@@ -3,6 +3,7 @@ const router = express.Router();
 const { Pool } = require('pg');
 const { Resend } = require('resend');
 const authMiddleware = require('../middleware/auth');
+const { renderEmail, esc } = require('../lib/emailTemplate');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -29,7 +30,13 @@ router.post('/generate', authMiddleware, async (req, res) => {
           from: 'Sherlock <noreply@sherlock.school>',
           to: email,
           subject: `You've been invited to join ${schoolName}`,
-          html: `<p>You've been invited to join <strong>${schoolName}</strong> on Sherlock.</p><p><a href="${inviteUrl}">Click here to accept your invitation</a></p><p>Or copy this link: ${inviteUrl}</p>`,
+          html: renderEmail({
+            title: `You've been invited to ${schoolName}`,
+            bodyHtml: `<p>${esc(schoolName)} has invited you to join Sherlock.</p>`,
+            buttonText: 'Accept invitation',
+            buttonUrl: inviteUrl,
+            footerNote: "Didn't request this? Ignore this email.",
+          }),
         });
         console.log('[invite] email sent result:', JSON.stringify(emailResult));
       } catch (emailErr) {
