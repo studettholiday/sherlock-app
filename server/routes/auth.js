@@ -106,7 +106,7 @@ async function sendVerificationEmail(email, token) {
 
 // School signup (standard) or invite-based signup
 router.post('/signup', async (req, res) => {
-  const { schoolName, email, password, apiKey, invite_code, name, directorName, phone, website } = req.body;
+  const { schoolName, email, password, apiKey, invite_code, name, directorName, website } = req.body;
 
   if (invite_code) {
     try {
@@ -155,8 +155,8 @@ router.post('/signup', async (req, res) => {
     if (emailCheck?.exists_but_active) return res.status(409).json({ error: 'Email already registered' });
     if (emailCheck?.unverified_takeover) await cleanupUnverifiedAccount(emailCheck);
     const schoolResult = await pool.query(
-      'INSERT INTO schools (name, api_key_encrypted, director_name, phone, website, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
-      [schoolName, apiKey || null, directorName || null, phone || null, website || null, 'approved']
+      'INSERT INTO schools (name, api_key_encrypted, director_name, website, status) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [schoolName, apiKey || null, directorName || null, website || null, 'approved']
     );
     const schoolId = schoolResult.rows[0].id;
     const hash = await bcrypt.hash(password, 12);

@@ -20,7 +20,7 @@ export default function Signup({ onSwitch, onSuccess }) {
   const { signup } = useAuth();
   const [lang, setLang] = useState(localStorage.getItem('sherlock_lang') || 'en');
   const [form, setForm] = useState({
-    schoolName: '', directorName: '', phone: '', website: '',
+    schoolName: '', directorName: '', website: '',
     email: '', password: ''
   });
   const [error, setError] = useState('');
@@ -35,7 +35,6 @@ export default function Signup({ onSwitch, onSuccess }) {
     try {
       const result = await signup(form.schoolName, form.email, form.password, '', {
         directorName: form.directorName,
-        phone: form.phone,
         website: form.website,
       });
       if (result?.verification_required) {
@@ -88,11 +87,6 @@ export default function Signup({ onSwitch, onSuccess }) {
           <div style={{ marginBottom: '16px' }}>
             <label style={LABEL_STYLE}>{isKa ? 'დირექტორის სახელი' : 'Director full name'} *</label>
             <input required type="text" value={form.directorName} onChange={set('directorName')} onFocus={onFieldFocus} onBlur={onFieldBlur} style={FIELD_STYLE} />
-          </div>
-
-          <div style={{ marginBottom: '16px' }}>
-            <label style={LABEL_STYLE}>{isKa ? 'ტელეფონი' : 'Phone number'} *</label>
-            <input required type="tel" value={form.phone} onChange={set('phone')} onFocus={onFieldFocus} onBlur={onFieldBlur} style={FIELD_STYLE} />
           </div>
 
           <div style={{ marginBottom: '16px' }}>
