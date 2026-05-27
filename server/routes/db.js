@@ -24,6 +24,9 @@ router.post('/waitlist', async (req, res) => {
       [email, schoolName, schoolType]
     );
 
+    // Telegram notifications disconnected — waitlist table is the source of truth.
+    // To re-enable, uncomment the block below.
+    /*
     const axios = require('axios');
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const adminId = process.env.TELEGRAM_ADMIN_ID;
@@ -34,6 +37,7 @@ router.post('/waitlist', async (req, res) => {
         text: message
       }).catch(err => console.error('Telegram notification error:', err.message));
     }
+    */
 
     res.json({ success: true });
   } catch (err) {
