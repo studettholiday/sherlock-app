@@ -175,7 +175,7 @@ router.post('/forgot-password', async (req, res) => {
     const resetLink = `https://app.sherlock.school/reset-password?token=${token}`;
     try {
       await resend.emails.send({
-        from: 'Sherlock <noreply@send.sherlock.school>',
+        from: 'Sherlock <noreply@sherlock.school>',
         to: email,
         subject: 'Reset your Sherlock password',
         html: `<p>You requested a password reset for your Sherlock account.</p><p><a href="${resetLink}">Click here to reset your password</a></p><p>Or copy this link: ${resetLink}</p><p>This link expires in 1 hour.</p><p>If you didn't request this, you can safely ignore this email.</p>`,
