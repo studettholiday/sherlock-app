@@ -35,6 +35,22 @@ async function checkEmailRecentlyDeleted(email) {
   };
 }
 
+async function sendVerificationEmail(email, token) {
+  const verifyUrl = `https://app.sherlock.school/verify-email?token=${token}`;
+  await resend.emails.send({
+    from: 'Sherlock <noreply@sherlock.school>',
+    to: email,
+    subject: 'Verify your email',
+    html: renderEmail({
+      title: 'Verify your email',
+      bodyHtml: '<p>Welcome to Sherlock. Please verify your email to activate your account.</p>',
+      buttonText: 'Verify email',
+      buttonUrl: verifyUrl,
+      footerNote: "This link expires in 24 hours. Didn't sign up? Ignore this email.",
+    }),
+  });
+}
+
 // School signup (standard) or invite-based signup
 router.post('/signup', async (req, res) => {
   const { schoolName, email, password, apiKey, invite_code, name, directorName, phone, website } = req.body;
@@ -56,14 +72,19 @@ router.post('/signup', async (req, res) => {
       }
       if (emailCheck?.exists_but_active) return res.status(409).json({ error: 'Email already registered' });
       const hash = await bcrypt.hash(password, 12);
+      const verificationToken = crypto.randomBytes(32).toString('hex');
       const userResult = await pool.query(
-        'INSERT INTO users (school_id, email, password_hash, role, name) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, role, name',
-        [invite.school_id, email, hash, invite.target_role, name || email.split('@')[0]]
+        `INSERT INTO users (school_id, email, password_hash, role, name, verification_token, verification_token_expires)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW() + INTERVAL '24 hours') RETURNING id`,
+        [invite.school_id, email, hash, invite.target_role, name || email.split('@')[0], verificationToken]
       );
-      const user = userResult.rows[0];
-      await pool.query('UPDATE invites SET used_by = $1, used_at = NOW() WHERE code = $2', [user.id, invite_code]);
-      const token = jwt.sign({ userId: user.id, schoolId: invite.school_id, role: invite.target_role, is_owner: false }, JWT_SECRET, { expiresIn: '7d' });
-      return res.json({ token, user: { ...user, schoolId: invite.school_id, schoolName: invite.school_name } });
+      await pool.query('UPDATE invites SET used_by = $1, used_at = NOW() WHERE code = $2', [userResult.rows[0].id, invite_code]);
+      try {
+        await sendVerificationEmail(email, verificationToken);
+      } catch (emailErr) {
+        console.error('[signup/invite] verification email send failed:', emailErr.message);
+      }
+      return res.json({ verification_required: true, email });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: 'Server error' });
@@ -84,13 +105,18 @@ router.post('/signup', async (req, res) => {
     );
     const schoolId = schoolResult.rows[0].id;
     const hash = await bcrypt.hash(password, 12);
-    const userResult = await pool.query(
-      'INSERT INTO users (school_id, email, password_hash, role, name, is_owner) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, email, role, name',
-      [schoolId, email, hash, 'student', email.split('@')[0], true]
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    await pool.query(
+      `INSERT INTO users (school_id, email, password_hash, role, name, is_owner, verification_token, verification_token_expires)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW() + INTERVAL '24 hours')`,
+      [schoolId, email, hash, 'student', email.split('@')[0], true, verificationToken]
     );
-    const user = userResult.rows[0];
-    const token = jwt.sign({ userId: user.id, schoolId, role: 'student', is_owner: true }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { ...user, schoolId, schoolName, status: 'approved' } });
+    try {
+      await sendVerificationEmail(email, verificationToken);
+    } catch (emailErr) {
+      console.error('[signup] verification email send failed:', emailErr.message);
+    }
+    res.json({ verification_required: true, email });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
@@ -110,6 +136,9 @@ router.post('/login', async (req, res) => {
     const user = result.rows[0];
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
+    if (user.email_verified === false) {
+      return res.status(403).json({ error: 'Email not verified', email_verified: false, email });
+    }
     if (user.deleted_at || user.school_deleted_at) {
       const scope = user.school_deleted_at ? 'school' : 'user';
       const deleted_at = user.school_deleted_at || user.deleted_at;
@@ -237,14 +266,19 @@ router.post('/invite/accept', async (req, res) => {
     }
     if (emailCheck?.exists_but_active) return res.status(409).json({ error: 'Email already registered' });
     const hash = await bcrypt.hash(password, 12);
+    const verificationToken = crypto.randomBytes(32).toString('hex');
     const userResult = await pool.query(
-      'INSERT INTO users (school_id, email, password_hash, role, name) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, role, name',
-      [invite.school_id, email, hash, invite.target_role, name]
+      `INSERT INTO users (school_id, email, password_hash, role, name, verification_token, verification_token_expires)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW() + INTERVAL '24 hours') RETURNING id`,
+      [invite.school_id, email, hash, invite.target_role, name, verificationToken]
     );
-    const user = userResult.rows[0];
-    await pool.query('UPDATE invites SET used_by = $1, used_at = NOW() WHERE code = $2', [user.id, token]);
-    const jwtToken = jwt.sign({ userId: user.id, schoolId: invite.school_id, role: invite.target_role, is_owner: false }, JWT_SECRET, { expiresIn: '7d' });
-    return res.json({ token: jwtToken, user: { ...user, schoolId: invite.school_id, schoolName: invite.school_name } });
+    await pool.query('UPDATE invites SET used_by = $1, used_at = NOW() WHERE code = $2', [userResult.rows[0].id, token]);
+    try {
+      await sendVerificationEmail(email, verificationToken);
+    } catch (emailErr) {
+      console.error('[invite/accept] verification email send failed:', emailErr.message);
+    }
+    return res.json({ verification_required: true, email });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Server error' });
@@ -303,6 +337,56 @@ router.post('/recover', authMiddleware, async (req, res) => {
 router.post('/recover-cancel', authMiddleware, async (req, res) => {
   if (!req.user.recovery_only) return res.status(403).json({ error: 'Recovery token required' });
   res.json({ ok: true });
+});
+
+// Verify email via link in verification email.
+router.get('/verify-email', async (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(400).json({ error: 'Missing token' });
+  try {
+    const result = await pool.query(
+      'SELECT id, email FROM users WHERE verification_token = $1 AND verification_token_expires > NOW()',
+      [token]
+    );
+    if (result.rows.length === 0) return res.status(400).json({ error: 'Invalid or expired link' });
+    const { id, email } = result.rows[0];
+    await pool.query(
+      'UPDATE users SET email_verified = true, verification_token = NULL, verification_token_expires = NULL WHERE id = $1',
+      [id]
+    );
+    res.json({ ok: true, email });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Resend verification email. Always returns 200 to prevent email enumeration.
+router.post('/resend-verification', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Missing email' });
+  try {
+    const result = await pool.query(
+      'SELECT id FROM users WHERE email = $1 AND email_verified = false',
+      [email]
+    );
+    if (result.rows.length > 0) {
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+      await pool.query(
+        `UPDATE users SET verification_token = $1, verification_token_expires = NOW() + INTERVAL '24 hours' WHERE id = $2`,
+        [verificationToken, result.rows[0].id]
+      );
+      try {
+        await sendVerificationEmail(email, verificationToken);
+      } catch (emailErr) {
+        console.error('[resend-verification] email send failed:', emailErr.message);
+      }
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 module.exports = router;
