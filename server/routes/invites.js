@@ -26,7 +26,7 @@ router.post('/generate', authMiddleware, async (req, res) => {
 
     if (email) {
       try {
-        const emailResult = await resend.emails.send({
+        await resend.emails.send({
           from: 'Sherlock <noreply@sherlock.school>',
           to: email,
           subject: `You've been invited to join ${schoolName}`,
@@ -38,7 +38,6 @@ router.post('/generate', authMiddleware, async (req, res) => {
             footerNote: "Didn't request this? Ignore this email.",
           }),
         });
-        console.log('[invite] email sent result:', JSON.stringify(emailResult));
       } catch (emailErr) {
         console.error('[invite] email send failed:', emailErr.message, emailErr);
       }

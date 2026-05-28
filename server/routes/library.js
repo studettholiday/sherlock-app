@@ -67,7 +67,6 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
     // ("KÃ¶hler.pdf"). Round-trip the raw bytes back through UTF-8 before any
     // logging or INSERT so the DB stores the real name.
     const originalName = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
-    console.log('[library] POST /upload file=%s size=%d schoolId=%s', originalName, req.file.size, req.user.schoolId);
     const content = await extractText(req.file.buffer, req.file.mimetype);
     // Store raw bytes in content_binary so the view endpoint can serve them
     // back for in-app rendering. RETURNING omits the large content / binary
@@ -76,7 +75,6 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
       'INSERT INTO library_files (school_id, filename, file_path, file_size, mime_type, uploaded_by, content, content_binary) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, filename, file_size, mime_type, created_at',
       [req.user.schoolId, originalName, '', req.file.size, req.file.mimetype, req.user.userId, content, req.file.buffer]
     );
-    console.log('[library] POST /upload inserted id=%s', result.rows[0].id);
     res.json({ file: result.rows[0] });
   } catch (err) {
     console.error('[library] POST /upload error:', err.message);
@@ -86,18 +84,11 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
 
 // Get all library files for school
 router.get('/', authMiddleware, async (req, res) => {
-  console.log("[library] GET / schoolId=%s userId=%s", req.user.schoolId, req.user.userId);
   if (!req.user || !req.user.schoolId) {
-    console.log('[library] GET / REJECTED - no schoolId in token. req.user=', JSON.stringify(req.user));
     return res.status(401).json({ error: 'No school context in token' });
   }
   if (!req.user.schoolId) return res.status(400).json({ error: "No school context" });
   try {
-    console.log('[library] GET / schoolId=%s role=%s', req.user.schoolId, req.user.role);
-    const debugResult = await getPool().query('SELECT COUNT(*) as cnt FROM library_files');
-    console.log('[library] TOTAL rows in table:', debugResult.rows[0].cnt);
-    const debugResult2 = await getPool().query('SELECT COUNT(*) as cnt FROM library_files WHERE school_id = $1', [req.user.schoolId]);
-    console.log('[library] rows for schoolId', req.user.schoolId, ':', debugResult2.rows[0].cnt);
     // Owner sees every file in the school; student sees only files that are
     // either untagged (public) or carry at least one tag matching a class
     // they're assigned to via student_classes. Both branches aggregate the

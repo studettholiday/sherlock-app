@@ -13,7 +13,6 @@ module.exports = async (req, res, next) => {
     return res.status(401).json({ error: 'Invalid token' });
   }
   req.user = decoded;
-  console.log('[auth] decoded token:', JSON.stringify(decoded));
   try {
     const result = await pool.query(
       'SELECT u.deleted_at AS user_deleted_at, s.deleted_at AS school_deleted_at FROM users u JOIN schools s ON u.school_id = s.id WHERE u.id = $1',
