@@ -151,6 +151,12 @@ export default function Signup({ onSwitch, onSuccess }) {
             </span>
           </label>
 
+          {error && (
+            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '12px', marginBottom: '20px', color: '#dc2626', fontSize: '14px' }}>
+              {error}
+            </div>
+          )}
+
           <button type="submit" disabled={loading}
             onMouseEnter={e => { if (!loading) e.target.style.background = '#1d4ed8'; }}
             onMouseLeave={e => { e.target.style.background = '#2563eb'; }}
