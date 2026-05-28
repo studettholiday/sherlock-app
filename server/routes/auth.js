@@ -21,6 +21,23 @@ const LEGAL_VERSIONS = {
   minor_consent: '2026-05-27',
 };
 
+const VERIFY_EMAIL_STRINGS = {
+  en: {
+    subject: 'Verify your email',
+    title: 'Verify your email',
+    bodyHtml: '<p>Welcome to Sherlock. Please verify your email to activate your account.</p>',
+    buttonText: 'Verify email',
+    footerNote: "This link expires in 24 hours. Didn't sign up? Ignore this email.",
+  },
+  ka: {
+    subject: 'დაადასტურეთ თქვენი ელფოსტა',
+    title: 'დაადასტურეთ თქვენი ელფოსტა',
+    bodyHtml: '<p>მოგესალმებით! გთხოვთ, დაადასტუროთ თქვენი ელფოსტა ანგარიშის გასააქტიურებლად.</p>',
+    buttonText: 'ელფოსტის დადასტურება',
+    footerNote: 'ეს ბმული მოქმედია 24 საათის განმავლობაში. თუ არ დარეგისტრირებულხართ, დააიგნორირეთ ეს წერილი.',
+  },
+};
+
 // Looks up `email` against (users JOIN schools) and reports its signup-eligibility:
 //   null                              → no row, free to sign up
 //   { recently_deleted: true, … }     → row exists but is within 21-day grace → 409 payload ready to return
@@ -97,18 +114,19 @@ async function cleanupUnverifiedAccount({ user_id, is_owner, school_id }) {
   }
 }
 
-async function sendVerificationEmail(email, token) {
-  const verifyUrl = `https://app.sherlock.school/verify-email?token=${token}`;
+async function sendVerificationEmail(email, token, lang = 'en') {
+  const strings = VERIFY_EMAIL_STRINGS[lang] || VERIFY_EMAIL_STRINGS.en;
+  const verifyUrl = `https://app.sherlock.school/verify-email?token=${token}${lang === 'ka' ? '&lang=ka' : ''}`;
   await resend.emails.send({
     from: 'Sherlock <noreply@sherlock.school>',
     to: email,
-    subject: 'Verify your email',
+    subject: strings.subject,
     html: renderEmail({
-      title: 'Verify your email',
-      bodyHtml: '<p>Welcome to Sherlock. Please verify your email to activate your account.</p>',
-      buttonText: 'Verify email',
+      title: strings.title,
+      bodyHtml: strings.bodyHtml,
+      buttonText: strings.buttonText,
       buttonUrl: verifyUrl,
-      footerNote: "This link expires in 24 hours. Didn't sign up? Ignore this email.",
+      footerNote: strings.footerNote,
     }),
   });
 }
@@ -116,7 +134,7 @@ async function sendVerificationEmail(email, token) {
 // School signup (standard) or invite-based signup
 router.post('/signup', async (req, res) => {
   const { schoolName, email, password, apiKey, invite_code, name, directorName, website,
-          tos_accepted, minor_consent_attested } = req.body;
+          tos_accepted, minor_consent_attested, lang = 'en' } = req.body;
 
   if (invite_code) {
     try {
@@ -144,7 +162,7 @@ router.post('/signup', async (req, res) => {
       );
       await pool.query('UPDATE invites SET used_by = $1, used_at = NOW() WHERE code = $2', [userResult.rows[0].id, invite_code]);
       try {
-        await sendVerificationEmail(email, verificationToken);
+        await sendVerificationEmail(email, verificationToken, lang);
       } catch (emailErr) {
         console.error('[signup/invite] verification email send failed:', emailErr.message);
       }
@@ -190,7 +208,7 @@ router.post('/signup', async (req, res) => {
       [schoolId, email, hash, 'student', email.split('@')[0], true, verificationToken]
     );
     try {
-      await sendVerificationEmail(email, verificationToken);
+      await sendVerificationEmail(email, verificationToken, lang);
     } catch (emailErr) {
       console.error('[signup] verification email send failed:', emailErr.message);
     }
@@ -327,7 +345,7 @@ router.post('/reset-password', async (req, res) => {
 
 // Accept invite
 router.post('/invite/accept', async (req, res) => {
-  const { token, name, email, password } = req.body;
+  const { token, name, email, password, lang = 'en' } = req.body;
   if (!token || !name || !email || !password) return res.status(400).json({ error: 'Missing fields' });
   try {
     const inviteRes = await pool.query(
@@ -353,7 +371,7 @@ router.post('/invite/accept', async (req, res) => {
     );
     await pool.query('UPDATE invites SET used_by = $1, used_at = NOW() WHERE code = $2', [userResult.rows[0].id, token]);
     try {
-      await sendVerificationEmail(email, verificationToken);
+      await sendVerificationEmail(email, verificationToken, lang);
     } catch (emailErr) {
       console.error('[invite/accept] verification email send failed:', emailErr.message);
     }
@@ -442,7 +460,7 @@ router.get('/verify-email', async (req, res) => {
 
 // Resend verification email. Always returns 200 to prevent email enumeration.
 router.post('/resend-verification', async (req, res) => {
-  const { email } = req.body;
+  const { email, lang = 'en' } = req.body;
   if (!email) return res.status(400).json({ error: 'Missing email' });
   try {
     const result = await pool.query(
@@ -456,7 +474,7 @@ router.post('/resend-verification', async (req, res) => {
         [verificationToken, result.rows[0].id]
       );
       try {
-        await sendVerificationEmail(email, verificationToken);
+        await sendVerificationEmail(email, verificationToken, lang);
       } catch (emailErr) {
         console.error('[resend-verification] email send failed:', emailErr.message);
       }

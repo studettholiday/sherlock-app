@@ -3,7 +3,11 @@ import { t, languages } from '../i18n';
 import AuthShell from '../components/AuthShell';
 
 export default function VerifyEmail() {
-  const [lang, setLang] = useState(localStorage.getItem('sherlock_lang') || 'en');
+  const [lang, setLang] = useState(
+    new URLSearchParams(window.location.search).get('lang')
+      || localStorage.getItem('sherlock_lang')
+      || 'en'
+  );
   const [status, setStatus] = useState('verifying'); // 'verifying' | 'success' | 'error'
   const [resendEmail, setResendEmail] = useState('');
   const [resendStatus, setResendStatus] = useState(''); // '' | 'loading' | 'sent'
@@ -23,7 +27,7 @@ export default function VerifyEmail() {
       await fetch('/api/auth/resend-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: resendEmail }),
+        body: JSON.stringify({ email: resendEmail, lang }),
       });
       setResendStatus('sent');
     } catch {

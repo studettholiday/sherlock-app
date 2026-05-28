@@ -18,7 +18,7 @@ export default function InviteAccept({ token, onSuccess }) {
       const res = await fetch('/api/auth/invite/accept', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, ...form })
+        body: JSON.stringify({ token, lang, ...form })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to accept invite');

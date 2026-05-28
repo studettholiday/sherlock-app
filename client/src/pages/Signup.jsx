@@ -51,6 +51,7 @@ export default function Signup({ onSwitch, onSuccess }) {
         website: form.website,
         tos_accepted: true,
         minor_consent_attested: true,
+        lang,
       });
       if (result?.verification_required) {
         window.location.href = `/check-your-email?email=${encodeURIComponent(result.email)}`;
