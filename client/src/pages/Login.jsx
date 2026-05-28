@@ -164,7 +164,7 @@ export default function Login({ onSwitch, onSuccess }) {
               </div>
               <div style={{ textAlign: 'right', marginBottom: '20px' }}>
                 <span onClick={() => { setForgotMode(true); setForgotEmail(email); }} style={{ color: '#6b7280', fontSize: '13px', cursor: 'pointer' }}>
-                  Forgot password?
+                  {t(lang, 'forgotPassword')}
                 </span>
               </div>
               <button type="submit" disabled={loading}
