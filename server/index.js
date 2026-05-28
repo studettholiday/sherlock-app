@@ -82,6 +82,11 @@ app.use('/api/youtube', youtubeRoutes);
 app.use('/api/search', searchRoutes);
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
+// Extensionless URLs for the legal pages. Must come before the static handler
+// so they aren't shadowed by the SPA fallback below.
+app.get('/privacy', (_req, res) => res.sendFile(path.join(__dirname, 'public/privacy.html')));
+app.get('/terms',   (_req, res) => res.sendFile(path.join(__dirname, 'public/terms.html')));
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('*', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public/index.html'));

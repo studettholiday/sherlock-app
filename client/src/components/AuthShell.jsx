@@ -76,6 +76,22 @@ export default function AuthShell({ children }) {
         >
           {children}
         </div>
+
+        {/* Legal links — visible on every public auth page */}
+        <p
+          style={{
+            position: 'relative',
+            zIndex: 1,
+            marginTop: 24,
+            color: '#6b7280',
+            fontSize: 12,
+            textAlign: 'center',
+          }}
+        >
+          <a href="/privacy" style={{ color: '#6b7280', textDecoration: 'none' }}>Privacy</a>
+          {' · '}
+          <a href="/terms" style={{ color: '#6b7280', textDecoration: 'none' }}>Terms</a>
+        </p>
       </div>
     </div>
   );
