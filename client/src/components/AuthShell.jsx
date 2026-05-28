@@ -50,18 +50,27 @@ export default function AuthShell({ children }) {
           }}
         />
 
-        {/* Sherlock logo */}
-        <img
-          src="/brand/sherlock-logo.png"
-          alt="Sherlock"
+        {/* Sherlock logo — clickable, returns to sign-in */}
+        <a
+          href="/"
           style={{
             position: 'relative',
             zIndex: 1,
-            height: 120,
-            width: 'auto',
             marginBottom: 24,
+            display: 'block',
+            cursor: 'pointer',
           }}
-        />
+        >
+          <img
+            src="/brand/sherlock-logo.png"
+            alt="Sherlock"
+            style={{
+              height: 120,
+              width: 'auto',
+              display: 'block',
+            }}
+          />
+        </a>
 
         {/* Card */}
         <div
