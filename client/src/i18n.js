@@ -68,7 +68,7 @@ const translations = {
     terms: 'Terms',
   },
   ka: {
-    welcomeBack: 'მოგესალმებით',
+    welcomeBack: 'გამარჯობა',
     signInSubtitle: 'ავტორიზაცია',
     email: 'ელ-ფოსტა',
     password: 'პაროლი',
