@@ -90,7 +90,7 @@ export function AuthProvider({ children }) {
     const res = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ schoolName, email, password, apiKey })
+      body: JSON.stringify({ schoolName, email, password, apiKey, ...extra })
     });
     const data = await res.json();
     if (!res.ok) {

@@ -56,6 +56,9 @@ async function runMigrations() {
     const sql023 = fs.readFileSync(path.join(__dirname, 'migrations/023_email_verification.sql'), 'utf8');
     await pool.query(sql023);
     console.log('[startup] migration 023 complete');
+    const sql024 = fs.readFileSync(path.join(__dirname, 'migrations/024_consent_capture.sql'), 'utf8');
+    await pool.query(sql024);
+    console.log('[startup] migration 024 complete');
   } catch (e) {
     console.error('[startup] migration error:', e.message);
   } finally {

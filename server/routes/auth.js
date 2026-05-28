@@ -12,6 +12,15 @@ const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
 const JWT_SECRET = process.env.JWT_SECRET || 'sherlock-secret-change-in-production';
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// Document versions recorded at signup-consent time. Bump these in the same
+// commit that updates /terms or /privacy; new signups record the new version,
+// existing schools keep whatever they originally consented to.
+const LEGAL_VERSIONS = {
+  tos: '2026-05-27',
+  privacy: '2026-05-27',
+  minor_consent: '2026-05-27',
+};
+
 // Looks up `email` against (users JOIN schools) and reports its signup-eligibility:
 //   null                              → no row, free to sign up
 //   { recently_deleted: true, … }     → row exists but is within 21-day grace → 409 payload ready to return
@@ -106,7 +115,8 @@ async function sendVerificationEmail(email, token) {
 
 // School signup (standard) or invite-based signup
 router.post('/signup', async (req, res) => {
-  const { schoolName, email, password, apiKey, invite_code, name, directorName, website } = req.body;
+  const { schoolName, email, password, apiKey, invite_code, name, directorName, website,
+          tos_accepted, minor_consent_attested } = req.body;
 
   if (invite_code) {
     try {
@@ -147,6 +157,8 @@ router.post('/signup', async (req, res) => {
 
   // Standard school registration
   if (!schoolName || !email || !password) return res.status(400).json({ error: 'Missing fields' });
+  if (!tos_accepted) return res.status(400).json({ error: 'You must agree to the Terms and Privacy Policy.' });
+  if (!minor_consent_attested) return res.status(400).json({ error: 'You must confirm parental consent for under-16 students.' });
   try {
     const emailCheck = await checkEmailRecentlyDeleted(email);
     if (emailCheck?.recently_deleted) {
@@ -155,8 +167,19 @@ router.post('/signup', async (req, res) => {
     if (emailCheck?.exists_but_active) return res.status(409).json({ error: 'Email already registered' });
     if (emailCheck?.unverified_takeover) await cleanupUnverifiedAccount(emailCheck);
     const schoolResult = await pool.query(
-      'INSERT INTO schools (name, api_key_encrypted, director_name, website, status) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-      [schoolName, apiKey || null, directorName || null, website || null, 'approved']
+      `INSERT INTO schools (
+         name, api_key_encrypted, director_name, website, status,
+         tos_accepted_at, tos_version,
+         privacy_accepted_at, privacy_version,
+         minor_consent_attested_at, minor_consent_attestation_version
+       ) VALUES (
+         $1, $2, $3, $4, $5,
+         NOW(), $6,
+         NOW(), $7,
+         NOW(), $8
+       ) RETURNING id`,
+      [schoolName, apiKey || null, directorName || null, website || null, 'approved',
+       LEGAL_VERSIONS.tos, LEGAL_VERSIONS.privacy, LEGAL_VERSIONS.minor_consent]
     );
     const schoolId = schoolResult.rows[0].id;
     const hash = await bcrypt.hash(password, 12);

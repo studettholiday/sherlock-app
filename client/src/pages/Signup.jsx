@@ -21,7 +21,8 @@ export default function Signup({ onSwitch, onSuccess }) {
   const [lang, setLang] = useState(localStorage.getItem('sherlock_lang') || 'en');
   const [form, setForm] = useState({
     schoolName: '', directorName: '', website: '',
-    email: '', password: ''
+    email: '', password: '',
+    tosAccepted: false, minorConsentAttested: false,
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -31,11 +32,25 @@ export default function Signup({ onSwitch, onSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (!form.tosAccepted) {
+      setError(isKa
+        ? 'უნდა დაეთანხმოთ მომსახურების პირობებსა და კონფიდენციალურობის პოლიტიკას.'
+        : 'You must agree to the Terms and Privacy Policy.');
+      return;
+    }
+    if (!form.minorConsentAttested) {
+      setError(isKa
+        ? 'უნდა დაადასტუროთ მშობლის თანხმობა 16 წელზე ნაკლები ასაკის მოსწავლეებისთვის.'
+        : 'You must confirm parental consent for under-16 students.');
+      return;
+    }
     setLoading(true);
     try {
       const result = await signup(form.schoolName, form.email, form.password, '', {
         directorName: form.directorName,
         website: form.website,
+        tos_accepted: true,
+        minor_consent_attested: true,
       });
       if (result?.verification_required) {
         window.location.href = `/check-your-email?email=${encodeURIComponent(result.email)}`;
@@ -105,6 +120,36 @@ export default function Signup({ onSwitch, onSuccess }) {
             <label style={LABEL_STYLE}>{isKa ? 'პაროლი' : 'Password'} *</label>
             <input required type="password" value={form.password} onChange={set('password')} onFocus={onFieldFocus} onBlur={onFieldBlur} style={FIELD_STYLE} />
           </div>
+
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '12px', color: '#374151', fontSize: '14px', lineHeight: 1.5, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={form.tosAccepted}
+              onChange={e => setForm(f => ({ ...f, tosAccepted: e.target.checked }))}
+              style={{ marginTop: '3px', flexShrink: 0, cursor: 'pointer' }}
+            />
+            <span>
+              {isKa ? (
+                <>ვეთანხმები <a href="/terms" target="_blank" rel="noopener" style={{ color: '#2563eb', textDecoration: 'underline' }}>მომსახურების პირობებს</a> და <a href="/privacy" target="_blank" rel="noopener" style={{ color: '#2563eb', textDecoration: 'underline' }}>კონფიდენციალურობის პოლიტიკას</a>.</>
+              ) : (
+                <>I agree to the <a href="/terms" target="_blank" rel="noopener" style={{ color: '#2563eb', textDecoration: 'underline' }}>Terms of Service</a> and <a href="/privacy" target="_blank" rel="noopener" style={{ color: '#2563eb', textDecoration: 'underline' }}>Privacy Policy</a>.</>
+              )}
+            </span>
+          </label>
+
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '20px', color: '#374151', fontSize: '14px', lineHeight: 1.5, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={form.minorConsentAttested}
+              onChange={e => setForm(f => ({ ...f, minorConsentAttested: e.target.checked }))}
+              style={{ marginTop: '3px', flexShrink: 0, cursor: 'pointer' }}
+            />
+            <span>
+              {isKa
+                ? 'ვადასტურებ, რომ ყველა 16 წელზე ნაკლები ასაკის მოსწავლისთვის, რომელსაც დავამატებ, მაქვს მშობლის ან მეურვის გადამოწმებადი თანხმობა მათი მონაცემების დამუშავებაზე.'
+                : 'I confirm that for every student under 16 I add, I have obtained verifiable parental or guardian consent for processing their data.'}
+            </span>
+          </label>
 
           <button type="submit" disabled={loading}
             onMouseEnter={e => { if (!loading) e.target.style.background = '#1d4ed8'; }}
