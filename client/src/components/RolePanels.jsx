@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { useAuth } from '../AuthContext';
+import { t } from '../i18n';
 
 // ─── Theme tokens ─────────────────────────────────────────────────────────────
 
@@ -724,6 +725,7 @@ function drawWatermark(ctx, w, h, text) {
 
 function FileViewerModal({ file, onClose, viewUrl }) {
   const { user } = useAuth();
+  const lang = localStorage.getItem('sherlock_lang') || 'en';
   const watermarkText = `${user?.name || user?.email || 'viewer'} — ${user?.email || ''}`;
   const isPdf = file?.mime_type === 'application/pdf';
 
@@ -1032,13 +1034,13 @@ function FileViewerModal({ file, onClose, viewUrl }) {
       >
         <button
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t(lang, 'close')}
           className="absolute top-2 right-2 z-10 text-[#6b7280] hover:text-[#111827] text-xl leading-none px-2 py-0.5"
         >✕</button>
 
         <div className="p-4 pt-8">
           {loading && (
-            <p className="text-[14px] italic text-[#6b7280] text-center py-8 min-w-[280px]">Loading…</p>
+            <p className="text-[14px] italic text-[#6b7280] text-center py-8 min-w-[280px]">{t(lang, 'loading')}</p>
           )}
           {error && (
             <p className="text-[14px] text-[#dc2626] text-center py-8 min-w-[280px]">{error}</p>
@@ -1047,10 +1049,10 @@ function FileViewerModal({ file, onClose, viewUrl }) {
             <div className="space-y-2">
               <div className="flex items-center justify-center gap-2 text-[13px] flex-wrap">
                 <button onClick={() => setPageNum(n => Math.max(1, n - 1))} disabled={pageNum <= 1}
-                  className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] hover:bg-[#f9fafb] disabled:opacity-40 px-2 py-1 text-[#111827] transition-colors duration-150">Prev</button>
+                  className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] hover:bg-[#f9fafb] disabled:opacity-40 px-2 py-1 text-[#111827] transition-colors duration-150">{t(lang, 'prev')}</button>
                 {editingPage ? (
                   <span className="text-[#6b7280] font-mono inline-flex items-center gap-1">
-                    <span>Page</span>
+                    <span>{t(lang, 'page')}</span>
                     <input type="number" min="1" max={pageCount}
                       value={pageInput}
                       onChange={(e) => setPageInput(e.target.value)}
@@ -1065,23 +1067,23 @@ function FileViewerModal({ file, onClose, viewUrl }) {
                       autoFocus
                       onFocus={(e) => e.target.select()}
                       className="w-14 text-center font-mono bg-[#ffffff] border border-[#e5e7eb] rounded-[6px] px-1 py-0.5 text-[13px] text-[#111827] focus:outline-none focus:border-[#3b82f6]" />
-                    <span>of {pageCount}</span>
+                    <span>{t(lang, 'pageOf')} {pageCount}</span>
                   </span>
                 ) : (
                   <button type="button"
                     onClick={() => { setPageInput(String(pageNum)); setEditingPage(true); }}
-                    title="Jump to page"
+                    title={t(lang, 'jumpToPage')}
                     className="text-[#6b7280] font-mono hover:text-[#2563eb] hover:underline cursor-pointer bg-transparent border-0 p-0 transition-colors duration-150">
-                    Page {pageNum} of {pageCount}
+                    {t(lang, 'page')} {pageNum} {t(lang, 'pageOf')} {pageCount}
                   </button>
                 )}
                 <button onClick={() => setPageNum(n => Math.min(pageCount, n + 1))} disabled={pageNum >= pageCount}
-                  className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] hover:bg-[#f9fafb] disabled:opacity-40 px-2 py-1 text-[#111827] transition-colors duration-150">Next</button>
+                  className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] hover:bg-[#f9fafb] disabled:opacity-40 px-2 py-1 text-[#111827] transition-colors duration-150">{t(lang, 'next')}</button>
                 <input type="range" min="0.5" max="3" step="0.1"
                   value={pdfScale || 1}
                   onChange={(e) => setPdfScale(parseFloat(e.target.value))}
                   className="accent-[#2563eb] w-32"
-                  title="Zoom" />
+                  title={t(lang, 'zoom')} />
                 <span className="text-[#6b7280] font-mono w-12 text-right">{Math.round((pdfScale || 1) * 100)}%</span>
               </div>
               <canvas
@@ -1366,10 +1368,10 @@ function KnowledgeLibraryPanel({ role, lang, orgName, orgNameGenitive, libraryFi
         });
       }
       if (!text.trim()) {
-        throw new Error('No text could be extracted. For PDFs, make sure the file contains selectable text.');
+        throw new Error(t(lang === 'GEO' ? 'ka' : 'en', 'noTextExtracted'));
       }
       onAddFile?.(file.name, text);
-      setStatus(`✅ "${file.name}" added to library`);
+      setStatus(`✅ "${file.name}" ${t(lang === 'GEO' ? 'ka' : 'en', 'addedToLibrary')}`);
       setTimeout(() => setStatus(''), 4000);
     } catch (err) {
       setStatus('❌ ' + err.message);

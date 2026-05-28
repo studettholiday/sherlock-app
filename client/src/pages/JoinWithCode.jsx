@@ -19,7 +19,7 @@ export default function JoinWithCode() {
     fetch(`/api/invites/validate/${urlCode}`)
       .then(r => r.json())
       .then(data => setInviteInfo(data))
-      .catch(() => setInviteInfo({ valid: false, reason: 'Could not validate invite' }))
+      .catch(() => setInviteInfo({ valid: false, reason: t(lang, 'couldNotValidateInvite') }))
       .finally(() => setValidating(false));
   }, [urlCode]);
 
@@ -41,7 +41,7 @@ export default function JoinWithCode() {
         body: JSON.stringify(body)
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to join');
+      if (!res.ok) throw new Error(data.error || t(lang, 'failedToJoin'));
       localStorage.setItem('sherlock_token', data.token);
       window.location.href = '/dashboard';
     } catch (err) {
@@ -53,7 +53,7 @@ export default function JoinWithCode() {
 
   if (validating) return (
     <div style={{ minHeight: '100vh', background: '#fdfcf8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ color: '#6b7280', fontSize: '14px' }}>Validating invite...</div>
+      <div style={{ color: '#6b7280', fontSize: '14px' }}>{t(lang, 'validatingInvite')}</div>
     </div>
   );
 
@@ -73,14 +73,17 @@ export default function JoinWithCode() {
         </div>
 
         {/* Invite banner */}
-        {inviteInfo?.valid && (
-          <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '12px 16px', marginBottom: '20px', fontSize: '14px', color: '#2563eb', textAlign: 'center' }}>
-            You've been invited to join <strong>{inviteInfo.school_name}</strong> as a <strong>{inviteInfo.target_role}</strong>.
-          </div>
-        )}
+        {inviteInfo?.valid && (() => {
+          const [bannerBefore, bannerAfter] = t(lang, 'inviteBanner').split('{school_name}');
+          return (
+            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '12px 16px', marginBottom: '20px', fontSize: '14px', color: '#2563eb', textAlign: 'center' }}>
+              {bannerBefore}<strong>{inviteInfo.school_name}</strong>{bannerAfter}
+            </div>
+          );
+        })()}
         {inviteInfo && !inviteInfo.valid && (
           <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '12px', marginBottom: '20px', color: '#dc2626', fontSize: '14px', textAlign: 'center' }}>
-            This invite link is invalid or has expired.
+            {t(lang, 'inviteInvalidOrExpired')}
           </div>
         )}
 
@@ -94,7 +97,7 @@ export default function JoinWithCode() {
           {/* Only show code input if no URL code was provided */}
           {!urlCode && (
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ color: '#6b7280', fontSize: '14px', fontWeight: 500, display: 'block', marginBottom: '6px' }}>Access Code</label>
+              <label style={{ color: '#6b7280', fontSize: '14px', fontWeight: 500, display: 'block', marginBottom: '6px' }}>{t(lang, 'accessCode')}</label>
               <input
                 type="text" value={code} onChange={e => setCode(e.target.value.toUpperCase())} required
                 onFocus={e => { e.target.style.border = '1px solid #3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)'; }}

@@ -107,13 +107,13 @@ export default function Login({ onSwitch, onSuccess }) {
         {forgotMode ? (
           forgotStatus === 'sent' ? (
             <div style={{ textAlign: 'center', padding: '12px 0' }}>
-              <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '8px' }}>Check your email for a reset link.</p>
-              <span onClick={() => { setForgotMode(false); setForgotStatus(''); }} style={{ color: '#2563eb', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>Back to sign in</span>
+              <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '8px' }}>{t(lang, 'checkEmailForResetLink')}</p>
+              <span onClick={() => { setForgotMode(false); setForgotStatus(''); }} style={{ color: '#2563eb', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>{t(lang, 'backToSignIn')}</span>
             </div>
           ) : (
             <form onSubmit={handleForgot}>
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ color: '#6b7280', fontSize: '14px', fontWeight: 500, display: 'block', marginBottom: '6px' }}>Email</label>
+                <label style={{ color: '#6b7280', fontSize: '14px', fontWeight: 500, display: 'block', marginBottom: '6px' }}>{t(lang, 'email')}</label>
                 <input
                   type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} required
                   onFocus={e => { e.target.style.border = '1px solid #3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)'; }}
@@ -123,7 +123,7 @@ export default function Login({ onSwitch, onSuccess }) {
               </div>
               {forgotStatus === 'error' && (
                 <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '12px', marginBottom: '16px', color: '#dc2626', fontSize: '14px' }}>
-                  Something went wrong. Please try again.
+                  {t(lang, 'somethingWentWrong')}
                 </div>
               )}
               <button type="submit" disabled={forgotStatus === 'loading'}
@@ -134,10 +134,10 @@ export default function Login({ onSwitch, onSuccess }) {
                 border: 'none', borderRadius: '6px', color: '#ffffff', fontSize: '14px',
                 fontWeight: '500', cursor: forgotStatus === 'loading' ? 'not-allowed' : 'pointer', opacity: forgotStatus === 'loading' ? 0.7 : 1, marginBottom: '16px', transition: 'background 0.15s ease'
               }}>
-                {forgotStatus === 'loading' ? 'Sending…' : 'Send reset link'}
+                {forgotStatus === 'loading' ? t(lang, 'sending') : t(lang, 'send')}
               </button>
               <p style={{ textAlign: 'center', color: '#6b7280', fontSize: '14px' }}>
-                <span onClick={() => setForgotMode(false)} style={{ color: '#2563eb', cursor: 'pointer', fontWeight: '500' }}>Back to sign in</span>
+                <span onClick={() => setForgotMode(false)} style={{ color: '#2563eb', cursor: 'pointer', fontWeight: '500' }}>{t(lang, 'backToSignIn')}</span>
               </p>
             </form>
           )

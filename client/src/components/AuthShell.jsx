@@ -1,3 +1,5 @@
+import { t } from '../i18n';
+
 // Shared shell for every auth-flow page: warm off-white background, a faint
 // hand-drawn decorative lines layer, the Sherlock logo centered above, and the
 // clean white card. Each auth page passes its card content as `children`.
@@ -5,6 +7,7 @@
 // The brand assets (sherlock-logo.png, lines.webp) have white backgrounds;
 // `mix-blend-mode: multiply` drops the white so they sit cleanly on the page.
 export default function AuthShell({ children }) {
+  const lang = localStorage.getItem('sherlock_lang') || 'en';
   return (
     <div
       style={{
@@ -88,9 +91,9 @@ export default function AuthShell({ children }) {
             textAlign: 'center',
           }}
         >
-          <a href="/privacy" style={{ color: '#6b7280', textDecoration: 'none' }}>Privacy</a>
+          <a href="/privacy" style={{ color: '#6b7280', textDecoration: 'none' }}>{t(lang, 'privacy')}</a>
           {' · '}
-          <a href="/terms" style={{ color: '#6b7280', textDecoration: 'none' }}>Terms</a>
+          <a href="/terms" style={{ color: '#6b7280', textDecoration: 'none' }}>{t(lang, 'terms')}</a>
         </p>
       </div>
     </div>

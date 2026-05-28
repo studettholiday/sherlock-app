@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { t } from '../i18n';
 import AuthShell from '../components/AuthShell';
 
 export default function ResetPassword() {
   const token = new URLSearchParams(window.location.search).get('token') || '';
+  const [lang] = useState(localStorage.getItem('sherlock_lang') || 'en');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [status, setStatus] = useState(''); // '' | 'loading' | 'success' | 'error'
@@ -10,8 +12,8 @@ export default function ResetPassword() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (password !== confirm) { setErrorMsg('Passwords do not match'); return; }
-    if (password.length < 8) { setErrorMsg('Password must be at least 8 characters'); return; }
+    if (password !== confirm) { setErrorMsg(t(lang, 'passwordsDontMatch')); return; }
+    if (password.length < 8) { setErrorMsg(t(lang, 'passwordTooShort')); return; }
     setErrorMsg('');
     setStatus('loading');
     try {
@@ -21,11 +23,11 @@ export default function ResetPassword() {
         body: JSON.stringify({ token, new_password: password }),
       });
       const data = await res.json();
-      if (!res.ok) { setErrorMsg(data.error || 'Something went wrong'); setStatus('error'); return; }
+      if (!res.ok) { setErrorMsg(data.error || t(lang, 'somethingWentWrong')); setStatus('error'); return; }
       setStatus('success');
       setTimeout(() => { window.location.href = '/'; }, 2000);
     } catch {
-      setErrorMsg('Something went wrong. Please try again.');
+      setErrorMsg(t(lang, 'somethingWentWrong'));
       setStatus('error');
     }
   };
@@ -33,23 +35,23 @@ export default function ResetPassword() {
   return (
     <AuthShell>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <h1 style={{ fontFamily: "'Arbutus Slab', serif", fontWeight: 400, fontSize: '32px', color: '#111827', margin: 0 }}>Reset your password</h1>
-          <p style={{ color: '#6b7280', marginTop: '8px', fontSize: '14px' }}>Enter your new password below.</p>
+          <h1 style={{ fontFamily: "'Arbutus Slab', serif", fontWeight: 400, fontSize: '32px', color: '#111827', margin: 0 }}>{t(lang, 'resetPasswordTitle')}</h1>
+          <p style={{ color: '#6b7280', marginTop: '8px', fontSize: '14px' }}>{t(lang, 'resetPasswordSubtitle')}</p>
         </div>
 
         {status === 'success' ? (
           <div style={{ textAlign: 'center' }}>
-            <p style={{ color: '#10b981', fontSize: '14px', marginBottom: '12px' }}>Password reset successfully! Redirecting to sign in…</p>
+            <p style={{ color: '#10b981', fontSize: '14px', marginBottom: '12px' }}>{t(lang, 'passwordResetSuccess')}</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
             {!token && (
               <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '12px', marginBottom: '20px', color: '#dc2626', fontSize: '14px' }}>
-                Invalid or missing reset token. Please request a new password reset link.
+                {t(lang, 'resetTokenInvalid')}
               </div>
             )}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ color: '#6b7280', fontSize: '14px', fontWeight: 500, display: 'block', marginBottom: '6px' }}>New password</label>
+              <label style={{ color: '#6b7280', fontSize: '14px', fontWeight: 500, display: 'block', marginBottom: '6px' }}>{t(lang, 'newPassword')}</label>
               <input
                 type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8}
                 onFocus={e => { e.target.style.border = '1px solid #3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)'; }}
@@ -58,7 +60,7 @@ export default function ResetPassword() {
               />
             </div>
             <div style={{ marginBottom: '24px' }}>
-              <label style={{ color: '#6b7280', fontSize: '14px', fontWeight: 500, display: 'block', marginBottom: '6px' }}>Confirm password</label>
+              <label style={{ color: '#6b7280', fontSize: '14px', fontWeight: 500, display: 'block', marginBottom: '6px' }}>{t(lang, 'confirmPassword')}</label>
               <input
                 type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required
                 onFocus={e => { e.target.style.border = '1px solid #3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)'; }}
@@ -79,13 +81,13 @@ export default function ResetPassword() {
               border: 'none', borderRadius: '6px', color: '#ffffff', fontSize: '14px',
               fontWeight: '500', cursor: (status === 'loading' || !token) ? 'not-allowed' : 'pointer', opacity: (status === 'loading' || !token) ? 0.7 : 1, transition: 'background 0.15s ease'
             }}>
-              {status === 'loading' ? 'Resetting…' : 'Reset password'}
+              {status === 'loading' ? t(lang, 'loading') : t(lang, 'resetPassword')}
             </button>
           </form>
         )}
 
         <p style={{ textAlign: 'center', marginTop: '24px', color: '#6b7280', fontSize: '14px' }}>
-          <a href="/" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}>Back to sign in</a>
+          <a href="/" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: '500' }}>{t(lang, 'backToSignIn')}</a>
         </p>
     </AuthShell>
   );

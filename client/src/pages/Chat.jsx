@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../AuthContext';
+import { t } from '../i18n';
 import { RolePanel, PANEL_ACTIVE_CLS } from '../components/RolePanels';
 import { registerServiceWorker, requestPermissionAndSubscribe, isPushSupported } from '../lib/push';
 
@@ -606,7 +607,7 @@ export default function Chat() {
             <div className="flex items-center justify-between">
               <button
                 type="button"
-                title="Attach document for this conversation only (.pdf, .txt, .md) — not saved to Library"
+                title={t(lang === 'GEO' ? 'ka' : 'en', 'attachDocTitle')}
                 onClick={() => fileInputRef.current?.click()}
                 className="h-8 w-8 rounded-full flex items-center justify-center bg-transparent hover:bg-[#f3f4f6] text-[#6b7280] transition-colors duration-150"
               >
