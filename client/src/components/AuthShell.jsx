@@ -53,12 +53,18 @@ export default function AuthShell({ children }) {
         {/* Sherlock logo — clickable, returns to sign-in */}
         <a
           href="/"
+          onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+          onFocus={e => { e.currentTarget.style.opacity = '0.85'; }}
+          onBlur={e => { e.currentTarget.style.opacity = '1'; }}
           style={{
             position: 'relative',
             zIndex: 1,
             marginBottom: 24,
             display: 'block',
             cursor: 'pointer',
+            outline: 'none',
+            transition: 'opacity 0.15s ease',
           }}
         >
           <img
