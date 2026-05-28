@@ -96,7 +96,7 @@ const translations = {
     checkYourEmailTitle: 'შეამოწმეთ თქვენი ფოსტა',
     checkYourEmailBody: 'დადასტურების ბმული გავგზავნეთ ამ მისამართზე:',
     didntGetEmail: 'არ მოგივიდათ მეილზე ბმული?',
-    backToSignIn: 'შესვლის გვერდზე დაბრუნება',
+    backToSignIn: 'დაუბრუნდით ავტორიზაციას',
     emailNotVerified: 'ელ-ფოსტა არ არის დადასტურებული. გთხოვთ, შეამოწმეთ თქვენი მეილი.',
     sending: 'იგზავნება…',
     send: 'გაგზავნა',
