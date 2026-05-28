@@ -7,6 +7,8 @@ const translations = {
     signIn: 'Sign in',
     signingIn: 'Signing in...',
     forgotPassword: 'Forgot password?',
+    forgotPasswordTitle: 'Reset password',
+    forgotPasswordSubtitle: "We'll send a recovery link to your email",
     noAccount: 'No account?',
     registerSchool: 'Register your school',
     schoolName: 'School / Organization name',
@@ -73,6 +75,8 @@ const translations = {
     signIn: 'შესვლა',
     signingIn: 'შესვლა...',
     forgotPassword: 'დაგავიწყდათ პაროლი?',
+    forgotPasswordTitle: 'პაროლის აღდგენა',
+    forgotPasswordSubtitle: 'გამოგიგზავნით აღდგენის ბმულს თქვენს ელ-ფოსტაზე',
     noAccount: 'არ გაქვთ ანგარიში?',
     registerSchool: 'დაარეგისტრირეთ თქვენი სკოლა',
     schoolName: 'სკოლის / ორგანიზაციის სახელი',
@@ -151,6 +155,8 @@ const translations = {
     invitedSubtitle: 'Erstelle dein Sherlock-Konto',
     yourName: 'Dein Name',
     language: 'Sprache',
+    forgotPasswordTitle: 'Reset password',
+    forgotPasswordSubtitle: "We'll send a recovery link to your email",
   },
   ja: {
     welcomeBack: 'おかえりなさい',
@@ -172,6 +178,8 @@ const translations = {
     invitedSubtitle: 'Sherlockアカウントを作成する',
     yourName: 'お名前',
     language: '言語',
+    forgotPasswordTitle: 'Reset password',
+    forgotPasswordSubtitle: "We'll send a recovery link to your email",
   }
 };
 

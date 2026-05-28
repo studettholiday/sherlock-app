@@ -76,8 +76,8 @@ export default function Login({ onSwitch, onSuccess }) {
         </select>
 
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <h1 style={{ fontFamily: "'Arbutus Slab', serif", fontWeight: 400, fontSize: '32px', color: '#111827', margin: 0 }}>{t(lang, 'welcomeBack')}</h1>
-          <p style={{ color: '#6b7280', marginTop: '8px', fontSize: '14px' }}>{t(lang, 'signInSubtitle')}</p>
+          <h1 style={{ fontFamily: "'Arbutus Slab', serif", fontWeight: 400, fontSize: '32px', color: '#111827', margin: 0 }}>{t(lang, forgotMode ? 'forgotPasswordTitle' : 'welcomeBack')}</h1>
+          <p style={{ color: '#6b7280', marginTop: '8px', fontSize: '14px' }}>{t(lang, forgotMode ? 'forgotPasswordSubtitle' : 'signInSubtitle')}</p>
         </div>
 
         {error && (
