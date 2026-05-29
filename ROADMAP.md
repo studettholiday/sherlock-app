@@ -14,3 +14,4 @@
 - Manual pg_dump backup before launch — open task.
 - API key rotation before launch.
 - Business email at support@sherlock.school via Namecheap forwarder when paying customers exist.
+- Sherlock persona should emerge from library content. If library has music PDFs → act as music tutor. If literature → literature tutor. Multiple subjects → multi-subject. Empty library → general assistant willing to help with any topic. Currently the system prompt is too restrictive even with an empty library.
