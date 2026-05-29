@@ -19,6 +19,11 @@ const PDF_EXTRACTION_FAILED = {
   ka: 'ვერ მოვახერხეთ ტექსტის ამოღება ამ PDF-დან. შესაძლოა ის იყოს დასკანერებული ან იყენებდეს შრიფტს, რომელსაც ვერ ვკითხულობთ.',
 };
 
+const FILE_FORMAT_MISMATCH = {
+  en: "File format doesn't match its extension.",
+  ka: 'ფაილის ფორმატი არ ემთხვევა.',
+};
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 50 * 1024 * 1024 },
@@ -77,6 +82,19 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
     // ("KÃ¶hler.pdf"). Round-trip the raw bytes back through UTF-8 before any
     // logging or INSERT so the DB stores the real name.
     const originalName = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
+    // MIME magic-byte gate: the multer fileFilter only checks extension, which
+    // is forgeable (rename evil.exe → evil.pdf). PDFs have a well-defined
+    // signature; TXT/MD have no canonical magic bytes so we pass them through
+    // (downstream extractText reads them as UTF-8 — wrong-encoding files just
+    // produce garbled content rather than a security issue).
+    if (req.file.mimetype === 'application/pdf') {
+      const sig = req.file.buffer.slice(0, 5).toString('ascii');
+      if (sig !== '%PDF-') {
+        const lang = req.query.lang === 'ka' ? 'ka' : 'en';
+        console.error('[library] /upload MIME mismatch — declared application/pdf but signature was %j. file=%s', sig, originalName);
+        return res.status(415).json({ error: FILE_FORMAT_MISMATCH[lang] });
+      }
+    }
     const content = await extractText(req.file.buffer, req.file.mimetype);
     // Guard against silently storing an empty/near-empty PDF: file would
     // appear in the library but be invisible to AI chat. Reject with 422 so
