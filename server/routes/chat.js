@@ -42,7 +42,7 @@ async function getLibraryContext(schoolId) {
   }
 }
 
-function buildSystemPrompt(user, mode, libraryFiles, language) {
+function buildSystemPrompt(user, mode, libraryFiles, language, context) {
   const role = user.role;
   const schoolName = user.schoolName;
 
@@ -54,12 +54,18 @@ function buildSystemPrompt(user, mode, libraryFiles, language) {
 
   prompt += " Respond in the same language the user writes their message in. If they write in English, respond in English; if they write in Georgian, respond in Georgian. Keep the body of your response in that language consistently. You may use words or short phrases from other languages when they serve a clear teaching purpose — defining a term, quoting an example, explaining grammar, or using standard musical or technical vocabulary (such as Italian tempo markings or Latin terms). Do not insert phrases from other languages decoratively, for flavour, or as catchphrases. Every cross-language insertion must have a clear educational reason.";
 
+  prompt += `\n\nInformation sources and accuracy:\n- When the user has attached files for this conversation, treat those attachments as the PRIMARY source. The school library is secondary — only reference it if it is directly relevant to the question or the user explicitly asks about it. When attachments and library overlap, the attached files take precedence.\n- Never fabricate. If asked about a person, fact, or detail that is not present in the attached files, the school library, or something the user has stated, say so clearly: "I don't have that information." Do not guess. Do not invent context to fit the school. Truth over confidence.\n- Do not confuse roles, identities, or relationships. If the library mentions someone, state only what the library actually says — do not infer titles, founders, family ties, or other attributes that are not explicitly stated.`;
+
   if (mode === 'focus') {
     prompt += '\n\nIMPORTANT: Answer ONLY using the school library documents provided below. If the answer is not in the library, say you do not have that information in the school library.';
   } else if (mode === 'smart') {
     prompt += '\n\nUse the school library documents as your primary source. You may also use your general knowledge to supplement answers.';
   } else {
     prompt += '\n\nYou may use both the school library and your full general knowledge to help.';
+  }
+
+  if (context) {
+    prompt += `\n\nATTACHED FILES (chat-scoped, primary source):\n\n${context}`;
   }
 
   if (libraryFiles.length > 0) {
@@ -97,7 +103,7 @@ router.post('/', authMiddleware, async (req, res) => {
     return res.status(429).json({ error: 'Too many messages. Please wait before sending more.' });
   }
 
-  const { messages, mode = 'smart', language = 'en' } = req.body;
+  const { messages, mode = 'smart', language = 'en', context } = req.body;
 
   if (!Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'messages array is required' });
@@ -125,7 +131,8 @@ router.post('/', authMiddleware, async (req, res) => {
       { ...user, schoolName: school.name || user.schoolName },
       mode,
       libraryFiles,
-      language
+      language,
+      context
     );
 
     // Strip leading assistant messages — Anthropic requires conversation to start with user

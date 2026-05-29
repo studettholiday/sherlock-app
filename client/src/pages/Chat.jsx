@@ -55,8 +55,7 @@ const CHAT_STYLES = {
 
 function buildContext(attachedFiles) {
   if (attachedFiles.length === 0) return null;
-  const attachText = attachedFiles.map(f => `=== ${f.name} ===\n${f.content}`).join('\n\n');
-  return `ATTACHED FILES (use as context):\n\n${attachText.slice(0, 12000)}`;
+  return attachedFiles.map(f => `=== ${f.name} ===\n${f.content}`).join('\n\n').slice(0, 12000);
 }
 
 function MessageBubble({ message, theme }) {
@@ -638,40 +637,39 @@ export default function Chat() {
               style={{ fieldSizing: 'content' }}
             />
             <div className="flex items-center justify-between">
-              <div className="relative">
-                {user?.is_owner && attachMenuOpen && (
-                  <>
-                    <div className="fixed inset-0 z-[40]" onClick={() => setAttachMenuOpen(false)} />
-                    <div className="absolute bottom-full mb-2 left-0 z-[50] bg-white border border-[#e5e7eb] rounded-[8px] shadow-[0_4px_12px_rgba(0,0,0,0.08)] py-1 min-w-[240px]">
-                      <button
-                        type="button"
-                        onClick={() => { setAttachMenuOpen(false); fileInputRef.current?.click(); }}
-                        className="block w-full text-left px-3 py-2 text-[14px] text-[#111827] hover:bg-[#f3f4f6]">
-                        {t(lang === 'GEO' ? 'ka' : 'en', 'attachDocTitle')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setAttachMenuOpen(false); libraryFileInputRef.current?.click(); }}
-                        className="block w-full text-left px-3 py-2 text-[14px] text-[#111827] hover:bg-[#f3f4f6]">
-                        {t(lang === 'GEO' ? 'ka' : 'en', 'uploadToLibrary')}
-                      </button>
-                    </div>
-                  </>
-                )}
-              <button
-                type="button"
-                title={t(lang === 'GEO' ? 'ka' : 'en', 'addFile')}
-                onClick={() => {
-                  if (user?.is_owner) setAttachMenuOpen(o => !o);
-                  else fileInputRef.current?.click();
-                }}
-                className="h-8 w-8 rounded-full flex items-center justify-center bg-transparent hover:bg-[#f3f4f6] text-[#6b7280] transition-colors duration-150"
-              >
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <path d="M12 5v14M5 12h14"/>
-                </svg>
-              </button>
-              </div>
+              {user?.is_owner && (
+                <div className="relative">
+                  {attachMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-[40]" onClick={() => setAttachMenuOpen(false)} />
+                      <div className="absolute bottom-full mb-2 left-0 z-[50] bg-white border border-[#e5e7eb] rounded-[8px] shadow-[0_4px_12px_rgba(0,0,0,0.08)] py-1 min-w-[240px]">
+                        <button
+                          type="button"
+                          onClick={() => { setAttachMenuOpen(false); fileInputRef.current?.click(); }}
+                          className="block w-full text-left px-3 py-2 text-[14px] text-[#111827] hover:bg-[#f3f4f6]">
+                          {t(lang === 'GEO' ? 'ka' : 'en', 'attachDocTitle')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setAttachMenuOpen(false); libraryFileInputRef.current?.click(); }}
+                          className="block w-full text-left px-3 py-2 text-[14px] text-[#111827] hover:bg-[#f3f4f6]">
+                          {t(lang === 'GEO' ? 'ka' : 'en', 'uploadToLibrary')}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                <button
+                  type="button"
+                  title={t(lang === 'GEO' ? 'ka' : 'en', 'addFile')}
+                  onClick={() => setAttachMenuOpen(o => !o)}
+                  className="h-8 w-8 rounded-full flex items-center justify-center bg-transparent hover:bg-[#f3f4f6] text-[#6b7280] transition-colors duration-150"
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M12 5v14M5 12h14"/>
+                  </svg>
+                </button>
+                </div>
+              )}
               <button
                 type="submit"
                 disabled={loading || !input.trim()}
