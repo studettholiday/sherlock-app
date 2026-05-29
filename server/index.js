@@ -1,3 +1,15 @@
+// Global crash safety: any uncaught exception or unhandled promise rejection
+// logs a full stack trace and exits with code 1 so Railway restarts the
+// container instead of leaving it in a half-broken state.
+process.on('uncaughtException', (err) => {
+  console.error('[fatal] uncaughtException:', err.stack || err);
+  process.exit(1);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[fatal] unhandledRejection:', reason?.stack || reason);
+  process.exit(1);
+});
+
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
