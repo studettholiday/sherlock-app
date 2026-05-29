@@ -281,7 +281,6 @@ router.get('/:fileId/view', authMiddleware, async (req, res) => {
     if (!file.content_binary) return res.status(404).json({ error: 'Not found' });
 
     res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
-    const safeName = (file.filename || 'file').replace(/[\r\n"]/g, '');
     res.setHeader('Content-Disposition', buildContentDisposition('inline', file.filename));
     res.setHeader('Cache-Control', 'private, no-store');
     res.send(file.content_binary);
@@ -458,7 +457,6 @@ router.get('/download/:id', authMiddleware, async (req, res) => {
     const result = await pool.query(sql, params);
     if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
     const file = result.rows[0];
-    const safeName = (file.filename || 'file').replace(/[\r\n"]/g, '');
     // Prefer raw bytes (post-migration uploads, available to both owner and
     // student branches). Fall back to extracted text only when no binary is
     // stored (legacy .txt/.md rows). 404 if neither is present. The assert

@@ -18,8 +18,6 @@ const fs = require('fs');
 const { Pool } = require('pg');
 const chatRouter = require('./routes/chat');
 const dbRouter = require('./routes/db');
-const youtubeRoutes = require('./routes/youtube');
-const searchRoutes = require('./routes/search');
 const authRouter = require('./routes/auth');
 const libraryRouter = require('./routes/library');
 const schoolRouter = require('./routes/school');
@@ -120,8 +118,6 @@ app.use('/api/library', libraryRouter);
 app.use('/api/school', schoolRouter);
 app.use('/api/invites', invitesRouter);
 app.use('/api/push', pushRouter);
-app.use('/api/youtube', youtubeRoutes);
-app.use('/api/search', searchRoutes);
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
 // Extensionless URLs for the legal pages. Must come before the static handler
