@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../AuthContext';
 import { t } from '../i18n';
+import { uploadToLibrary } from '../lib/uploadToLibrary';
 import { RolePanel, PANEL_ACTIVE_CLS } from '../components/RolePanels';
 import { registerServiceWorker, requestPermissionAndSubscribe, isPushSupported } from '../lib/push';
 
@@ -52,17 +53,10 @@ const CHAT_STYLES = {
   },
 };
 
-function buildContext(libraryFiles, attachedFiles) {
-  const parts = [];
-  if (libraryFiles.length > 0) {
-    const libText = libraryFiles.map(f => `=== ${f.filename} ===\n${f.content}`).join('\n\n');
-    parts.push(`SCHOOL KNOWLEDGE LIBRARY:\n\n${libText.slice(0, 10000)}`);
-  }
-  if (attachedFiles.length > 0) {
-    const attachText = attachedFiles.map(f => `=== ${f.name} ===\n${f.content}`).join('\n\n');
-    parts.push(`ATTACHED FILES (use as context):\n\n${attachText.slice(0, 12000)}`);
-  }
-  return parts.length > 0 ? parts.join('\n\n---\n\n') : null;
+function buildContext(attachedFiles) {
+  if (attachedFiles.length === 0) return null;
+  const attachText = attachedFiles.map(f => `=== ${f.name} ===\n${f.content}`).join('\n\n');
+  return `ATTACHED FILES (use as context):\n\n${attachText.slice(0, 12000)}`;
 }
 
 function MessageBubble({ message, theme }) {
@@ -144,10 +138,11 @@ export default function Chat() {
 
   const messagesRef  = useRef(null);
   const fileInputRef = useRef(null);
+  const libraryFileInputRef = useRef(null);
   const pushInitRef  = useRef(false);
   const settingsRef  = useRef(null);
   const [attachedFiles, setAttachedFiles] = useState([]);
-  const [libraryFiles, setLibraryFiles]   = useState([]);
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const s = CHAT_STYLES['glass'];
 
   // Track visual viewport height so the layout never extends behind mobile keyboard/chrome
@@ -227,12 +222,16 @@ export default function Chat() {
     setAttachedFiles([]);
   }, [role, lang]);
 
-  function addLibraryFile(filename, content) {
-    setLibraryFiles(prev => [...prev, { id: Date.now(), filename, content }]);
-  }
-
-  function removeLibraryFile(id) {
-    setLibraryFiles(prev => prev.filter(f => f.id !== id));
+  async function handleLibraryFileSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    try {
+      await uploadToLibrary(file, lang);
+      setMessages(prev => [...prev, { role: 'assistant', content: `📄 "${file.name}" ${t(lang === 'GEO' ? 'ka' : 'en', 'addedToLibrary')}` }]);
+    } catch (err) {
+      setMessages(prev => [...prev, { role: 'assistant', content: `❌ ${err.message}` }]);
+    }
   }
 
   async function loadPdfJs() {
@@ -354,7 +353,7 @@ export default function Chat() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ messages: apiMessages, context: buildContext(libraryFiles, attachedFiles), language: lang === 'GEO' ? 'ka' : 'en' }),
+        body: JSON.stringify({ messages: apiMessages, context: buildContext(attachedFiles), language: lang === 'GEO' ? 'ka' : 'en' }),
       });
       const data = await res.json();
       const aiText = data.message ?? 'No response.';
@@ -590,6 +589,13 @@ export default function Chat() {
             onChange={handleFileSelect}
             className="hidden"
           />
+          <input
+            ref={libraryFileInputRef}
+            type="file"
+            accept=".pdf,.txt,.md"
+            onChange={handleLibraryFileSelect}
+            className="hidden"
+          />
           <div
             className="bg-[#ffffff] border border-[#e5e7eb] rounded-[24px] p-3 flex flex-col gap-2"
             style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
@@ -605,16 +611,40 @@ export default function Chat() {
               style={{ fieldSizing: 'content' }}
             />
             <div className="flex items-center justify-between">
+              <div className="relative">
+                {user?.is_owner && attachMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-[40]" onClick={() => setAttachMenuOpen(false)} />
+                    <div className="absolute bottom-full mb-2 left-0 z-[50] bg-white border border-[#e5e7eb] rounded-[8px] shadow-[0_4px_12px_rgba(0,0,0,0.08)] py-1 min-w-[240px]">
+                      <button
+                        type="button"
+                        onClick={() => { setAttachMenuOpen(false); fileInputRef.current?.click(); }}
+                        className="block w-full text-left px-3 py-2 text-[14px] text-[#111827] hover:bg-[#f3f4f6]">
+                        {t(lang === 'GEO' ? 'ka' : 'en', 'attachDocTitle')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setAttachMenuOpen(false); libraryFileInputRef.current?.click(); }}
+                        className="block w-full text-left px-3 py-2 text-[14px] text-[#111827] hover:bg-[#f3f4f6]">
+                        {t(lang === 'GEO' ? 'ka' : 'en', 'uploadToLibrary')}
+                      </button>
+                    </div>
+                  </>
+                )}
               <button
                 type="button"
-                title={t(lang === 'GEO' ? 'ka' : 'en', 'attachDocTitle')}
-                onClick={() => fileInputRef.current?.click()}
+                title={t(lang === 'GEO' ? 'ka' : 'en', 'addFile')}
+                onClick={() => {
+                  if (user?.is_owner) setAttachMenuOpen(o => !o);
+                  else fileInputRef.current?.click();
+                }}
                 className="h-8 w-8 rounded-full flex items-center justify-center bg-transparent hover:bg-[#f3f4f6] text-[#6b7280] transition-colors duration-150"
               >
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <path d="M12 5v14M5 12h14"/>
                 </svg>
               </button>
+              </div>
               <button
                 type="submit"
                 disabled={loading || !input.trim()}
@@ -642,8 +672,7 @@ export default function Chat() {
           <div
             className="relative w-full max-w-[600px] max-h-[90vh] overflow-hidden flex"
             onClick={(e) => e.stopPropagation()}>
-            <RolePanel role={role} panel={activePanel} onClose={() => setActivePanel(null)}
-              libraryProps={{ libraryFiles, onAddFile: addLibraryFile, onRemoveFile: removeLibraryFile, orgName: user?.schoolName || '', orgNameGenitive: '' }} lang={lang} />
+            <RolePanel role={role} panel={activePanel} onClose={() => setActivePanel(null)} lang={lang} />
           </div>
         </div>
       )}

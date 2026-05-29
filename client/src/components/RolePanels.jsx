@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { useAuth } from '../AuthContext';
 import { t } from '../i18n';
+import { uploadToLibrary } from '../lib/uploadToLibrary';
 
 // ─── Theme tokens ─────────────────────────────────────────────────────────────
 
@@ -50,7 +51,6 @@ const PANEL_TITLES = {
   'students':          'Students',
   'library':           'Files',
   'public-library':    'Public Library',
-  'knowledge-library': 'Knowledge Library',
 };
 
 const GEO_PANEL_TITLES = {
@@ -60,7 +60,6 @@ const GEO_PANEL_TITLES = {
   'students':          'მოსწავლეები',
   'library':           'ფაილები',
   'public-library':    'საჯარო ბიბლიოთეკა',
-  'knowledge-library': 'ცოდნის ბიბლიოთეკა',
 };
 
 function getPanelTitle(panel, lang) {
@@ -496,19 +495,10 @@ function LibraryOwnerPanel({ lang }) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (file.size > 50 * 1024 * 1024) {
-      setError(lang === 'GEO' ? 'ფაილი უნდა იყოს 50MB-ზე ნაკლები.' : 'File must be under 50MB.');
-      return;
-    }
     setError('');
     setUploading(true);
-    const token = localStorage.getItem('sherlock_token');
     try {
-      const form = new FormData();
-      form.append('file', file);
-      const res  = await fetch(`/api/library/upload?lang=${lang === 'GEO' ? 'ka' : 'en'}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      await uploadToLibrary(file, lang);
       await load();
     } catch (e) {
       setError(e.message);
@@ -1316,227 +1306,6 @@ function LibraryPanelDispatch({ lang }) {
     : <LibraryStudentPanel lang={lang} />;
 }
 
-// ─── Knowledge Library panel ──────────────────────────────────────────────────
-
-function KnowledgeLibraryPanel({ role, lang, orgName, orgNameGenitive, libraryFiles = [], onAddFile, onRemoveFile }) {
-  const th = TH[role] ?? TH.student;
-  const [tab, setTab] = useState('upload');
-  const [uploading, setUploading] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
-  const [status, setStatus] = useState('');
-
-  const [previewMsgs,    setPreviewMsgs]    = useState([]);
-  const [previewInput,   setPreviewInput]   = useState('');
-  const [previewLoading, setPreviewLoading] = useState(false);
-
-  async function loadPdfJs() {
-    if (window.pdfjsLib) return window.pdfjsLib;
-    return new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-      script.onload = () => {
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        resolve(window.pdfjsLib);
-      };
-      script.onerror = reject;
-      document.head.appendChild(script);
-    });
-  }
-
-  async function handleUpload(file) {
-    if (!file) return;
-    setUploading(true);
-    setStatus('');
-    try {
-      let text = '';
-      if (file.name.toLowerCase().endsWith('.pdf')) {
-        const pdfjs = await loadPdfJs();
-        const buf   = await file.arrayBuffer();
-        const pdf   = await pdfjs.getDocument({ data: buf }).promise;
-        for (let p = 1; p <= pdf.numPages; p++) {
-          const page    = await pdf.getPage(p);
-          const content = await page.getTextContent();
-          text += content.items.map(item => item.str).join(' ') + '\n';
-        }
-      } else {
-        text = await new Promise((res, rej) => {
-          const reader = new FileReader();
-          reader.onload = ev => res(ev.target.result);
-          reader.onerror = rej;
-          reader.readAsText(file);
-        });
-      }
-      if (!text.trim()) {
-        throw new Error(t(lang === 'GEO' ? 'ka' : 'en', 'noTextExtracted'));
-      }
-      onAddFile?.(file.name, text);
-      setStatus(`✅ "${file.name}" ${t(lang === 'GEO' ? 'ka' : 'en', 'addedToLibrary')}`);
-      setTimeout(() => setStatus(''), 4000);
-    } catch (err) {
-      setStatus('❌ ' + err.message);
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  function onDrop(e) {
-    e.preventDefault();
-    setDragOver(false);
-    handleUpload(e.dataTransfer.files?.[0]);
-  }
-
-  async function sendPreview(e) {
-    e?.preventDefault();
-    const text = previewInput.trim();
-    if (!text || previewLoading) return;
-    const userMsg = { role: 'user', content: text };
-    const history = [...previewMsgs, userMsg];
-    setPreviewMsgs(history);
-    setPreviewInput('');
-    setPreviewLoading(true);
-
-    const libContext = libraryFiles.length > 0
-      ? `SCHOOL KNOWLEDGE LIBRARY:\n\n${libraryFiles.map(f => `=== ${f.filename} ===\n${f.content}`).join('\n\n').slice(0, 10000)}`
-      : null;
-
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            { role: 'user',      content: '[System context] You are a school knowledge assistant. Answer questions based on the school knowledge library.' },
-            { role: 'assistant', content: 'Understood.' },
-            ...history,
-          ],
-          provider: 'anthropic',
-          context: libContext,
-        }),
-      });
-      const data = await res.json();
-      setPreviewMsgs(prev => [...prev, { role: 'assistant', content: data.message ?? 'No response.' }]);
-    } catch {
-      setPreviewMsgs(prev => [...prev, { role: 'assistant', content: 'Error: could not reach the server.' }]);
-    } finally {
-      setPreviewLoading(false);
-    }
-  }
-
-  const tabs = lang === 'GEO'
-    ? [['upload', '⬆️ ატვირთვა'], ['preview', '🔍 გადახედვა']]
-    : [['upload', '⬆️ Upload'],    ['preview', '🔍 Preview']];
-
-  return (
-    <div className="space-y-3">
-      {/* Tab row */}
-      <div className="flex gap-2">
-        {tabs.map(([id, label]) => (
-          <button key={id} onClick={() => setTab(id)}
-            className={`px-3 py-1 rounded-full text-[13px] font-medium transition-colors duration-150 ${
-              tab === id
-                ? 'bg-[#eff6ff] border border-[#3b82f6] text-[#2563eb]'
-                : 'border border-[#e5e7eb] bg-[#ffffff] text-[#111827] hover:bg-[#f9fafb]'
-            }`}>
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'upload' ? (
-        <div className="space-y-3">
-          <label
-            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={onDrop}
-            className={`flex flex-col items-center justify-center rounded-[8px] border-2 border-dashed px-4 py-5 cursor-pointer transition-colors duration-150 ${
-              dragOver ? 'border-[#3b82f6] bg-[#eff6ff]' : 'border-[#e5e7eb] bg-[#fafafa] hover:border-[#3b82f6]'
-            } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
-            <span className="text-2xl mb-1.5">{uploading ? '⏳' : '📄'}</span>
-            <p className="text-[14px] text-[#111827] font-semibold">
-              {uploading
-                ? (lang === 'GEO' ? 'დამუშავება...' : 'Processing…')
-                : (lang === 'GEO' ? 'ატვირთე ბიბლიოთეკაში' : 'Upload to demo library')}
-            </p>
-            <p className="text-[13px] text-[#6b7280] mt-1 text-center leading-relaxed">
-              {lang === 'GEO'
-                ? `აქ შეგიძლია ატვირთო სასწავლო მასალა შენი სკოლისთვის · ხელმისაწვდომია "${orgNameGenitive || 'დაწესებულების'}" ყველა წევრისთვის`
-                : 'Upload study materials for your school · accessible to everyone in your Sherlock environment'}
-            </p>
-            <p className="text-[13px] text-[#9ca3af] mt-2">
-              {lang === 'GEO' ? 'ჩააგდე ან დააჭირე · .pdf .txt .md' : 'Drop here or click · .pdf .txt .md'}
-            </p>
-            <input type="file" accept=".pdf,.txt,.md"
-              onChange={e => { handleUpload(e.target.files?.[0]); e.target.value = ''; }}
-              className="hidden" disabled={uploading} />
-          </label>
-          {status && (
-            <p className={`text-[13px] ${status.startsWith('✅') ? 'text-[#10b981]' : 'text-[#dc2626]'}`}>{status}</p>
-          )}
-          <div className="space-y-1.5">
-            {libraryFiles.length === 0 && !uploading && (
-              <p className="text-[14px] italic text-[#6b7280] text-center py-2">
-                {lang === 'GEO' ? 'ფაილები არ არის ატვირთული.' : 'No files loaded yet.'}
-              </p>
-            )}
-            {libraryFiles.map(f => (
-              <div key={f.id} className="flex items-center gap-2 rounded-[8px] border border-[#e5e7eb] bg-[#ffffff] px-3 py-2 hover:bg-[#fafafa] transition-colors duration-150">
-                <span className="text-sm flex-shrink-0">📄</span>
-                <p className="text-[13px] text-[#111827] truncate flex-1 min-w-0">{f.filename}</p>
-                <button onClick={() => onRemoveFile?.(f.id)}
-                  className="rounded-[6px] border border-[#fecaca] bg-[#ffffff] text-[#dc2626] hover:bg-[#fef2f2] text-sm flex-shrink-0 transition-colors duration-150 leading-none px-1.5 py-0.5">🗑</button>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <p className="text-[13px] text-[#6b7280] font-medium">
-            {lang === 'GEO' ? 'შეამოწმე ბიბლიოთეკა' : 'Test your library'}
-          </p>
-          <div className="h-32 overflow-y-auto rounded-[8px] border border-[#e5e7eb] bg-[#fafafa] p-2 space-y-1.5">
-            {previewMsgs.length === 0 && (
-              <p className="text-[14px] italic text-[#6b7280] text-center mt-8">
-                {lang === 'GEO' ? 'დასვი კითხვა ატვირთული კონტენტის შესახებ' : 'Ask a question about your uploaded content'}
-              </p>
-            )}
-            {previewMsgs.map((m, i) => (
-              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] px-2.5 py-1.5 rounded-[8px] text-[13px] leading-relaxed ${
-                  m.role === 'user'
-                    ? 'bg-[#2563eb] text-white rounded-br-sm'
-                    : 'bg-[#ffffff] border border-[#e5e7eb] text-[#111827] rounded-bl-sm'
-                }`}>{m.content}</div>
-              </div>
-            ))}
-            {previewLoading && (
-              <div className="flex justify-start">
-                <div className="px-2.5 py-1.5 rounded-[8px] text-[13px] bg-[#ffffff] border border-[#e5e7eb] text-[#6b7280] animate-pulse">
-                  {lang === 'GEO' ? 'ფიქრობს...' : 'Thinking…'}
-                </div>
-              </div>
-            )}
-          </div>
-          <form onSubmit={sendPreview} className="flex gap-2">
-            <input
-              value={previewInput}
-              onChange={e => setPreviewInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) sendPreview(e); }}
-              placeholder={lang === 'GEO' ? 'კითხვა ბიბლიოთეკიდან...' : 'Ask something from your library...'}
-              disabled={previewLoading}
-              className={`${FIELD} py-1.5 flex-1 text-[13px]`}
-            />
-            <button type="submit" disabled={!previewInput.trim() || previewLoading}
-              className={`rounded-[6px] ${th.btn} disabled:opacity-40 px-3 py-1.5 text-[13px] text-white font-medium transition-colors duration-150 flex-shrink-0`}>
-              {lang === 'GEO' ? 'გაგზავნა' : 'Send'}
-            </button>
-          </form>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Students panel (owner only) ──────────────────────────────────────────────
 
 // Owner-only. Lists every student in the school and lets the owner assign each
@@ -1690,7 +1459,7 @@ function StudentsPanel({ lang }) {
 
 // ─── Panel router ─────────────────────────────────────────────────────────────
 
-function panelContent(role, panel, libraryProps, lang) {
+function panelContent(role, panel, lang) {
   switch (panel) {
     case 'invite':            return <InvitePanel role={role} lang={lang} />;
     case 'schedule':          return <SchedulePanel lang={lang} />;
@@ -1698,7 +1467,6 @@ function panelContent(role, panel, libraryProps, lang) {
     case 'students':          return <StudentsPanel lang={lang} />;
     case 'library':           return <LibraryPanelDispatch lang={lang} />;
     case 'public-library':    return <PublicLibraryPanel lang={lang} />;
-    case 'knowledge-library': return <KnowledgeLibraryPanel role={role} lang={lang} {...(libraryProps ?? {})} />;
     default:                  return null;
   }
 }
@@ -1709,11 +1477,8 @@ export const PANEL_ACTIVE_CLS = {
   student: 'bg-[#eff6ff] text-[#2563eb] border border-[#3b82f6]',
 };
 
-export function RolePanel({ role, panel, onClose, libraryProps, lang = 'EN' }) {
-  const orgName = libraryProps?.orgName ?? '';
-  const panelTitle = (panel === 'knowledge-library' && lang === 'GEO' && orgName)
-    ? `${orgName} ბიბლიოთეკა`
-    : getPanelTitle(panel, lang);
+export function RolePanel({ role, panel, onClose, lang = 'EN' }) {
+  const panelTitle = getPanelTitle(panel, lang);
   return (
     <div className="rounded-[12px] border border-[#e5e7eb] bg-[#ffffff] shadow-[0_4px_12px_rgba(0,0,0,0.08)] overflow-hidden flex flex-col">
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#e5e7eb] flex-shrink-0">
@@ -1721,7 +1486,7 @@ export function RolePanel({ role, panel, onClose, libraryProps, lang = 'EN' }) {
         <button onClick={onClose} className="text-[#6b7280] hover:text-[#111827] transition-colors duration-150 text-sm leading-none">✕</button>
       </div>
       <div key={panel} className="p-4 overflow-y-auto flex-1">
-        {panelContent(role, panel, libraryProps, lang)}
+        {panelContent(role, panel, lang)}
       </div>
     </div>
   );
