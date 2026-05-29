@@ -7,3 +7,10 @@
 - Capacitor wrap for Play Store + iOS App Store
 - PDF viewer mobile quality improvements
 - App-wide playful loading messages
+- Library download bug — downloaded PDFs are ~668 bytes, corrupted/empty. Likely the download endpoint returns wrong content or original PDFs weren't stored.
+- Library upload occasional failure — friend's normal Georgian PDF book wouldn't upload, cause unknown, need actual file to diagnose.
+- Dual signup paths in auth.js (/signup invite branch vs /invite/accept) — refactor to one.
+- Pre-existing client/node_modules/.package-lock.json tracked despite gitignore — harmless persistent "modified" in git status.
+- Manual pg_dump backup before launch — open task.
+- API key rotation before launch.
+- Business email at support@sherlock.school via Namecheap forwarder when paying customers exist.
