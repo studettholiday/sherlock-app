@@ -14,4 +14,4 @@
 - Manual pg_dump backup before launch — open task.
 - API key rotation before launch.
 - Business email at support@sherlock.school via Namecheap forwarder ready before launch (14-day trial users need a real support address too).
-- Sherlock persona should emerge from library content. If library has music PDFs → act as music tutor. If literature → literature tutor. Multiple subjects → multi-subject. Empty library → general assistant willing to help with any topic. Currently the system prompt is too restrictive even with an empty library.
+- Sherlock persona should emerge from library content + observed school activities. Initially context is broad (general assistant). As school uploads materials, schedules lessons, adds students with roles — context narrows. Music PDFs → music tutor. Literature → literature tutor. Mixed library → multi-subject. Empty library + no signals → broad general assistant. Currently the prompt is too restrictive even with empty library.
