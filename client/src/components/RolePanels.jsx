@@ -506,7 +506,7 @@ function LibraryOwnerPanel({ lang }) {
     try {
       const form = new FormData();
       form.append('file', file);
-      const res  = await fetch('/api/library/upload', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
+      const res  = await fetch(`/api/library/upload?lang=${lang === 'GEO' ? 'ka' : 'en'}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Upload failed');
       await load();

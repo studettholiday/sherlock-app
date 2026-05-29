@@ -9,6 +9,16 @@ const authMiddleware = require('../middleware/auth');
 
 const getPool = () => new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
 
+// Minimum trimmed length of extracted PDF text below which we treat the upload
+// as a failed extraction (scanned-only PDFs, unsupported fonts, encrypted text
+// layers all produce empty or near-empty output from pdf-parse).
+const MIN_PDF_TEXT_LENGTH = 20;
+
+const PDF_EXTRACTION_FAILED = {
+  en: "Could not extract text from this PDF. It may be scanned, image-only, or use a font we can't read.",
+  ka: 'ვერ მოვახერხეთ ტექსტის ამოღება ამ PDF-დან. შესაძლოა ის იყოს დასკანერებული ან იყენებდეს შრიფტს, რომელსაც ვერ ვკითხულობთ.',
+};
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 50 * 1024 * 1024 },
@@ -68,6 +78,14 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
     // logging or INSERT so the DB stores the real name.
     const originalName = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
     const content = await extractText(req.file.buffer, req.file.mimetype);
+    // Guard against silently storing an empty/near-empty PDF: file would
+    // appear in the library but be invisible to AI chat. Reject with 422 so
+    // the client can show a real error instead of a misleading success.
+    if (req.file.mimetype === 'application/pdf' && content.trim().length < MIN_PDF_TEXT_LENGTH) {
+      const lang = req.query.lang === 'ka' ? 'ka' : 'en';
+      console.error('[library] /upload PDF extraction yielded too little text. file=%s extractedLength=%d', originalName, content.trim().length);
+      return res.status(422).json({ error: PDF_EXTRACTION_FAILED[lang] });
+    }
     // Store raw bytes in content_binary so the view endpoint can serve them
     // back for in-app rendering. RETURNING omits the large content / binary
     // fields so the upload response stays small.
