@@ -1,6 +1,10 @@
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
-const JWT_SECRET = process.env.JWT_SECRET || 'sherlock-secret-change-in-production';
+
+if (!process.env.JWT_SECRET) {
+  throw new Error('[boot] JWT_SECRET environment variable is required — refusing to start with insecure default.');
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
 
 module.exports = async (req, res, next) => {
