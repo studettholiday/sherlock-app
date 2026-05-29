@@ -7,7 +7,7 @@ const { PDFParse } = require('pdf-parse');
 const { Pool } = require('pg');
 const authMiddleware = require('../middleware/auth');
 
-const getPool = () => new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
+const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
 
 // Minimum trimmed length of extracted PDF text below which we treat the upload
 // as a failed extraction (scanned-only PDFs, unsupported fonts, encrypted text
@@ -89,7 +89,7 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
     // Store raw bytes in content_binary so the view endpoint can serve them
     // back for in-app rendering. RETURNING omits the large content / binary
     // fields so the upload response stays small.
-    const result = await getPool().query(
+    const result = await pool.query(
       'INSERT INTO library_files (school_id, filename, file_path, file_size, mime_type, uploaded_by, content, content_binary) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, filename, file_size, mime_type, created_at',
       [req.user.schoolId, originalName, '', req.file.size, req.file.mimetype, req.user.userId, content, req.file.buffer]
     );
@@ -140,7 +140,7 @@ router.get('/', authMiddleware, async (req, res) => {
     const params = req.user.is_owner
       ? [req.user.schoolId]
       : [req.user.schoolId, req.user.userId];
-    const result = await getPool().query(sql, params);
+    const result = await pool.query(sql, params);
     console.log('[library] GET / returned %d rows', result.rows.length);
     res.json({ files: result.rows });
   } catch (err) {
@@ -153,14 +153,14 @@ router.get('/', authMiddleware, async (req, res) => {
 router.delete('/:id', authMiddleware, async (req, res) => {
   if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   try {
-    const result = await getPool().query(
+    const result = await pool.query(
       'SELECT * FROM library_files WHERE id = $1 AND school_id = $2',
       [req.params.id, req.user.schoolId]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'File not found' });
     const file = result.rows[0];
     if (file.file_path && fs.existsSync(file.file_path)) fs.unlinkSync(file.file_path);
-    await getPool().query('DELETE FROM library_files WHERE id = $1', [req.params.id]);
+    await pool.query('DELETE FROM library_files WHERE id = $1', [req.params.id]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
@@ -180,7 +180,6 @@ router.put('/:fileId/classes', authMiddleware, async (req, res) => {
   // Normalise: trim, drop blanks, dedupe.
   const requested = [...new Set(classes.map(c => String(c ?? '').trim()).filter(Boolean))];
 
-  const pool = getPool();
   const client = await pool.connect();
   try {
     // Cross-file safety: the target file must belong to this owner's school.
@@ -256,7 +255,7 @@ router.get('/:fileId/view', authMiddleware, async (req, res) => {
     const params = req.user.is_owner
       ? [fileId, req.user.schoolId]
       : [fileId, req.user.schoolId, req.user.userId];
-    const result = await getPool().query(sql, params);
+    const result = await pool.query(sql, params);
     if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
 
     const file = result.rows[0];
@@ -282,7 +281,7 @@ router.get('/:fileId/view', authMiddleware, async (req, res) => {
 router.get('/public', authMiddleware, async (req, res) => {
   if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   try {
-    const result = await getPool().query(
+    const result = await pool.query(
       `SELECT lf.id, lf.filename, lf.file_size, lf.mime_type, lf.created_at,
               EXISTS (
                 SELECT 1 FROM library_files own
@@ -311,7 +310,7 @@ router.get('/public/:fileId/view', authMiddleware, async (req, res) => {
     const fileId = parseInt(req.params.fileId, 10);
     if (!Number.isInteger(fileId)) return res.status(404).json({ error: 'Not found' });
 
-    const result = await getPool().query(
+    const result = await pool.query(
       `SELECT lf.filename, lf.mime_type, lf.content_binary
        FROM library_files lf
        JOIN schools s ON s.id = lf.school_id
@@ -346,7 +345,6 @@ router.post('/public/:fileId/copy', authMiddleware, async (req, res) => {
   const fileId = parseInt(req.params.fileId, 10);
   if (!Number.isInteger(fileId)) return res.status(404).json({ error: 'Not found' });
 
-  const pool = getPool();
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -393,7 +391,7 @@ router.post('/public/:fileId/copy', authMiddleware, async (req, res) => {
 // Get library content for AI context (internal use)
 router.get('/context', authMiddleware, async (req, res) => {
   try {
-    const result = await getPool().query(
+    const result = await pool.query(
       'SELECT filename, content FROM library_files WHERE school_id = $1 AND content IS NOT NULL',
       [req.user.schoolId]
     );
@@ -411,7 +409,7 @@ router.get('/download/:id', authMiddleware, async (req, res) => {
     // setting). Owner branch is unaffected. Same 404 response shape as the
     // not-found / access-denied paths below.
     if (!req.user.is_owner) {
-      const gate = await getPool().query('SELECT student_downloads_enabled FROM schools WHERE id = $1', [req.user.schoolId]);
+      const gate = await pool.query('SELECT student_downloads_enabled FROM schools WHERE id = $1', [req.user.schoolId]);
       if (!gate.rows[0] || gate.rows[0].student_downloads_enabled !== true) {
         return res.status(404).json({ error: 'Not found' });
       }
@@ -439,7 +437,7 @@ router.get('/download/:id', authMiddleware, async (req, res) => {
     const params = req.user.is_owner
       ? [req.params.id, req.user.schoolId]
       : [req.params.id, req.user.schoolId, req.user.userId];
-    const result = await getPool().query(sql, params);
+    const result = await pool.query(sql, params);
     if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
     const file = result.rows[0];
     const safeName = (file.filename || 'file').replace(/[\r\n"]/g, '');

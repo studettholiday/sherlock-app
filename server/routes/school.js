@@ -4,7 +4,7 @@ const { Pool } = require('pg');
 const authMiddleware = require('../middleware/auth');
 const { notifyScheduleChange } = require('../services/push');
 
-const getPool = () => new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
+const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
 
 // --- Schedule ---
 
@@ -12,7 +12,7 @@ router.get('/schedule', authMiddleware, async (req, res) => {
   try {
     if (req.user.is_owner) {
       // Owners always see the full school schedule.
-      const result = await getPool().query(
+      const result = await pool.query(
         'SELECT id, day_of_week, lesson_time, class_name, room FROM schedule WHERE school_id = $1 ORDER BY day_of_week, lesson_time',
         [req.user.schoolId]
       );
@@ -20,7 +20,7 @@ router.get('/schedule', authMiddleware, async (req, res) => {
     }
     // Students see only rows for classes they are assigned to. A student with
     // no assignments sees an empty schedule — the correct fallback.
-    const result = await getPool().query(
+    const result = await pool.query(
       `SELECT s.id, s.day_of_week, s.lesson_time, s.class_name, s.room
        FROM schedule s
        JOIN student_classes sc
@@ -39,7 +39,7 @@ router.post('/schedule', authMiddleware, async (req, res) => {
   if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   const { day_of_week, lesson_time, class_name, room } = req.body;
   try {
-    const result = await getPool().query(
+    const result = await pool.query(
       'INSERT INTO schedule (school_id, day_of_week, lesson_time, class_name, room) VALUES ($1, $2, $3, $4, $5) RETURNING *',
       [req.user.schoolId, day_of_week ?? null, lesson_time || null, class_name || null, room || null]
     );
@@ -54,7 +54,6 @@ router.post('/schedule', authMiddleware, async (req, res) => {
 
 router.delete('/schedule/:id', authMiddleware, async (req, res) => {
   if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
-  const pool = getPool();
   const client = await pool.connect();
   let deletedRow = null;
   try {
@@ -107,7 +106,7 @@ router.patch('/schedule/:id', authMiddleware, async (req, res) => {
   if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   const { day_of_week, lesson_time, room } = req.body;
   try {
-    const result = await getPool().query(
+    const result = await pool.query(
       'UPDATE schedule SET day_of_week = $1, lesson_time = $2, room = $3 WHERE id = $4 AND school_id = $5 RETURNING *',
       [day_of_week, lesson_time, room ?? null, req.params.id, req.user.schoolId]
     );
@@ -125,7 +124,7 @@ router.patch('/schedule/:id', authMiddleware, async (req, res) => {
 // school, derived purely from DISTINCT schedule.class_name. Auth required.
 router.get('/classes', authMiddleware, async (req, res) => {
   try {
-    const result = await getPool().query(
+    const result = await pool.query(
       `SELECT DISTINCT class_name FROM schedule
        WHERE school_id = $1 AND class_name IS NOT NULL AND class_name <> ''
        ORDER BY class_name`,
@@ -142,7 +141,7 @@ router.get('/classes', authMiddleware, async (req, res) => {
 router.get('/students', authMiddleware, async (req, res) => {
   if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   try {
-    const result = await getPool().query(
+    const result = await pool.query(
       `SELECT u.id, u.name, u.email,
               COALESCE(
                 array_agg(sc.class_name ORDER BY sc.class_name)
@@ -175,7 +174,6 @@ router.put('/students/:userId/classes', authMiddleware, async (req, res) => {
   // Normalise: trim, drop blanks, dedupe.
   const requested = [...new Set(classes.map(c => String(c ?? '').trim()).filter(Boolean))];
 
-  const pool = getPool();
   const client = await pool.connect();
   try {
     // Cross-school guard: the target student must belong to this owner's school.
@@ -250,7 +248,7 @@ router.put('/settings', authMiddleware, async (req, res) => {
   }
   params.push(req.user.schoolId);
   try {
-    const result = await getPool().query(
+    const result = await pool.query(
       `UPDATE schools SET ${sets.join(', ')} WHERE id = $${params.length} RETURNING student_ai_enabled, student_downloads_enabled`,
       params
     );

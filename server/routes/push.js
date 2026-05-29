@@ -3,7 +3,7 @@ const router = express.Router();
 const { Pool } = require('pg');
 const authMiddleware = require('../middleware/auth');
 
-const getPool = () => new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
+const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
 
 // GET /api/push/vapid-public-key — public. The frontend needs this key to
 // call pushManager.subscribe(). Returns { key: null } if push is unconfigured.
@@ -20,7 +20,7 @@ router.post('/subscribe', authMiddleware, async (req, res) => {
     return res.status(400).json({ error: 'Invalid subscription' });
   }
   try {
-    await getPool().query(
+    await pool.query(
       `INSERT INTO push_subscriptions (user_id, school_id, endpoint, p256dh_key, auth_key)
        VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (endpoint) DO NOTHING`,
@@ -38,7 +38,7 @@ router.post('/unsubscribe', authMiddleware, async (req, res) => {
   const { endpoint } = req.body || {};
   if (!endpoint) return res.status(400).json({ error: 'Missing endpoint' });
   try {
-    await getPool().query('DELETE FROM push_subscriptions WHERE endpoint = $1', [endpoint]);
+    await pool.query('DELETE FROM push_subscriptions WHERE endpoint = $1', [endpoint]);
     res.json({ success: true });
   } catch (err) {
     console.error('[push] unsubscribe error:', err.message);
