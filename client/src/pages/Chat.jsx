@@ -395,10 +395,22 @@ export default function Chat() {
 
         {/* Header */}
         <header className={`flex items-center gap-2 px-4 py-2 sm:py-3 border-b ${s.headerBorder} flex-shrink-0 bg-[#ffffff]`}>
-          <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full ${theme.avatar} flex items-center justify-center font-bold flex-shrink-0 text-sm`}>
-            S
-          </div>
-          <h1 className="text-[18px] font-semibold text-[#111827]">Sherlock</h1>
+          <button
+            type="button"
+            onClick={() => {
+              setMessages([{ role: 'assistant', content: getGreeting(role, lang, user?.schoolName || '', '') }]);
+              setInput('');
+              setAttachedFiles([]);
+            }}
+            aria-label={lang === 'GEO' ? 'ახალი ჩატი' : 'New chat'}
+            title={lang === 'GEO' ? 'ახალი ჩატი' : 'New chat'}
+            className="flex items-center gap-2 bg-transparent border-0 p-0 cursor-pointer hover:opacity-75 transition-opacity"
+          >
+            <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full ${theme.avatar} flex items-center justify-center font-bold flex-shrink-0 text-sm`}>
+              S
+            </div>
+            <h1 className="text-[18px] font-semibold text-[#111827]">Sherlock</h1>
+          </button>
           {user?.schoolName && (
             <span className="hidden sm:inline text-[14px] font-normal text-[#6b7280] ml-0.5">{user.schoolName}</span>
           )}
