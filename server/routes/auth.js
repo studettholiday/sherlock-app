@@ -5,6 +5,8 @@ const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const { Resend } = require('resend');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const authMiddleware = require('../middleware/auth');
 const { renderEmail } = require('../lib/emailTemplate');
 
@@ -15,13 +17,53 @@ if (!process.env.JWT_SECRET) {
 const JWT_SECRET = process.env.JWT_SECRET;
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Document versions recorded at signup-consent time. Bump these in the same
-// commit that updates /terms or /privacy; new signups record the new version,
-// existing schools keep whatever they originally consented to.
+// Reads the "Last updated" date from a legal HTML file. The "Last updated"
+// line in terms.html / privacy.html is the single source of truth for the
+// consent version we record at signup. Tries the built copy in server/public
+// first (production), falls back to the source in client/public (dev).
+// Throws on missing file, missing date line, or unparseable date — same
+// fail-loudly philosophy as JWT_SECRET and migrations. Date is parsed
+// manually (not via Date constructor) so the host timezone can't roll the
+// day backwards in toISOString().
+const MONTHS = {
+  January: 1, February: 2, March: 3, April: 4, May: 5, June: 6,
+  July: 7, August: 8, September: 9, October: 10, November: 11, December: 12,
+};
+function readLegalDate(filename) {
+  const candidates = [
+    path.join(__dirname, '..', 'public', filename),
+    path.join(__dirname, '..', '..', 'client', 'public', filename),
+  ];
+  const found = candidates.find(p => fs.existsSync(p));
+  if (!found) {
+    throw new Error(`[boot] Could not find ${filename} at ${candidates.join(' or ')}`);
+  }
+  const html = fs.readFileSync(found, 'utf8');
+  const m = html.match(/Last updated.*?<bdt class="question">(?:<strong>)?([^<]+)/s);
+  if (!m) {
+    throw new Error(`[boot] Could not find "Last updated" date in ${found}`);
+  }
+  const raw = m[1].trim();
+  const parts = raw.match(/^(\w+)\s+(\d{1,2}),\s*(\d{4})$/);
+  if (!parts) {
+    throw new Error(`[boot] Could not parse "${raw}" as "Month Day, Year" in ${found}`);
+  }
+  const month = MONTHS[parts[1]];
+  if (!month) {
+    throw new Error(`[boot] Unknown month "${parts[1]}" in ${found}`);
+  }
+  const day = parts[2].padStart(2, '0');
+  return `${parts[3]}-${String(month).padStart(2, '0')}-${day}`;
+}
+
+// Consent versions recorded at signup. Derived at boot from the live HTML
+// "Last updated" date in /terms and /privacy — bumping either doc auto-bumps
+// the recorded version. Minor-consent attestation lives in the privacy doc.
+// Existing schools keep whatever they originally consented to.
 const LEGAL_VERSIONS = {
-  tos: '2026-05-27',
-  privacy: '2026-05-27',
-  minor_consent: '2026-05-27',
+  tos: readLegalDate('terms.html'),
+  privacy: readLegalDate('privacy.html'),
+  minor_consent: readLegalDate('privacy.html'),
 };
 
 const VERIFY_EMAIL_STRINGS = {
