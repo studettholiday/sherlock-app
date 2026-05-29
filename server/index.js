@@ -14,58 +14,85 @@ const schoolRouter = require('./routes/school');
 const invitesRouter = require('./routes/invites');
 const pushRouter = require('./routes/push');
 
+const MIGRATIONS = [
+  '001_auth_and_library.sql',
+  '002_school_codes.sql',
+  '003_school_status.sql',
+  '005_invites.sql',
+  '006_chat_mode.sql',
+  '007_library_content.sql',
+  '008_groups_schedule_events.sql',
+  '011_simplify.sql',
+  '012_kill_teacher.sql',
+  '013_auto_approve.sql',
+  '014_push_subscriptions.sql',
+  '015_student_classes.sql',
+  '016_library_file_classes.sql',
+  '017_library_content_binary.sql',
+  '018_school_settings.sql',
+  '019_student_downloads.sql',
+  '020_public_library.sql',
+  '021_fix_fk_cascades.sql',
+  '022_soft_delete.sql',
+  '023_email_verification.sql',
+  '024_consent_capture.sql',
+];
+
+async function tableExists(pool, name) {
+  const r = await pool.query(
+    `SELECT EXISTS (
+       SELECT 1 FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = $1
+     ) AS exists`,
+    [name]
+  );
+  return r.rows[0].exists;
+}
+
+// Runs every unapplied migration in MIGRATIONS order and records each in
+// schema_migrations on success. Three boot scenarios:
+//   - Fresh DB: tracker doesn't exist + no users table → run all top to bottom.
+//   - Existing prod DB (first boot with this code): tracker doesn't exist but
+//     users does → backfill tracker without running any SQL, so 005's
+//     destructive DROP doesn't wipe live invites.
+//   - Steady state: tracker exists → run only what's missing (normally zero).
+// Errors propagate; the caller decides whether to crash the process.
 async function runMigrations() {
   const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
   try {
-    const sql011 = fs.readFileSync(path.join(__dirname, 'migrations/011_simplify.sql'), 'utf8');
-    await pool.query(sql011);
-    console.log('[startup] migration 011 complete');
-    const sql012 = fs.readFileSync(path.join(__dirname, 'migrations/012_kill_teacher.sql'), 'utf8');
-    await pool.query(sql012);
-    console.log('[startup] migration 012 complete');
-    const sql013 = fs.readFileSync(path.join(__dirname, 'migrations/013_auto_approve.sql'), 'utf8');
-    await pool.query(sql013);
-    console.log('[startup] migration 013 complete');
-    const sql014 = fs.readFileSync(path.join(__dirname, 'migrations/014_push_subscriptions.sql'), 'utf8');
-    await pool.query(sql014);
-    console.log('[startup] migration 014 complete');
-    const sql015 = fs.readFileSync(path.join(__dirname, 'migrations/015_student_classes.sql'), 'utf8');
-    await pool.query(sql015);
-    console.log('[startup] migration 015 complete');
-    const sql016 = fs.readFileSync(path.join(__dirname, 'migrations/016_library_file_classes.sql'), 'utf8');
-    await pool.query(sql016);
-    console.log('[startup] migration 016 complete');
-    const sql017 = fs.readFileSync(path.join(__dirname, 'migrations/017_library_content_binary.sql'), 'utf8');
-    await pool.query(sql017);
-    console.log('[startup] migration 017 complete');
-    const sql018 = fs.readFileSync(path.join(__dirname, 'migrations/018_school_settings.sql'), 'utf8');
-    await pool.query(sql018);
-    console.log('[startup] migration 018 complete');
-    const sql019 = fs.readFileSync(path.join(__dirname, 'migrations/019_student_downloads.sql'), 'utf8');
-    await pool.query(sql019);
-    console.log('[startup] migration 019 complete');
-    const sql020 = fs.readFileSync(path.join(__dirname, 'migrations/020_public_library.sql'), 'utf8');
-    await pool.query(sql020);
-    console.log('[startup] migration 020 complete');
-    const sql021 = fs.readFileSync(path.join(__dirname, 'migrations/021_fix_fk_cascades.sql'), 'utf8');
-    await pool.query(sql021);
-    console.log('[startup] migration 021 complete');
-    const sql022 = fs.readFileSync(path.join(__dirname, 'migrations/022_soft_delete.sql'), 'utf8');
-    await pool.query(sql022);
-    console.log('[startup] migration 022 complete');
-    const sql023 = fs.readFileSync(path.join(__dirname, 'migrations/023_email_verification.sql'), 'utf8');
-    await pool.query(sql023);
-    console.log('[startup] migration 023 complete');
-    const sql024 = fs.readFileSync(path.join(__dirname, 'migrations/024_consent_capture.sql'), 'utf8');
-    await pool.query(sql024);
-    console.log('[startup] migration 024 complete');
-  } catch (e) {
-    console.error('[startup] migration error:', e.message);
+    const trackerExisted = await tableExists(pool, 'schema_migrations');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        name TEXT PRIMARY KEY,
+        applied_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+
+    if (!trackerExisted && await tableExists(pool, 'users')) {
+      console.log('[startup] existing DB detected — backfilling schema_migrations');
+      for (const name of MIGRATIONS) {
+        await pool.query(
+          'INSERT INTO schema_migrations(name) VALUES ($1) ON CONFLICT DO NOTHING',
+          [name]
+        );
+      }
+      return;
+    }
+
+    const applied = await pool.query('SELECT name FROM schema_migrations');
+    const appliedSet = new Set(applied.rows.map(r => r.name));
+
+    for (const name of MIGRATIONS) {
+      if (appliedSet.has(name)) continue;
+      const sql = fs.readFileSync(path.join(__dirname, 'migrations', name), 'utf8');
+      await pool.query(sql);
+      await pool.query('INSERT INTO schema_migrations(name) VALUES ($1)', [name]);
+      console.log(`[startup] migration ${name} applied`);
+    }
   } finally {
     await pool.end();
   }
 }
-runMigrations();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -95,6 +122,14 @@ app.get('*', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public/index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+(async () => {
+  try {
+    await runMigrations();
+  } catch (err) {
+    console.error('[startup] FATAL migration error:', err.message);
+    process.exit(1);
+  }
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+})();
