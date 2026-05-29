@@ -41,6 +41,23 @@ const VERIFY_EMAIL_STRINGS = {
   },
 };
 
+const RESET_EMAIL_STRINGS = {
+  en: {
+    subject: 'Reset your Sherlock password',
+    title: 'Reset your password',
+    bodyHtml: '<p>You requested a password reset for your Sherlock account.</p>',
+    buttonText: 'Reset password',
+    footerNote: "This link expires in 1 hour. Didn't request this? Ignore this email.",
+  },
+  ka: {
+    subject: 'პაროლის აღდგენა',
+    title: 'პაროლის აღდგენა',
+    bodyHtml: '<p>თქვენ მოითხოვეთ პაროლის აღდგენა თქვენი Sherlock-ის ანგარიშისთვის.</p>',
+    buttonText: 'პაროლის აღდგენა',
+    footerNote: 'ეს ბმული მოქმედია 1 საათის განმავლობაში. თუ არ მოითხოვეთ, დააიგნორირეთ ეს წერილი.',
+  },
+};
+
 // Looks up `email` against (users JOIN schools) and reports its signup-eligibility:
 //   null                              → no row, free to sign up
 //   { recently_deleted: true, … }     → row exists but is within 21-day grace → 409 payload ready to return
@@ -278,7 +295,7 @@ router.get('/me', async (req, res) => {
 
 // Forgot password
 router.post('/forgot-password', async (req, res) => {
-  const { email } = req.body;
+  const { email, lang = 'en' } = req.body;
   if (!email) return res.status(400).json({ error: 'Missing email' });
   try {
     await pool.query(`
@@ -301,18 +318,19 @@ router.post('/forgot-password', async (req, res) => {
       'INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
       [userId, token, expiresAt]
     );
-    const resetLink = `https://app.sherlock.school/reset-password?token=${token}`;
+    const resetLink = `https://app.sherlock.school/reset-password?token=${token}${lang === 'ka' ? '&lang=ka' : ''}`;
+    const strings = RESET_EMAIL_STRINGS[lang] || RESET_EMAIL_STRINGS.en;
     try {
       await resend.emails.send({
         from: 'Sherlock <noreply@sherlock.school>',
         to: email,
-        subject: 'Reset your Sherlock password',
+        subject: strings.subject,
         html: renderEmail({
-          title: 'Reset your password',
-          bodyHtml: '<p>You requested a password reset for your Sherlock account.</p>',
-          buttonText: 'Reset password',
+          title: strings.title,
+          bodyHtml: strings.bodyHtml,
+          buttonText: strings.buttonText,
           buttonUrl: resetLink,
-          footerNote: "This link expires in 1 hour. Didn't request this? Ignore this email.",
+          footerNote: strings.footerNote,
         }),
       });
     } catch (emailErr) {

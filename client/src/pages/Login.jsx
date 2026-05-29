@@ -56,7 +56,7 @@ export default function Login({ onSwitch, onSuccess }) {
       const res = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail }),
+        body: JSON.stringify({ email: forgotEmail, lang }),
       });
       if (!res.ok) throw new Error();
       setForgotStatus('sent');

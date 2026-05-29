@@ -4,7 +4,11 @@ import AuthShell from '../components/AuthShell';
 
 export default function ResetPassword() {
   const token = new URLSearchParams(window.location.search).get('token') || '';
-  const [lang] = useState(localStorage.getItem('sherlock_lang') || 'en');
+  const [lang] = useState(
+    new URLSearchParams(window.location.search).get('lang')
+      || localStorage.getItem('sherlock_lang')
+      || 'en'
+  );
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [status, setStatus] = useState(''); // '' | 'loading' | 'success' | 'error'
