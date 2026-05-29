@@ -116,7 +116,7 @@ const ACCENT_COLORS = {
 
 export default function Chat() {
   const { user, logout, updateUser, selfDelete } = useAuth();
-  const lang = localStorage.getItem('sherlock_lang') === 'ka' ? 'GEO' : 'EN';
+  const [lang, setLang] = useState(localStorage.getItem('sherlock_lang') === 'ka' ? 'GEO' : 'EN');
 
   const role = user?.role || 'student';
   const [activePanel, setActivePanel] = useState(null);
@@ -220,7 +220,7 @@ export default function Chat() {
     setActivePanel(null);
     setOpenGroup(null);
     setAttachedFiles([]);
-  }, [role, lang]);
+  }, [role]);
 
   async function handleLibraryFileSelect(e) {
     const file = e.target.files?.[0];
@@ -463,9 +463,24 @@ export default function Chat() {
                       </button>
                     </>
                   )}
+                  <div className={`flex items-center justify-between px-4 py-3 gap-3 ${user?.is_owner ? 'border-t border-[#e5e7eb]' : ''}`}>
+                    <span className="text-[14px] text-[#111827]">{lang === 'GEO' ? 'ენა' : 'Language'}</span>
+                    <select
+                      value={lang}
+                      onChange={e => {
+                        const next = e.target.value;
+                        setLang(next);
+                        localStorage.setItem('sherlock_lang', next === 'GEO' ? 'ka' : 'en');
+                      }}
+                      className="bg-[#ffffff] border border-[#e5e7eb] rounded-[6px] text-[#111827] px-2 py-1 text-[13px] cursor-pointer outline-none"
+                    >
+                      <option value="EN">EN</option>
+                      <option value="GEO">GEO</option>
+                    </select>
+                  </div>
                   <button
                     onClick={() => { setSettingsOpen(false); setDeleteError(''); setConfirmDeleteOpen(true); }}
-                    className={`w-full text-left px-4 py-3 text-[14px] text-[#dc2626] hover:bg-[#fef2f2] transition-colors duration-150 ${user?.is_owner ? 'border-t border-[#e5e7eb]' : ''}`}>
+                    className="w-full text-left px-4 py-3 text-[14px] text-[#dc2626] hover:bg-[#fef2f2] transition-colors duration-150 border-t border-[#e5e7eb]">
                     {lang === 'GEO' ? 'ანგარიშის წაშლა' : 'Delete my account'}
                   </button>
                 </div>
