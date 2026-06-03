@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../AuthContext';
 import { t } from '../i18n';
@@ -136,6 +136,17 @@ export default function Chat() {
   const [deleteError, setDeleteError] = useState('');
   const [quota, setQuota] = useState(null);
 
+  const fetchQuota = useCallback(() => {
+    if (!user?.is_owner) return;
+    const token = localStorage.getItem('sherlock_token');
+    fetch('/api/chat/quota', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setQuota(data); })
+      .catch(() => {});
+  }, [user]);
+
   const messagesRef  = useRef(null);
   const fileInputRef = useRef(null);
   const libraryFileInputRef = useRef(null);
@@ -175,16 +186,7 @@ export default function Chat() {
     registerServiceWorker().then(() => requestPermissionAndSubscribe(token));
   }, [user]);
 
-  useEffect(() => {
-    if (!user?.is_owner) return;
-    const token = localStorage.getItem('sherlock_token');
-    fetch('/api/chat/quota', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data) setQuota(data); })
-      .catch(() => {});
-  }, []);
+  useEffect(() => { fetchQuota(); }, [fetchQuota]);
 
   // Close the settings dropdown when clicking outside it.
   useEffect(() => {
@@ -369,6 +371,7 @@ export default function Chat() {
       const data = await res.json();
       const aiText = data.message ?? 'No response.';
       setMessages((prev) => [...prev, { role: 'assistant', content: aiText }]);
+      fetchQuota();
       setTimeout(() => { messagesRef.current?.scrollTo({ top: messagesRef.current.scrollHeight, behavior: 'smooth' }); }, 50);
     } catch {
       setMessages((prev) => [
