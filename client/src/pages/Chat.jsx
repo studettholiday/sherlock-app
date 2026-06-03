@@ -134,6 +134,7 @@ export default function Chat() {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [quota, setQuota] = useState(null);
 
   const messagesRef  = useRef(null);
   const fileInputRef = useRef(null);
@@ -173,6 +174,17 @@ export default function Chat() {
     if (!token) return;
     registerServiceWorker().then(() => requestPermissionAndSubscribe(token));
   }, [user]);
+
+  useEffect(() => {
+    if (!user?.is_owner) return;
+    const token = localStorage.getItem('sherlock_token');
+    fetch('/api/chat/quota', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setQuota(data); })
+      .catch(() => {});
+  }, []);
 
   // Close the settings dropdown when clicking outside it.
   useEffect(() => {
@@ -409,6 +421,13 @@ export default function Chat() {
               S
             </div>
             <h1 className="text-[18px] font-semibold text-[#111827]">Sherlock</h1>
+            {user?.is_owner && quota && (
+              <span className="text-xs opacity-60 mt-0.5 block">
+                {lang === 'GEO'
+                  ? `${quota.count} / ${quota.limit} AI ჩატი თვეში`
+                  : `${quota.count} / ${quota.limit} AI chats this month`}
+              </span>
+            )}
           </button>
           {user?.schoolName && (
             <span className="hidden sm:inline text-[14px] font-normal text-[#6b7280] ml-0.5">{user.schoolName}</span>
