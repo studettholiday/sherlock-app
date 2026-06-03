@@ -3,6 +3,13 @@ const router = express.Router();
 const { Pool } = require('pg');
 const authMiddleware = require('../middleware/auth');
 
+const TIER_LIMITS = {
+  trial:    30,
+  starter:  200,
+  standard: 700,
+  pro:      2000,
+};
+
 const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
 
 // Per-user rate limit: 60 messages per hour
@@ -111,13 +118,32 @@ router.post('/', authMiddleware, async (req, res) => {
 
   try {
     const schoolResult = await pool.query(
-      'SELECT api_key_encrypted, name FROM schools WHERE id = $1',
+      `SELECT id, api_key_encrypted, name,
+              tier, conversation_count, month_reset_at
+       FROM schools WHERE id = $1`,
       [user.schoolId]
     );
     if (schoolResult.rows.length === 0) {
       return res.status(403).json({ error: 'School not found' });
     }
     const school = schoolResult.rows[0];
+
+    // --- metering: quota check ---
+    const _tierLimit = TIER_LIMITS[school.tier] ?? TIER_LIMITS.trial;
+    const _resetPassed = !school.month_reset_at ||
+      (Date.now() - new Date(school.month_reset_at).getTime()) > 30 * 24 * 60 * 60 * 1000;
+    const _effectiveCount = _resetPassed ? 0 : (school.conversation_count ?? 0);
+    if (_effectiveCount >= _tierLimit) {
+      const _limitMsg = req.body.language === 'ka'
+        ? 'AI ჩატის ყოველთვიური ლიმიტი ამოწურულია. ყველა სხვა ფუნქცია ხელმისაწვდომია. ლიმიტი განახლდება ~30 დღეში.'
+        : 'Monthly AI conversation limit reached. All other features remain available. Resets in ~30 days.';
+      return res.status(429).json({ error: _limitMsg, quota_exceeded: true });
+    }
+    // TODO: race condition — two concurrent requests near the limit may both
+    // pass this check. Acceptable for Phase 1 (single-school low concurrency).
+    // Fix in Phase 2 with atomic increment-or-reject SQL.
+    // --- end quota check ---
+
     const apiKey = school.api_key_encrypted || process.env.ANTHROPIC_API_KEY;
 
     if (!apiKey) {
@@ -167,6 +193,30 @@ router.post('/', authMiddleware, async (req, res) => {
     const reply = rawReply.replace(/\[DOWNLOAD:(\d+):([^\]]+)\]/g, (match, id, name) => {
       return `[📄 ${name}](/api/library/download/${id})`;
     });
+
+    // --- metering: record usage on success only ---
+    const _usage = data.usage ?? {};
+    const _inputTok  = _usage.input_tokens  ?? 0;
+    const _outputTok = _usage.output_tokens ?? 0;
+    try {
+      await pool.query(
+        `UPDATE schools
+         SET conversation_count  = CASE WHEN COALESCE(month_reset_at, '2000-01-01') + INTERVAL '30 days' < NOW()
+                                        THEN 1 ELSE conversation_count + 1 END,
+             input_tokens_month  = CASE WHEN COALESCE(month_reset_at, '2000-01-01') + INTERVAL '30 days' < NOW()
+                                        THEN $2 ELSE input_tokens_month  + $2 END,
+             output_tokens_month = CASE WHEN COALESCE(month_reset_at, '2000-01-01') + INTERVAL '30 days' < NOW()
+                                        THEN $3 ELSE output_tokens_month + $3 END,
+             month_reset_at      = CASE WHEN COALESCE(month_reset_at, '2000-01-01') + INTERVAL '30 days' < NOW()
+                                        THEN NOW() ELSE month_reset_at END
+         WHERE id = $1`,
+        [school.id, _inputTok, _outputTok]
+      );
+    } catch (_err) {
+      console.error('[metering] record failed (non-fatal):', _err.message);
+    }
+    // --- end record usage ---
+
     res.json({ message: reply });
 
   } catch (err) {
