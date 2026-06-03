@@ -46,6 +46,7 @@ const MIGRATIONS = [
   '022_soft_delete.sql',
   '023_email_verification.sql',
   '024_consent_capture.sql',
+  '025_conversation_metering.sql',
 ];
 
 async function tableExists(pool, name) {
