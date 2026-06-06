@@ -68,6 +68,7 @@ const translations = {
     uploadToLibrary: 'Upload to library',
     privacy: 'Privacy',
     terms: 'Terms',
+    pricing: 'Pricing',
   },
   ka: {
     welcomeBack: 'გამარჯობა',
@@ -138,6 +139,7 @@ const translations = {
     uploadToLibrary: 'ბიბლიოთეკაში ატვირთვა',
     privacy: 'კონფიდენციალურობა',
     terms: 'წესები',
+    pricing: 'ფასები',
   },
   de: {
     welcomeBack: 'Willkommen zurück',

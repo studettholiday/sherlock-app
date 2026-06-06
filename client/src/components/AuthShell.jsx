@@ -109,6 +109,8 @@ export default function AuthShell({ children }) {
           <a href="/privacy" style={{ color: '#6b7280', textDecoration: 'none' }}>{t(lang, 'privacy')}</a>
           {' · '}
           <a href="/terms" style={{ color: '#6b7280', textDecoration: 'none' }}>{t(lang, 'terms')}</a>
+          {' · '}
+          <a href="/pricing" style={{ color: '#6b7280', textDecoration: 'none' }}>{t(lang, 'pricing')}</a>
         </p>
       </div>
     </div>
