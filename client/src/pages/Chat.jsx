@@ -58,6 +58,45 @@ function buildContext(attachedFiles) {
   return attachedFiles.map(f => `=== ${f.name} ===\n${f.content}`).join('\n\n').slice(0, 12000);
 }
 
+// Bare <a download> can't send Authorization; intercept and fetch authed → blob.
+function DownloadLink({ href, children }) {
+  const [busy, setBusy] = useState(false);
+  async function onClick(e) {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    try {
+      const token = localStorage.getItem('sherlock_token');
+      const res = await fetch(href, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) { alert('Download failed.'); return; }
+      const blob = await res.blob();
+      const text = Array.isArray(children) ? children.join('') : String(children ?? '');
+      const filename = text.replace(/^📄\s*/, '').trim() || 'file';
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert('Download failed.');
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <a
+      href={href}
+      onClick={onClick}
+      style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}
+    >
+      {children}
+    </a>
+  );
+}
+
 function MessageBubble({ message, theme }) {
   const s = CHAT_STYLES['glass'];
   const isUser = message.role === 'user';
@@ -80,7 +119,7 @@ function MessageBubble({ message, theme }) {
         {isUser ? message.content : (
           <ReactMarkdown components={{
             a: ({ href, children }) => href?.startsWith('/api/library/download/')
-              ? <a href={href} download style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}>{children}</a>
+              ? <DownloadLink href={href}>{children}</DownloadLink>
               : <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline' }}>{children}</a>
           }}>{message.content}</ReactMarkdown>
         )}
