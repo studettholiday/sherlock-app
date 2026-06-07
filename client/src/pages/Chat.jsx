@@ -521,6 +521,11 @@ export default function Chat() {
                         className="w-full text-left px-4 py-3 border-t border-[#e5e7eb] text-[14px] text-[#111827] hover:bg-[#f9fafb] transition-colors duration-150">
                         {lang === 'GEO' ? 'საჯარო ბიბლიოთეკის დათვალიერება' : 'Browse Public Library'}
                       </button>
+                      <button
+                        onClick={() => { setSettingsOpen(false); setActivePanel('billing'); }}
+                        className="w-full text-left px-4 py-3 border-t border-[#e5e7eb] text-[14px] text-[#111827] hover:bg-[#f9fafb] transition-colors duration-150">
+                        💳 {t(lang === 'GEO' ? 'ka' : 'en', 'billing')}
+                      </button>
                     </>
                   )}
                   <div className={`flex items-center justify-between px-4 py-3 gap-3 ${user?.is_owner ? 'border-t border-[#e5e7eb]' : ''}`}>
@@ -600,11 +605,6 @@ export default function Chat() {
                       onClick={() => setActivePanel(activePanel === 'students' ? null : 'students')}
                       className={`px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${activePanel === 'students' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
                       {lang === 'GEO' ? '👥 მოსწავლეები' : '👥 Students'}
-                    </button>
-                    <button
-                      onClick={() => setActivePanel(activePanel === 'billing' ? null : 'billing')}
-                      className={`px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${activePanel === 'billing' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
-                      {lang === 'GEO' ? '💳 ბილინგი' : '💳 Billing'}
                     </button>
                   </>
                 )}
