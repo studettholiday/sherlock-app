@@ -601,6 +601,11 @@ export default function Chat() {
                       className={`px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${activePanel === 'students' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
                       {lang === 'GEO' ? '👥 მოსწავლეები' : '👥 Students'}
                     </button>
+                    <button
+                      onClick={() => setActivePanel(activePanel === 'billing' ? null : 'billing')}
+                      className={`px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${activePanel === 'billing' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
+                      {lang === 'GEO' ? '💳 ბილინგი' : '💳 Billing'}
+                    </button>
                   </>
                 )}
                 {/* Files — accessible to every signed-in user; panel content branches on role. */}

@@ -1,9 +1,25 @@
 const express = require('express');
 const crypto = require('crypto');
 const { Pool } = require('pg');
+const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
+
+// Returns the runtime Paddle config the frontend needs to open Checkout.
+// Kept on the server so sandbox→live swap is a Railway env-var change with
+// no rebuild. Auth-gated: only signed-in users see token/price ids.
+router.get('/config', authMiddleware, (_req, res) => {
+  res.json({
+    environment: process.env.PADDLE_ENV || 'sandbox',
+    token: process.env.PADDLE_CLIENT_TOKEN,
+    prices: {
+      starter:  process.env.PADDLE_PRICE_STARTER,
+      standard: process.env.PADDLE_PRICE_STANDARD,
+      pro:      process.env.PADDLE_PRICE_PRO,
+    },
+  });
+});
 
 // Paddle replays older webhooks on transient failures; reject anything more
 // than five minutes off our clock so a leaked signature can't be used later.

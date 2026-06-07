@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, Fragment } from 'react';
 import { useAuth } from '../AuthContext';
 import { t } from '../i18n';
 import { uploadToLibrary } from '../lib/uploadToLibrary';
+import { initializePaddle } from '@paddle/paddle-js';
 
 // ─── Theme tokens ─────────────────────────────────────────────────────────────
 
@@ -51,6 +52,7 @@ const PANEL_TITLES = {
   'students':          'Students',
   'library':           'Files',
   'public-library':    'Public Library',
+  'billing':           'Billing',
 };
 
 const GEO_PANEL_TITLES = {
@@ -60,6 +62,7 @@ const GEO_PANEL_TITLES = {
   'students':          'მოსწავლეები',
   'library':           'ფაილები',
   'public-library':    'საჯარო ბიბლიოთეკა',
+  'billing':           'ბილინგი',
 };
 
 function getPanelTitle(panel, lang) {
@@ -1457,6 +1460,102 @@ function StudentsPanel({ lang }) {
   );
 }
 
+// ─── Billing panel (owner only) ───────────────────────────────────────────────
+
+// Cached across panel open/close — initializePaddle is meant to run once per
+// app lifetime, not per modal open.
+let paddleInstance = null;
+
+const BILLING_TIERS = [
+  { key: 'starter',  nameKey: 'tierStarter',  price: 11, limit: 200  },
+  { key: 'standard', nameKey: 'tierStandard', price: 29, limit: 700  },
+  { key: 'pro',      nameKey: 'tierPro',      price: 75, limit: 2000 },
+];
+
+function BillingPanel({ lang }) {
+  const { user } = useAuth();
+  const [quota, setQuota] = useState(null);
+  const [busyTier, setBusyTier] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const token = localStorage.getItem('sherlock_token');
+    fetch('/api/chat/quota', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setQuota(d); })
+      .catch(() => {});
+  }, []);
+
+  async function upgradeTo(tierKey) {
+    setBusyTier(tierKey);
+    setError('');
+    try {
+      const token = localStorage.getItem('sherlock_token');
+      const r = await fetch('/api/paddle/config', { headers: { Authorization: `Bearer ${token}` } });
+      if (!r.ok) throw new Error(`Billing config (${r.status})`);
+      const cfg = await r.json();
+      if (!cfg.token) throw new Error('Paddle client token not configured');
+      const priceId = cfg.prices?.[tierKey];
+      if (!priceId) throw new Error(`No price id for ${tierKey}`);
+      if (!paddleInstance) {
+        paddleInstance = await initializePaddle({
+          environment: cfg.environment,
+          token: cfg.token,
+        });
+      }
+      // school_id passed as number — schools.id is INTEGER (migration 001) and
+      // the webhook does `WHERE id = $1` against it.
+      paddleInstance.Checkout.open({
+        items: [{ priceId, quantity: 1 }],
+        customData: { school_id: user.schoolId },
+        customer: { email: user.email },
+      });
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusyTier(null);
+    }
+  }
+
+  const currentTier = quota?.tier || 'trial';
+  const currentNameKey = 'tier' + currentTier.charAt(0).toUpperCase() + currentTier.slice(1);
+  const currentLabel = t(lang, currentNameKey) || currentTier;
+
+  return (
+    <div>
+      <div className="mb-3 text-[13px] text-[#6b7280]">
+        {t(lang, 'currentPlan')}: <span className="text-[#111827] font-medium">{currentLabel}</span>
+      </div>
+      {error && (
+        <div className="mb-3 rounded-[6px] border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-[13px] text-[#dc2626]">
+          {error}
+        </div>
+      )}
+      <div className="flex flex-col gap-3">
+        {BILLING_TIERS.map(tier => {
+          const isCurrent = currentTier === tier.key;
+          const isBusy = busyTier === tier.key;
+          return (
+            <div key={tier.key} className="rounded-[8px] border border-[#e5e7eb] bg-white p-4 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-[14px] font-semibold text-[#111827]">{t(lang, tier.nameKey)}</div>
+                <div className="text-[13px] text-[#6b7280] mt-0.5">${tier.price}/mo · {tier.limit} {t(lang, 'chatsPerMonth')}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => upgradeTo(tier.key)}
+                disabled={isCurrent || isBusy}
+                className="rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] text-white px-4 py-2 text-[14px] font-medium disabled:bg-[#e5e7eb] disabled:text-[#9ca3af] disabled:cursor-not-allowed transition-colors duration-150 whitespace-nowrap">
+                {isCurrent ? t(lang, 'currentLabel') : (isBusy ? '…' : t(lang, 'upgrade'))}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Panel router ─────────────────────────────────────────────────────────────
 
 function panelContent(role, panel, lang) {
@@ -1467,6 +1566,7 @@ function panelContent(role, panel, lang) {
     case 'students':          return <StudentsPanel lang={lang} />;
     case 'library':           return <LibraryPanelDispatch lang={lang} />;
     case 'public-library':    return <PublicLibraryPanel lang={lang} />;
+    case 'billing':           return <BillingPanel lang={lang} />;
     default:                  return null;
   }
 }
