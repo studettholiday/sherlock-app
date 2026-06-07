@@ -23,6 +23,7 @@ const libraryRouter = require('./routes/library');
 const schoolRouter = require('./routes/school');
 const invitesRouter = require('./routes/invites');
 const pushRouter = require('./routes/push');
+const paddleRouter = require('./routes/paddle');
 
 const MIGRATIONS = [
   '001_auth_and_library.sql',
@@ -47,6 +48,7 @@ const MIGRATIONS = [
   '023_email_verification.sql',
   '024_consent_capture.sql',
   '025_conversation_metering.sql',
+  '026_paddle_billing.sql',
 ];
 
 async function tableExists(pool, name) {
@@ -109,6 +111,12 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors());
+
+// Paddle webhook needs the raw request body for HMAC verification, so it must
+// be mounted BEFORE express.json() — otherwise the JSON parser drains the
+// stream and the raw body is gone by the time express.raw() runs.
+app.use('/api/paddle', paddleRouter);
+
 app.use(express.json({ limit: '60mb' }));
 app.use(express.urlencoded({ limit: '60mb', extended: true }));
 
