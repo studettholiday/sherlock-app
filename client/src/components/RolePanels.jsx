@@ -62,7 +62,7 @@ const GEO_PANEL_TITLES = {
   'students':          'მოსწავლეები',
   'library':           'ფაილები',
   'public-library':    'საჯარო ბიბლიოთეკა',
-  'billing':           'ბილინგი',
+  'billing':           'გამოწერა',
 };
 
 function getPanelTitle(panel, lang) {

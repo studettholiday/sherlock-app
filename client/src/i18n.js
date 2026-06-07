@@ -149,7 +149,7 @@ const translations = {
     privacy: 'კონფიდენციალურობა',
     terms: 'წესები',
     pricing: 'ფასები',
-    billing: 'ბილინგი',
+    billing: 'გამოწერა',
     currentPlan: 'მიმდინარე გეგმა',
     currentLabel: 'მიმდინარე',
     upgrade: 'განახლება',
