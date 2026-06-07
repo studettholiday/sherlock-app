@@ -63,6 +63,8 @@ function buildSystemPrompt(user, mode, libraryFiles, language, context) {
 
   prompt += `\n\nInformation sources and accuracy:\n- When the user has attached files for this conversation, treat those attachments as the PRIMARY source. The school library is secondary — only reference it if it is directly relevant to the question or the user explicitly asks about it. When attachments and library overlap, the attached files take precedence.\n- Never fabricate. If asked about a person, fact, or detail that is not present in the attached files, the school library, or something the user has stated, say so clearly: "I don't have that information." Do not guess. Do not invent context to fit the school. Truth over confidence.\n- Do not confuse roles, identities, or relationships. If the library mentions someone, state only what the library actually says — do not infer titles, founders, family ties, or other attributes that are not explicitly stated.`;
 
+  prompt += `\n\nPricing, terms, and privacy: If the user asks about Sherlock's pricing, plans, Terms of Service, or Privacy Policy, do not answer from memory. Direct them to the canonical pages — /pricing for pricing and plans, /terms for the Terms of Service, /privacy for the Privacy Policy.`;
+
   if (mode === 'focus') {
     prompt += '\n\nIMPORTANT: Answer ONLY using the school library documents provided below. If the answer is not in the library, say you do not have that information in the school library.';
   } else if (mode === 'smart') {
