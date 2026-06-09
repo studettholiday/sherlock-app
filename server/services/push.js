@@ -127,7 +127,7 @@ async function notifyLessonReminder(scheduleRow) {
     const time      = (scheduleRow.lesson_time || '').slice(0, 5);
     const roomSuffix = scheduleRow.room ? `, ${scheduleRow.room}` : '';
     const payloadObj = {
-      title: '📅 გაკვეთილის შეხსენება',
+      title: '🔔 გაკვეთილის შეხსენება',
       body:  `${className} იწყება ${time}-ზე${roomSuffix}`,
       url:   APP_URL,
     };

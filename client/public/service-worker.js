@@ -19,8 +19,8 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'Sherlock';
   const options = {
     body: data.body || '',
-    icon: '/brand/sherlock-logo.png',
-    badge: '/brand/sherlock-logo.png',
+    icon: '/brand/icon-192.png',
+    badge: '/brand/badge-96.png',
     data: { url: data.url || APP_URL },
   };
   event.waitUntil(self.registration.showNotification(title, options));
