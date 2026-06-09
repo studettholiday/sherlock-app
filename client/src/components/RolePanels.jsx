@@ -213,18 +213,31 @@ function InvitePanel({ lang }) {
 
 // Read-only school schedule viewer.
 function SchedulePanel({ lang }) {
+  const { user } = useAuth();
+  const trialExpired = !!user?.trial_expired;
   const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!trialExpired);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // Skip the network call when the trial is expired — the backend will
+    // 403 it anyway, and we want to show the upgrade-locked placeholder
+    // instead of a generic error.
+    if (trialExpired) return;
     const token = localStorage.getItem('sherlock_token');
     fetch('/api/school/schedule', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => { setRows(d.schedule || []); setLoading(false); })
       .catch(e => { setError(e.message); setLoading(false); });
-  }, []);
+  }, [trialExpired]);
 
+  if (trialExpired) {
+    return (
+      <p className="text-[14px] italic text-[#6b7280] text-center py-6">
+        {t(lang === 'GEO' ? 'ka' : 'en', 'trialLockedSchedule')}
+      </p>
+    );
+  }
   if (loading) return <p className="text-[14px] italic text-[#6b7280] text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
   if (error)   return <p className="text-[14px] text-[#dc2626] text-center py-4">{error}</p>;
   if (!rows.length) return <p className="text-[14px] italic text-[#6b7280] text-center py-4">{lang === 'GEO' ? 'განრიგი ცარიელია.' : 'No schedule yet.'}</p>;
@@ -609,7 +622,10 @@ function LibraryOwnerPanel({ lang }) {
       {files.map(f => (
         <Fragment key={f.id}>
           <div className="flex items-center gap-2 text-[13px] py-1.5 border-b border-[#e5e7eb] hover:bg-[#fafafa] transition-colors duration-150">
-            {f.mime_type === 'application/pdf' ? (
+            {/* When the trial is expired, filenames stay visible (as a teaser
+                that data exists) but the click-to-view button is replaced with
+                plain text — never call the gated view endpoint. */}
+            {!trialExpired && f.mime_type === 'application/pdf' ? (
               <button onClick={() => setViewingFile(f)}
                 title={lang === 'GEO' ? 'ნახვა' : 'View'}
                 className="text-[#111827] hover:text-[#2563eb] hover:underline cursor-pointer flex-shrink-0 truncate max-w-[35%] text-left bg-transparent border-0 p-0 transition-colors duration-150">
@@ -628,15 +644,21 @@ function LibraryOwnerPanel({ lang }) {
               )}
             </div>
             <span className="text-[#6b7280] font-mono flex-shrink-0">{formatSize(f.file_size)}</span>
-            <button onClick={() => editingId === f.id ? cancelEditAccess() : startEditAccess(f)}
-              disabled={trialExpired}
-              title={lang === 'GEO' ? 'წვდომის რედაქტირება' : 'Edit access'}
-              className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed">🏷️</button>
-            <button onClick={() => downloadFile(f)}
-              disabled={trialExpired}
-              title={lang === 'GEO' ? 'ჩამოტვირთვა' : 'Download'}
-              className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed">⬇️</button>
-            <button onClick={() => del(f.id)} disabled={trialExpired} className="rounded-[6px] border border-[#fecaca] bg-[#ffffff] text-[#dc2626] hover:bg-[#fef2f2] flex-shrink-0 px-1.5 leading-none transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed">✕</button>
+            {trialExpired ? (
+              <span className="text-[12px] text-[#b91c1c] italic flex-shrink-0">
+                {t(lang === 'GEO' ? 'ka' : 'en', 'trialLockedFiles')}
+              </span>
+            ) : (
+              <>
+                <button onClick={() => editingId === f.id ? cancelEditAccess() : startEditAccess(f)}
+                  title={lang === 'GEO' ? 'წვდომის რედაქტირება' : 'Edit access'}
+                  className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">🏷️</button>
+                <button onClick={() => downloadFile(f)}
+                  title={lang === 'GEO' ? 'ჩამოტვირთვა' : 'Download'}
+                  className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">⬇️</button>
+                <button onClick={() => del(f.id)} className="rounded-[6px] border border-[#fecaca] bg-[#ffffff] text-[#dc2626] hover:bg-[#fef2f2] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">✕</button>
+              </>
+            )}
           </div>
           {editingId === f.id && (
             <div className="rounded-[8px] border border-[#e5e7eb] bg-[#fafafa] p-3 space-y-2">
@@ -1113,6 +1135,7 @@ function FileViewerModal({ file, onClose, viewUrl }) {
 
 function LibraryStudentPanel({ lang }) {
   const { user } = useAuth();
+  const trialExpired = !!user?.trial_expired;
   const [files, setFiles]   = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]   = useState('');
@@ -1182,11 +1205,18 @@ function LibraryStudentPanel({ lang }) {
       {files.map(f => (
         <div key={f.id} className="flex items-center gap-2 text-[13px] py-1.5 border-b border-[#e5e7eb] hover:bg-[#fafafa] transition-colors duration-150"
           onContextMenu={blockContext}>
-          <button onClick={() => setViewingFile(f)}
-            title={lang === 'GEO' ? 'ნახვა' : 'View'}
-            className="text-[#111827] hover:text-[#2563eb] hover:underline cursor-pointer flex-shrink-0 truncate max-w-[35%] text-left bg-transparent border-0 p-0 transition-colors duration-150">
-            {f.filename || 'Untitled'}
-          </button>
+          {/* Filename stays visible during a locked trial (teaser that the
+              library exists) but isn't clickable — never call the gated view
+              or download endpoints. */}
+          {trialExpired ? (
+            <span className="text-[#111827] flex-shrink-0 truncate max-w-[35%]">{f.filename || 'Untitled'}</span>
+          ) : (
+            <button onClick={() => setViewingFile(f)}
+              title={lang === 'GEO' ? 'ნახვა' : 'View'}
+              className="text-[#111827] hover:text-[#2563eb] hover:underline cursor-pointer flex-shrink-0 truncate max-w-[35%] text-left bg-transparent border-0 p-0 transition-colors duration-150">
+              {f.filename || 'Untitled'}
+            </button>
+          )}
           <div className="flex items-center gap-1 flex-1 min-w-0 flex-wrap">
             {(f.classes || []).map(c => (
               <span key={c} className="text-[12px] rounded-full bg-[#eff6ff] text-[#2563eb] border border-[#bfdbfe] px-2 py-0.5">{c}</span>
@@ -1194,10 +1224,16 @@ function LibraryStudentPanel({ lang }) {
           </div>
           <span className="text-[#6b7280] font-mono flex-shrink-0">{formatSize(f.file_size)}</span>
           <span className="text-[#9ca3af] flex-shrink-0">{formatDate(f.created_at)}</span>
-          {user?.student_downloads_enabled === true && (
-            <button onClick={() => downloadFile(f)}
-              title={lang === 'GEO' ? 'ჩამოტვირთვა' : 'Download'}
-              className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">⬇️</button>
+          {trialExpired ? (
+            <span className="text-[12px] text-[#b91c1c] italic flex-shrink-0">
+              {t(lang === 'GEO' ? 'ka' : 'en', 'trialLockedFiles')}
+            </span>
+          ) : (
+            user?.student_downloads_enabled === true && (
+              <button onClick={() => downloadFile(f)}
+                title={lang === 'GEO' ? 'ჩამოტვირთვა' : 'Download'}
+                className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">⬇️</button>
+            )
           )}
         </div>
       ))}

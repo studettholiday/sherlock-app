@@ -9,7 +9,7 @@ const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
 
 // --- Schedule ---
 
-router.get('/schedule', authMiddleware, async (req, res) => {
+router.get('/schedule', authMiddleware, trialGate, async (req, res) => {
   try {
     if (req.user.is_owner) {
       // Owners always see the full school schedule.

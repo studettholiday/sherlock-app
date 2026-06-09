@@ -250,7 +250,7 @@ router.put('/:fileId/classes', authMiddleware, trialGate, async (req, res) => {
 // class they're assigned to. Access denial returns 404 (same response as
 // not-found) so students cannot probe for tagged file_ids they can't reach.
 // Headers force inline rendering and disable caching to keep bytes off disk.
-router.get('/:fileId/view', authMiddleware, async (req, res) => {
+router.get('/:fileId/view', authMiddleware, trialGate, async (req, res) => {
   try {
     const fileId = parseInt(req.params.fileId, 10);
     if (!Number.isInteger(fileId)) return res.status(404).json({ error: 'Not found' });

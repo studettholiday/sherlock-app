@@ -80,6 +80,8 @@ const translations = {
     chatsPerMonth: 'AI chats / month',
     trialExpiredBanner: 'Your free trial has ended — activate a subscription to keep using Sherlock.',
     trialExpiredCta: 'Upgrade now',
+    trialLockedFiles: '🔒 Activate a subscription to open files',
+    trialLockedSchedule: '🔒 Activate a subscription to view the schedule',
   },
   ka: {
     welcomeBack: 'გამარჯობა',
@@ -162,6 +164,8 @@ const translations = {
     chatsPerMonth: 'AI ჩატი თვეში',
     trialExpiredBanner: 'თქვენი საცდელი პერიოდი დასრულდა — გააქტიურეთ გამოწერა',
     trialExpiredCta: 'გამოწერის გააქტიურება',
+    trialLockedFiles: '🔒 გააქტიურეთ გამოწერა ფაილების გასახსნელად',
+    trialLockedSchedule: '🔒 გააქტიურეთ გამოწერა განრიგის სანახავად',
   },
   de: {
     welcomeBack: 'Willkommen zurück',
