@@ -24,6 +24,7 @@ const schoolRouter = require('./routes/school');
 const invitesRouter = require('./routes/invites');
 const pushRouter = require('./routes/push');
 const paddleRouter = require('./routes/paddle');
+const reminderLoop = require('./services/reminderLoop');
 
 const MIGRATIONS = [
   '001_auth_and_library.sql',
@@ -49,6 +50,7 @@ const MIGRATIONS = [
   '024_consent_capture.sql',
   '025_conversation_metering.sql',
   '026_paddle_billing.sql',
+  '028_schedule_reminders.sql',
 ];
 
 async function tableExists(pool, name) {
@@ -149,5 +151,6 @@ app.get('*', (_req, res) => {
   }
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    reminderLoop.start();
   });
 })();
