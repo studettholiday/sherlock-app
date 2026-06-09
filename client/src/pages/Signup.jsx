@@ -21,7 +21,7 @@ export default function Signup({ onSwitch, onSuccess }) {
   const [lang, setLang] = useState(localStorage.getItem('sherlock_lang') || 'en');
   const [form, setForm] = useState({
     schoolName: '', directorName: '', website: '',
-    email: '', password: '',
+    name: '', email: '', password: '',
     tosAccepted: false, minorConsentAttested: false,
   });
   const [error, setError] = useState('');
@@ -47,6 +47,7 @@ export default function Signup({ onSwitch, onSuccess }) {
     setLoading(true);
     try {
       const result = await signup(form.schoolName, form.email, form.password, '', {
+        name: form.name,
         directorName: form.directorName,
         website: form.website,
         tos_accepted: true,
@@ -111,6 +112,11 @@ export default function Signup({ onSwitch, onSuccess }) {
           </div>
 
           <div style={{ height: '1px', background: '#e5e7eb', margin: '20px 0' }} />
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={LABEL_STYLE}>{isKa ? 'თქვენი სახელი' : 'Your name'} *</label>
+            <input required type="text" value={form.name} onChange={set('name')} onFocus={onFieldFocus} onBlur={onFieldBlur} style={FIELD_STYLE} />
+          </div>
 
           <div style={{ marginBottom: '16px' }}>
             <label style={LABEL_STYLE}>{isKa ? 'მფლობელის ელ-ფოსტა' : 'Owner email'} *</label>

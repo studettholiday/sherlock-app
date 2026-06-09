@@ -268,7 +268,7 @@ router.post('/signup', async (req, res) => {
     await pool.query(
       `INSERT INTO users (school_id, email, password_hash, role, name, is_owner, verification_token, verification_token_expires)
        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW() + INTERVAL '24 hours')`,
-      [schoolId, email, hash, 'student', email.split('@')[0], true, verificationToken]
+      [schoolId, email, hash, 'student', name || email.split('@')[0], true, verificationToken]
     );
     try {
       await sendVerificationEmail(email, verificationToken, lang);
