@@ -52,12 +52,11 @@ async function getLibraryContext(schoolId) {
 }
 
 function buildSystemPrompt(user, mode, libraryFiles, language, context) {
-  const role = user.role;
   const schoolName = user.schoolName;
 
-  const roleContext = {
-    student:   `You are assisting a student at ${schoolName}.`,
-  }[role] || `You are assisting a member of ${schoolName}.`;
+  const roleContext = user.is_owner === true
+    ? `You are assisting the owner and teacher of ${schoolName}, who runs the school and teaches students. Treat them as the administrator and educator — never address them as a student.`
+    : `You are assisting a student at ${schoolName}.`;
 
   let prompt = `You are Sherlock, an AI assistant for ${schoolName}. ${roleContext} Be concise, helpful, and professional. You only know what is in the school library documents below. Do not invent features, capabilities, or information about the school that are not explicitly stated in those documents. If the library is empty, say you don't have school-specific information yet and ask the owner to upload documents to the library.`;
 
