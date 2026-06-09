@@ -53,10 +53,15 @@ async function getLibraryContext(schoolId) {
 
 function buildSystemPrompt(user, mode, libraryFiles, language, context) {
   const schoolName = user.schoolName;
+  const name = (user.name || '').trim();
 
   const roleContext = user.is_owner === true
-    ? `You are assisting the owner and teacher of ${schoolName}, who runs the school and teaches students. Treat them as the administrator and educator — never address them as a student.`
-    : `You are assisting a student at ${schoolName}.`;
+    ? (name
+        ? `You are assisting ${name}, the owner and teacher of ${schoolName}, who runs the school. Treat them as the administrator and educator — never as a student.`
+        : `You are assisting the owner and teacher of ${schoolName}, who runs the school and teaches students. Treat them as the administrator and educator — never address them as a student.`)
+    : (name
+        ? `You are assisting ${name}, a student at ${schoolName}.`
+        : `You are assisting a student at ${schoolName}.`);
 
   let prompt = `You are Sherlock, an AI assistant for ${schoolName}. ${roleContext} Be concise, helpful, and professional. You only know what is in the school library documents below. Do not invent features, capabilities, or information about the school that are not explicitly stated in those documents. If the library is empty, say you don't have school-specific information yet and ask the owner to upload documents to the library.`;
 
@@ -180,8 +185,19 @@ router.post('/', authMiddleware, trialGate, async (req, res) => {
 
     const libraryFiles = await getLibraryContext(user.schoolId);
 
+    // Display name is fetched per request (not baked into the JWT) so a name
+    // change takes effect on the next message. Non-fatal: if the read fails or
+    // the name is blank, buildSystemPrompt's fallback wording is used.
+    let userName = '';
+    try {
+      const _u = await pool.query('SELECT name FROM users WHERE id = $1', [user.userId]);
+      userName = _u.rows[0]?.name ?? '';
+    } catch (err) {
+      console.error('[chat] user name fetch failed (non-fatal):', err.message);
+    }
+
     const systemPrompt = buildSystemPrompt(
-      { ...user, schoolName: school.name || user.schoolName },
+      { ...user, name: userName, schoolName: school.name || user.schoolName },
       mode,
       libraryFiles,
       language,
