@@ -731,9 +731,9 @@ async function loadPdfJsV4() {
 // Deterrent + provenance, not DRM.
 function drawWatermark(ctx, w, h, text) {
   ctx.save();
-  ctx.globalAlpha = 0.3;
+  ctx.globalAlpha = 0.07;
   ctx.fillStyle = '#9ca3af';
-  ctx.font = '14px sans-serif';
+  ctx.font = '12px sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.translate(w / 2, h / 2);
