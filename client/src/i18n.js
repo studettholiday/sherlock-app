@@ -78,6 +78,8 @@ const translations = {
     tierStandard: 'Standard',
     tierPro: 'Pro',
     chatsPerMonth: 'AI chats / month',
+    trialExpiredBanner: 'Your free trial has ended — activate a subscription to keep using Sherlock.',
+    trialExpiredCta: 'Upgrade now',
   },
   ka: {
     welcomeBack: 'გამარჯობა',
@@ -158,6 +160,8 @@ const translations = {
     tierStandard: 'Standard',
     tierPro: 'Pro',
     chatsPerMonth: 'AI ჩატი თვეში',
+    trialExpiredBanner: 'თქვენი საცდელი პერიოდი დასრულდა — გააქტიურეთ გამოწერა',
+    trialExpiredCta: 'გამოწერის გააქტიურება',
   },
   de: {
     welcomeBack: 'Willkommen zurück',

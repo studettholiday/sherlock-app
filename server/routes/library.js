@@ -6,6 +6,7 @@ const fs = require('fs');
 const { PDFParse } = require('pdf-parse');
 const { Pool } = require('pg');
 const authMiddleware = require('../middleware/auth');
+const trialGate = require('../middleware/trialGate');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
 
@@ -71,7 +72,7 @@ function buildContentDisposition(disposition, filename) {
 }
 
 // Upload file (owner only)
-router.post('/upload', authMiddleware, upload.single('file'), async (req, res) => {
+router.post('/upload', authMiddleware, trialGate, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   if (!req.user.is_owner) {
     return res.status(403).json({ error: 'Forbidden' });
@@ -168,7 +169,7 @@ router.get('/', authMiddleware, async (req, res) => {
 });
 
 // Delete file (owner only)
-router.delete('/:id', authMiddleware, async (req, res) => {
+router.delete('/:id', authMiddleware, trialGate, async (req, res) => {
   if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   try {
     const result = await pool.query(
@@ -187,7 +188,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 
 // PUT /api/library/:fileId/classes — replace the file's class-tag set.
 // Owner only. Body: { classes: ["Math", ...] }. Empty array = public to school.
-router.put('/:fileId/classes', authMiddleware, async (req, res) => {
+router.put('/:fileId/classes', authMiddleware, trialGate, async (req, res) => {
   if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   const fileId = parseInt(req.params.fileId, 10);
   if (!Number.isInteger(fileId)) return res.status(400).json({ error: 'Invalid file id' });
@@ -357,7 +358,7 @@ router.get('/public/:fileId/view', authMiddleware, async (req, res) => {
 // public-library school), check duplicate by filename within the requester's
 // school, then INSERT. 404 if source isn't public; 409 with existing_id if a
 // same-filename row already exists in the requester's library.
-router.post('/public/:fileId/copy', authMiddleware, async (req, res) => {
+router.post('/public/:fileId/copy', authMiddleware, trialGate, async (req, res) => {
   if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   const fileId = parseInt(req.params.fileId, 10);
   if (!Number.isInteger(fileId)) return res.status(404).json({ error: 'Not found' });
@@ -419,7 +420,7 @@ router.get('/context', authMiddleware, async (req, res) => {
 });
 
 // Download file content as text
-router.get('/download/:id', authMiddleware, async (req, res) => {
+router.get('/download/:id', authMiddleware, trialGate, async (req, res) => {
   try {
     // Student download gate: when the school has student_downloads_enabled =
     // false, students get 404 regardless of mime/class access (don't leak the

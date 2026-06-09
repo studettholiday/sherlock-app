@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
 const authMiddleware = require('../middleware/auth');
+const trialGate = require('../middleware/trialGate');
+const { isTrialExpired } = trialGate;
 
 const TIER_LIMITS = {
   trial:    30,
@@ -93,7 +95,7 @@ function buildSystemPrompt(user, mode, libraryFiles, language, context) {
 router.get('/quota', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT tier, conversation_count, month_reset_at FROM schools WHERE id = $1`,
+      `SELECT tier, conversation_count, month_reset_at, created_at FROM schools WHERE id = $1`,
       [req.user.schoolId]
     );
     if (!result.rows[0]) return res.status(404).json({ error: 'School not found' });
@@ -102,14 +104,19 @@ router.get('/quota', authMiddleware, async (req, res) => {
     const resetPassed = !s.month_reset_at ||
       (Date.now() - new Date(s.month_reset_at).getTime()) > 30 * 24 * 60 * 60 * 1000;
     const count = resetPassed ? 0 : (s.conversation_count ?? 0);
-    res.json({ tier: s.tier ?? 'trial', count, limit });
+    res.json({
+      tier: s.tier ?? 'trial',
+      count,
+      limit,
+      trial_expired: isTrialExpired(s.tier, s.created_at),
+    });
   } catch (err) {
     console.error('[quota] error:', err.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-router.post('/', authMiddleware, async (req, res) => {
+router.post('/', authMiddleware, trialGate, async (req, res) => {
   const user = req.user;
 
   // Student AI gate: owners are always allowed; students only if the school

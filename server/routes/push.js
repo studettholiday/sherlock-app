@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
 const authMiddleware = require('../middleware/auth');
+const trialGate = require('../middleware/trialGate');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
 
@@ -14,7 +15,7 @@ router.get('/vapid-public-key', (_req, res) => {
 // POST /api/push/subscribe — authenticated.
 // Body: { endpoint, keys: { p256dh, auth } }. Stores the subscription for the
 // current user + school. Idempotent via ON CONFLICT (endpoint) DO NOTHING.
-router.post('/subscribe', authMiddleware, async (req, res) => {
+router.post('/subscribe', authMiddleware, trialGate, async (req, res) => {
   const { endpoint, keys } = req.body || {};
   if (!endpoint || !keys || !keys.p256dh || !keys.auth) {
     return res.status(400).json({ error: 'Invalid subscription' });

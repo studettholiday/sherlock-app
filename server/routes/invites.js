@@ -3,13 +3,14 @@ const router = express.Router();
 const { Pool } = require('pg');
 const { Resend } = require('resend');
 const authMiddleware = require('../middleware/auth');
+const trialGate = require('../middleware/trialGate');
 const { renderEmail, esc } = require('../lib/emailTemplate');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // POST /api/invites/generate
-router.post('/generate', authMiddleware, async (req, res) => {
+router.post('/generate', authMiddleware, trialGate, async (req, res) => {
   if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   const { target_role, email } = req.body;
   if (target_role !== 'student') return res.status(400).json({ error: 'Invalid target_role' });
@@ -76,7 +77,7 @@ router.get('/', authMiddleware, async (req, res) => {
 });
 
 // DELETE /api/invites/:id
-router.delete('/:id', authMiddleware, async (req, res) => {
+router.delete('/:id', authMiddleware, trialGate, async (req, res) => {
   if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   try {
     const result = await pool.query(

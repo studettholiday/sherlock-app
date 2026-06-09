@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
 const authMiddleware = require('../middleware/auth');
+const trialGate = require('../middleware/trialGate');
 const { notifyScheduleChange } = require('../services/push');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
@@ -35,7 +36,7 @@ router.get('/schedule', authMiddleware, async (req, res) => {
   }
 });
 
-router.post('/schedule', authMiddleware, async (req, res) => {
+router.post('/schedule', authMiddleware, trialGate, async (req, res) => {
   if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   const { day_of_week, lesson_time, class_name, room } = req.body;
   try {
@@ -52,7 +53,7 @@ router.post('/schedule', authMiddleware, async (req, res) => {
   }
 });
 
-router.delete('/schedule/:id', authMiddleware, async (req, res) => {
+router.delete('/schedule/:id', authMiddleware, trialGate, async (req, res) => {
   if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   const client = await pool.connect();
   let deletedRow = null;
@@ -102,7 +103,7 @@ router.delete('/schedule/:id', authMiddleware, async (req, res) => {
   if (deletedRow) notifyScheduleChange(req.user.schoolId, 'DELETE', deletedRow);
 });
 
-router.patch('/schedule/:id', authMiddleware, async (req, res) => {
+router.patch('/schedule/:id', authMiddleware, trialGate, async (req, res) => {
   if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   const { day_of_week, lesson_time, room } = req.body;
   try {
@@ -163,7 +164,7 @@ router.get('/students', authMiddleware, async (req, res) => {
 
 // PUT /api/school/students/:userId/classes — replace a student's class
 // assignments. Owner only. Body: { classes: ["Math", ...] }.
-router.put('/students/:userId/classes', authMiddleware, async (req, res) => {
+router.put('/students/:userId/classes', authMiddleware, trialGate, async (req, res) => {
   if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   const userId = parseInt(req.params.userId, 10);
   if (!Number.isInteger(userId)) return res.status(400).json({ error: 'Invalid user id' });
@@ -224,7 +225,7 @@ router.put('/students/:userId/classes', authMiddleware, async (req, res) => {
 // all optional; only the keys provided are updated. At least one must be
 // present. Each provided key is strictly type-checked. Returns the full set
 // of current setting values.
-router.put('/settings', authMiddleware, async (req, res) => {
+router.put('/settings', authMiddleware, trialGate, async (req, res) => {
   if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   const { student_ai_enabled, student_downloads_enabled } = req.body || {};
   const sets = [];

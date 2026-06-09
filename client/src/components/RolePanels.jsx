@@ -77,6 +77,8 @@ function getPanelTitle(panel, lang) {
 const INVITE_BASE_URL = window.location.origin;
 
 function InvitePanel({ lang }) {
+  const { user } = useAuth();
+  const trialExpired = !!user?.trial_expired;
   const [invites, setInvites]       = useState([]);
   const [loading, setLoading]       = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -141,8 +143,8 @@ function InvitePanel({ lang }) {
 
   return (
     <div className="space-y-3">
-      <button onClick={generateInvite} disabled={generating}
-        className="w-full rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-40 px-4 py-2 text-[14px] text-white font-medium transition-colors duration-150">
+      <button onClick={generateInvite} disabled={generating || trialExpired}
+        className="w-full rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2 text-[14px] text-white font-medium transition-colors duration-150">
         {generating
           ? (lang === 'GEO' ? 'იქმნება…' : 'Generating…')
           : (lang === 'GEO' ? 'მოწვევის ბმულის შექმნა' : 'Generate Invite Link')}
@@ -192,7 +194,8 @@ function InvitePanel({ lang }) {
                       : (lang === 'GEO' ? '📋 ბმულის კოპირება' : '📋 Copy Link')}
                   </button>
                   <button onClick={() => revokeInvite(inv.id)}
-                    className="rounded-[6px] px-4 py-1.5 text-[13px] font-medium transition-colors duration-150 hover:bg-[#fef2f2]"
+                    disabled={trialExpired}
+                    className="rounded-[6px] px-4 py-1.5 text-[13px] font-medium transition-colors duration-150 hover:bg-[#fef2f2] disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{ background: '#ffffff', border: '1px solid #fecaca', color: '#dc2626' }}>
                     {lang === 'GEO' ? 'გაუქმება' : 'Revoke'}
                   </button>
@@ -264,6 +267,8 @@ function SchedulePanel({ lang }) {
 
 // Owner-only schedule editor.
 function ScheduleEditorPanel({ lang }) {
+  const { user } = useAuth();
+  const trialExpired = !!user?.trial_expired;
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -393,8 +398,8 @@ function ScheduleEditorPanel({ lang }) {
                   onChange={e => setEditForm(f => ({ ...f, room: e.target.value }))}
                   placeholder={lang === 'GEO' ? 'ოთახი' : 'Room'}
                   className="w-20 flex-shrink-0 rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#111827] text-[13px] px-2 py-1 focus:outline-none focus:border-[#3b82f6]" />
-                <button onClick={() => saveEdit(r)} disabled={editSaving}
-                  className="rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-40 px-2 py-1 text-[12px] text-white font-medium flex-shrink-0 transition-colors duration-150">
+                <button onClick={() => saveEdit(r)} disabled={editSaving || trialExpired}
+                  className="rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1 text-[12px] text-white font-medium flex-shrink-0 transition-colors duration-150">
                   {editSaving ? (lang === 'GEO' ? 'ინახება…' : 'Saving…') : (lang === 'GEO' ? 'შენახვა' : 'Save')}
                 </button>
                 <button onClick={cancelEdit}
@@ -409,9 +414,10 @@ function ScheduleEditorPanel({ lang }) {
                 <span className="text-[#111827] flex-1 min-w-0 truncate">{r.class_name}</span>
                 {r.room && <span className="text-[#6b7280] flex-shrink-0">📍 {r.room}</span>}
                 <button onClick={() => startEdit(r)}
+                  disabled={trialExpired}
                   title={lang === 'GEO' ? 'რედაქტირება' : 'Edit'}
-                  className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">✏️</button>
-                <button onClick={() => del(r.id)} className="rounded-[6px] border border-[#fecaca] bg-[#ffffff] text-[#dc2626] hover:bg-[#fef2f2] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">✕</button>
+                  className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed">✏️</button>
+                <button onClick={() => del(r.id)} disabled={trialExpired} className="rounded-[6px] border border-[#fecaca] bg-[#ffffff] text-[#dc2626] hover:bg-[#fef2f2] flex-shrink-0 px-1.5 leading-none transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed">✕</button>
               </>
             )}
           </div>
@@ -434,8 +440,8 @@ function ScheduleEditorPanel({ lang }) {
           <input value={form.room} onChange={e => setForm(f => ({ ...f, room: e.target.value }))}
             placeholder={lang === 'GEO' ? 'ოთახი' : 'Room'} className={`${FIELD} py-1.5 text-[13px]`} />
           <div className="flex gap-2 items-center">
-            <button onClick={addRow} disabled={saving || !form.lesson_time.trim() || !form.class_name.trim()}
-              className="rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-40 px-3 py-1.5 text-[13px] text-white font-medium transition-colors duration-150">
+            <button onClick={addRow} disabled={saving || trialExpired || !form.lesson_time.trim() || !form.class_name.trim()}
+              className="rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-[13px] text-white font-medium transition-colors duration-150">
               {lang === 'GEO' ? 'დამატება' : 'Add'}
             </button>
             <button onClick={() => setShowAdd(false)} className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] hover:bg-[#f9fafb] px-3 py-1.5 text-[13px] text-[#111827] transition-colors duration-150">
@@ -445,7 +451,8 @@ function ScheduleEditorPanel({ lang }) {
         </div>
       ) : (
         <button onClick={() => setShowAdd(true)}
-          className="w-full rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] py-2 text-[13px] text-white font-medium transition-colors duration-150">
+          disabled={trialExpired}
+          className="w-full rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-40 disabled:cursor-not-allowed py-2 text-[13px] text-white font-medium transition-colors duration-150">
           {lang === 'GEO' ? '+ განრიგის დამატება' : '+ Add schedule row'}
         </button>
       )}
@@ -457,6 +464,8 @@ function ScheduleEditorPanel({ lang }) {
 
 // Owner-only. Self-contained: lists, uploads and deletes school library files.
 function LibraryOwnerPanel({ lang }) {
+  const { user } = useAuth();
+  const trialExpired = !!user?.trial_expired;
   const [files, setFiles]         = useState([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState('');
@@ -620,12 +629,14 @@ function LibraryOwnerPanel({ lang }) {
             </div>
             <span className="text-[#6b7280] font-mono flex-shrink-0">{formatSize(f.file_size)}</span>
             <button onClick={() => editingId === f.id ? cancelEditAccess() : startEditAccess(f)}
+              disabled={trialExpired}
               title={lang === 'GEO' ? 'წვდომის რედაქტირება' : 'Edit access'}
-              className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">🏷️</button>
+              className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed">🏷️</button>
             <button onClick={() => downloadFile(f)}
+              disabled={trialExpired}
               title={lang === 'GEO' ? 'ჩამოტვირთვა' : 'Download'}
-              className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">⬇️</button>
-            <button onClick={() => del(f.id)} className="rounded-[6px] border border-[#fecaca] bg-[#ffffff] text-[#dc2626] hover:bg-[#fef2f2] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">✕</button>
+              className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed">⬇️</button>
+            <button onClick={() => del(f.id)} disabled={trialExpired} className="rounded-[6px] border border-[#fecaca] bg-[#ffffff] text-[#dc2626] hover:bg-[#fef2f2] flex-shrink-0 px-1.5 leading-none transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed">✕</button>
           </div>
           {editingId === f.id && (
             <div className="rounded-[8px] border border-[#e5e7eb] bg-[#fafafa] p-3 space-y-2">
@@ -648,8 +659,8 @@ function LibraryOwnerPanel({ lang }) {
               )}
               {editError && <p className="text-[#dc2626] text-[12px]">{editError}</p>}
               <div className="flex gap-2 items-center">
-                <button onClick={() => saveEditAccess(f)} disabled={editSaving}
-                  className="rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-40 px-3 py-1.5 text-[13px] text-white font-medium transition-colors duration-150">
+                <button onClick={() => saveEditAccess(f)} disabled={editSaving || trialExpired}
+                  className="rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-[13px] text-white font-medium transition-colors duration-150">
                   {editSaving ? (lang === 'GEO' ? 'ინახება…' : 'Saving…') : (lang === 'GEO' ? 'შენახვა' : 'Save')}
                 </button>
                 <button onClick={cancelEditAccess}
@@ -669,8 +680,8 @@ function LibraryOwnerPanel({ lang }) {
       </div>
       <div className="shrink-0 pt-3 border-t border-[#e5e7eb]">
         <input ref={fileInputRef} type="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" onChange={uploadFile} className="hidden" />
-        <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
-          className="w-full rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] py-2 text-[13px] text-white font-medium transition-colors duration-150 disabled:opacity-40">
+        <button onClick={() => fileInputRef.current?.click()} disabled={uploading || trialExpired}
+          className="w-full rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] py-2 text-[13px] text-white font-medium transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed">
           {uploading ? (lang === 'GEO' ? 'იტვირთება…' : 'Uploading…') : (lang === 'GEO' ? '+ ფაილის ატვირთვა' : '+ Upload File')}
         </button>
       </div>
@@ -1314,6 +1325,8 @@ function LibraryPanelDispatch({ lang }) {
 // Owner-only. Lists every student in the school and lets the owner assign each
 // one to classes that exist in the schedule (fetched from /api/school/classes).
 function StudentsPanel({ lang }) {
+  const { user } = useAuth();
+  const trialExpired = !!user?.trial_expired;
   const [students, setStudents] = useState([]);
   const [classes, setClasses]   = useState([]);
   const [loading, setLoading]   = useState(true);
@@ -1411,8 +1424,8 @@ function StudentsPanel({ lang }) {
           </div>
         )}
         <div className="flex gap-2">
-          <button onClick={save} disabled={saving}
-            className="rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-40 px-3 py-1.5 text-[13px] text-white font-medium transition-colors duration-150">
+          <button onClick={save} disabled={saving || trialExpired}
+            className="rounded-[6px] bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 text-[13px] text-white font-medium transition-colors duration-150">
             {saving ? (lang === 'GEO' ? 'ინახება…' : 'Saving…') : (lang === 'GEO' ? 'შენახვა' : 'Save')}
           </button>
           <button onClick={() => { setEditing(null); setError(''); }}

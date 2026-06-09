@@ -157,6 +157,7 @@ export default function Chat() {
   const [lang, setLang] = useState(localStorage.getItem('sherlock_lang') === 'ka' ? 'GEO' : 'EN');
 
   const role = user?.role || 'student';
+  const trialExpired = !!user?.trial_expired;
   const [activePanel, setActivePanel] = useState(null);
   const [openGroup, setOpenGroup] = useState(null);
   const theme = THEMES[role] || THEMES.student;
@@ -381,7 +382,7 @@ export default function Chat() {
   async function sendMessage(e) {
     e.preventDefault();
     const text = input.trim();
-    if (!text || loading) return;
+    if (!text || loading || trialExpired) return;
 
     const userMessage = { role: 'user', content: text };
     const newMessages = [...messages, userMessage];
@@ -489,6 +490,7 @@ export default function Chat() {
                         <button
                           role="switch"
                           aria-checked={!!user.student_ai_enabled}
+                          disabled={trialExpired}
                           onClick={() => {
                             if (user.student_ai_enabled) {
                               toggleStudentAi(false);
@@ -496,7 +498,7 @@ export default function Chat() {
                               setConfirmAiOpen(true);
                             }
                           }}
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-150 flex-shrink-0 ${user.student_ai_enabled ? 'bg-[#2563eb]' : 'bg-[#e5e7eb]'}`}>
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-150 flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${user.student_ai_enabled ? 'bg-[#2563eb]' : 'bg-[#e5e7eb]'}`}>
                           <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-150 ${user.student_ai_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
                         </button>
                       </div>
@@ -505,6 +507,7 @@ export default function Chat() {
                         <button
                           role="switch"
                           aria-checked={!!user.student_downloads_enabled}
+                          disabled={trialExpired}
                           onClick={() => {
                             if (user.student_downloads_enabled) {
                               toggleStudentDownloads(false);
@@ -512,7 +515,7 @@ export default function Chat() {
                               setConfirmDownloadsOpen(true);
                             }
                           }}
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-150 flex-shrink-0 ${user.student_downloads_enabled ? 'bg-[#2563eb]' : 'bg-[#e5e7eb]'}`}>
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-150 flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${user.student_downloads_enabled ? 'bg-[#2563eb]' : 'bg-[#e5e7eb]'}`}>
                           <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-150 ${user.student_downloads_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
                         </button>
                       </div>
@@ -560,6 +563,23 @@ export default function Chat() {
           </div>
         </header>
 
+        {/* Trial-expired banner — shown only when the server flags trial_expired.
+            Clicking the CTA opens the BillingPanel in the same modal stack as
+            the other header panels, so users don't leave the chat surface. */}
+        {trialExpired && (
+          <div className="flex items-center justify-between gap-3 px-4 py-2 bg-[#fef2f2] border-b border-[#fecaca] flex-shrink-0">
+            <span className="text-[13px] text-[#b91c1c] leading-snug">
+              {t(lang === 'GEO' ? 'ka' : 'en', 'trialExpiredBanner')}
+            </span>
+            <button
+              type="button"
+              onClick={() => setActivePanel('billing')}
+              className="text-[13px] font-medium text-white bg-[#dc2626] hover:bg-[#b91c1c] rounded-[6px] px-3 py-1 whitespace-nowrap transition-colors duration-150">
+              {t(lang === 'GEO' ? 'ka' : 'en', 'trialExpiredCta')}
+            </button>
+          </div>
+        )}
+
         {/* Handler buttons */}
         {(() => {
           const inactiveCls = 'bg-[#ffffff] border border-[#e5e7eb] text-[#111827] hover:bg-[#f9fafb]';
@@ -593,12 +613,14 @@ export default function Chat() {
                   <>
                     <button
                       onClick={() => setActivePanel(activePanel === 'invite' ? null : 'invite')}
-                      className={`px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${activePanel === 'invite' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
+                      disabled={trialExpired}
+                      className={`px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed ${activePanel === 'invite' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
                       {lang === 'GEO' ? '⚙️ მოწვევა' : '⚙️ Invite'}
                     </button>
                     <button
                       onClick={() => setActivePanel(activePanel === 'schedule-editor' ? null : 'schedule-editor')}
-                      className={`px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${activePanel === 'schedule-editor' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
+                      disabled={trialExpired}
+                      className={`px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed ${activePanel === 'schedule-editor' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
                       {lang === 'GEO' ? '📅 განრიგის რედაქტირება' : '📅 Edit Schedule'}
                     </button>
                     <button
@@ -668,8 +690,9 @@ export default function Chat() {
           </div>
         )}
 
-        {/* Input — hidden for students when the owner has disabled student AI. */}
-        {(user?.is_owner || user?.student_ai_enabled === true) && (
+        {/* Input — hidden for students when the owner has disabled student AI,
+            and hidden for everyone in the school when the trial has expired. */}
+        {!trialExpired && (user?.is_owner || user?.student_ai_enabled === true) && (
         <form
           onSubmit={sendMessage}
           className={`px-4 py-2 sm:py-3 border-t ${s.footerBorder} flex-shrink-0`}
