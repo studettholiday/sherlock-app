@@ -154,7 +154,7 @@ const translations = {
     privacy: 'კონფიდენციალურობა',
     terms: 'წესები',
     pricing: 'ფასები',
-    refund: 'დაბრუნების პოლიტიკა',
+    refund: 'თანხის დაბრუნების პოლიტიკა',
     billing: 'გამოწერა',
     currentPlan: 'მიმდინარე გეგმა',
     currentLabel: 'მიმდინარე',
