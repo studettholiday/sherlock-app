@@ -131,15 +131,20 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         [data.id]
       );
     } else if (eventType === 'transaction.completed') {
+      // No DB write today. If you add anything incrementing here (credits, ledger rows, receipt emails), add event_id dedupe first — Paddle retries.
       console.log(
         '[paddle] transaction.completed id=%s schoolId=%s',
         data.id, data.custom_data?.school_id
       );
     }
   } catch (err) {
-    // Swallow DB errors and still 200 — Paddle will otherwise retry the same
-    // event for hours. The event_id + our logs are enough to reconcile later.
+    // Unexpected failures (e.g. DB connection lost) — return 5xx so Paddle's
+    // retry kicks in and the write lands once we recover. Un-actionable cases
+    // above (unknown school, unmapped price, unknown event_type) don't throw
+    // — they log and fall through to 200, so they don't end up here and won't
+    // trigger pointless retries.
     console.error('[paddle] handler error for %s:', eventType, err.message);
+    return res.status(500).json({ error: 'Transient handler error' });
   }
 
   res.status(200).json({ ok: true });
