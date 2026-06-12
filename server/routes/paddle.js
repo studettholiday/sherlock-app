@@ -21,6 +21,71 @@ router.get('/config', authMiddleware, (_req, res) => {
   });
 });
 
+// Mints a single-use Paddle-hosted customer portal URL so the owner can
+// cancel, change plan, update card, and download invoices without us
+// implementing any of it. Sessions are short-lived and must not be cached.
+router.get('/portal', authMiddleware, async (req, res) => {
+  if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
+
+  const apiKey = process.env.PADDLE_API_KEY;
+  if (!apiKey) {
+    console.error('[paddle] PADDLE_API_KEY is not set; cannot create portal session');
+    return res.status(500).json({ error: 'Server misconfigured' });
+  }
+
+  try {
+    const r = await pool.query(
+      'SELECT paddle_customer_id, paddle_subscription_id FROM schools WHERE id = $1',
+      [req.user.schoolId]
+    );
+    if (r.rows.length === 0) return res.status(404).json({ error: 'School not found' });
+
+    const { paddle_customer_id, paddle_subscription_id } = r.rows[0];
+    if (!paddle_customer_id) {
+      return res.status(404).json({ error: 'No Paddle customer on file' });
+    }
+
+    const base = (process.env.PADDLE_ENV || 'sandbox') === 'sandbox'
+      ? 'https://sandbox-api.paddle.com'
+      : 'https://api.paddle.com';
+
+    // Passing subscription_ids unlocks per-subscription deep links (cancel,
+    // change plan, update payment method) in addition to the homepage link.
+    const body = paddle_subscription_id
+      ? { subscription_ids: [paddle_subscription_id] }
+      : {};
+
+    const resp = await fetch(
+      `${base}/customers/${encodeURIComponent(paddle_customer_id)}/portal-sessions`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (!resp.ok) {
+      const errBody = await resp.text();
+      console.error('[paddle] portal session create failed: %d %s', resp.status, errBody);
+      return res.status(502).json({ error: 'Could not create portal session' });
+    }
+
+    const json = await resp.json();
+    const url = json?.data?.urls?.general?.overview;
+    if (!url) {
+      console.error('[paddle] portal session response missing urls.general.overview');
+      return res.status(502).json({ error: 'Portal URL not returned' });
+    }
+    res.json({ url });
+  } catch (err) {
+    console.error('[paddle] /portal error:', err.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Paddle replays older webhooks on transient failures; reject anything more
 // than five minutes off our clock so a leaked signature can't be used later.
 const MAX_SIG_AGE_MS = 5 * 60 * 1000;

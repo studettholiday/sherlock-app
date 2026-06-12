@@ -83,6 +83,8 @@ const translations = {
     trialExpiredCta: 'Upgrade now',
     trialLockedFiles: '🔒 Activate a subscription to open files',
     trialLockedSchedule: '🔒 Activate a subscription to view the schedule',
+    manageSubscription: 'Manage subscription',
+    portalOpening: 'Opening…',
   },
   ka: {
     welcomeBack: 'გამარჯობა',
@@ -168,6 +170,8 @@ const translations = {
     trialExpiredCta: 'გამოწერის გააქტიურება',
     trialLockedFiles: '🔒 გააქტიურეთ გამოწერა ფაილების გასახსნელად',
     trialLockedSchedule: '🔒 გააქტიურეთ გამოწერა განრიგის სანახავად',
+    manageSubscription: 'გამოწერის მართვა',
+    portalOpening: 'იხსნება…',
   },
   de: {
     welcomeBack: 'Willkommen zurück',

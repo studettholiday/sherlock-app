@@ -1526,6 +1526,7 @@ function BillingPanel({ lang }) {
   const [quota, setQuota] = useState(null);
   const [busyTier, setBusyTier] = useState(null);
   const [error, setError] = useState('');
+  const [portalBusy, setPortalBusy] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('sherlock_token');
@@ -1534,6 +1535,26 @@ function BillingPanel({ lang }) {
       .then(d => { if (d) setQuota(d); })
       .catch(() => {});
   }, []);
+
+  async function openPortal() {
+    setPortalBusy(true);
+    setError('');
+    try {
+      const token = localStorage.getItem('sherlock_token');
+      const r = await fetch('/api/paddle/portal', { headers: { Authorization: `Bearer ${token}` } });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        throw new Error(d.error || `Portal (${r.status})`);
+      }
+      const { url } = await r.json();
+      if (!url) throw new Error('No portal URL');
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setPortalBusy(false);
+    }
+  }
 
   async function upgradeTo(tierKey) {
     setBusyTier(tierKey);
@@ -1572,9 +1593,25 @@ function BillingPanel({ lang }) {
 
   return (
     <div>
-      <div className="mb-3 text-[13px] text-[#6b7280]">
-        {t(lang, 'currentPlan')}: <span className="text-[#111827] font-medium">{currentLabel}</span>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="text-[13px] text-[#6b7280]">
+          {t(lang, 'currentPlan')}: <span className="text-[#111827] font-medium">{currentLabel}</span>
+        </div>
+        {quota?.has_subscription && (
+          <button
+            type="button"
+            onClick={openPortal}
+            disabled={portalBusy}
+            className="rounded-[6px] border border-[#e5e7eb] bg-white hover:bg-[#f9fafb] text-[#111827] px-3 py-1.5 text-[13px] font-medium disabled:text-[#9ca3af] disabled:cursor-not-allowed transition-colors duration-150 whitespace-nowrap">
+            {portalBusy ? t(lang, 'portalOpening') : t(lang, 'manageSubscription')}
+          </button>
+        )}
       </div>
+      {quota?.trial_expired && (
+        <div className="mb-3 rounded-[6px] border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-[13px] text-[#b91c1c]">
+          {t(lang, 'trialExpiredBanner')}
+        </div>
+      )}
       {error && (
         <div className="mb-3 rounded-[6px] border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-[13px] text-[#dc2626]">
           {error}

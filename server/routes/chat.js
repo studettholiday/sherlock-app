@@ -99,7 +99,8 @@ function buildSystemPrompt(user, mode, libraryFiles, language, context) {
 router.get('/quota', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT tier, conversation_count, month_reset_at, created_at FROM schools WHERE id = $1`,
+      `SELECT tier, conversation_count, month_reset_at, created_at, paddle_subscription_id
+         FROM schools WHERE id = $1`,
       [req.user.schoolId]
     );
     if (!result.rows[0]) return res.status(404).json({ error: 'School not found' });
@@ -113,6 +114,7 @@ router.get('/quota', authMiddleware, async (req, res) => {
       count,
       limit,
       trial_expired: isTrialExpired(s.tier, s.created_at),
+      has_subscription: !!s.paddle_subscription_id,
     });
   } catch (err) {
     console.error('[quota] error:', err.message);
