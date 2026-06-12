@@ -5,7 +5,7 @@ import { t } from '../i18n';
 import { uploadToLibrary } from '../lib/uploadToLibrary';
 import { RolePanel, PANEL_ACTIVE_CLS } from '../components/RolePanels';
 import { registerServiceWorker, requestPermissionAndSubscribe, isPushSupported } from '../lib/push';
-import { Calendar, CalendarCog, UserPlus, Users, Folder } from 'lucide-react';
+import { Calendar, CalendarCog, UserPlus, Users, Folder, CreditCard, FileText, X } from 'lucide-react';
 
 // Chat is constrained to a centered column of this width (px).
 const CHAT_COLUMN_MAX_WIDTH = 760;
@@ -552,8 +552,9 @@ export default function Chat() {
                       </button>
                       <button
                         onClick={() => { setSettingsOpen(false); setActivePanel('billing'); }}
-                        className="w-full text-left px-4 py-3 border-t border-[#e5e7eb] text-[14px] text-[#111827] hover:bg-[#f9fafb] transition-colors duration-150">
-                        💳 {t(lang === 'GEO' ? 'ka' : 'en', 'billing')}
+                        className="w-full flex items-center gap-2 px-4 py-3 border-t border-[#e5e7eb] text-[14px] text-[#111827] hover:bg-[#f9fafb] transition-colors duration-150">
+                        <CreditCard size={16} strokeWidth={1.75} />
+                        <span>{t(lang === 'GEO' ? 'ka' : 'en', 'billing')}</span>
                       </button>
                     </>
                   )}
@@ -711,12 +712,14 @@ export default function Chat() {
           <div className={`flex items-center gap-2 px-4 py-2 border-t ${s.footerBorder} flex-shrink-0 flex-wrap`}>
             {attachedFiles.map(f => (
               <span key={f.id} className="text-[13px] rounded-md px-3 py-1.5 flex items-center gap-2 bg-[#fafafa] border border-[#e5e7eb] text-[#111827]">
-                <span className="truncate max-w-[120px]">📄 {f.name}</span>
+                <FileText size={14} strokeWidth={1.75} className="flex-shrink-0 text-[#6b7280]" />
+                <span className="truncate max-w-[120px]">{f.name}</span>
                 <button
                   type="button"
                   onClick={() => setAttachedFiles(prev => prev.filter(x => x.id !== f.id))}
-                  className="text-[#9ca3af] hover:text-[#111827] flex-shrink-0 leading-none transition-colors duration-150"
-                >✕</button>
+                  aria-label={lang === 'GEO' ? 'მოშორება' : 'Remove'}
+                  className="inline-flex items-center justify-center text-[#9ca3af] hover:text-[#111827] flex-shrink-0 transition-colors duration-150"
+                ><X size={14} strokeWidth={1.75} /></button>
               </span>
             ))}
             <span className="text-[13px] text-[#9ca3af]">{attachedFiles.length}/3</span>

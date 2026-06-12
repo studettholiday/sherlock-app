@@ -3,7 +3,7 @@ import { useAuth } from '../AuthContext';
 import { t } from '../i18n';
 import { uploadToLibrary } from '../lib/uploadToLibrary';
 import { initializePaddle } from '@paddle/paddle-js';
-import { Tag, Download, Trash2 } from 'lucide-react';
+import { Tag, Download, Trash2, MapPin, SquarePen, Copy, Check } from 'lucide-react';
 
 // ─── Theme tokens ─────────────────────────────────────────────────────────────
 
@@ -190,9 +190,11 @@ function InvitePanel({ lang }) {
                       background: copiedThis ? '#eff6ff' : '#ffffff',
                       color: copiedThis ? '#2563eb' : '#111827',
                     }}>
-                    {copiedThis
-                      ? (lang === 'GEO' ? '✓ დაკოპირდა' : '✓ Copied')
-                      : (lang === 'GEO' ? '📋 ბმულის კოპირება' : '📋 Copy Link')}
+                    <span className="inline-flex items-center justify-center gap-1.5">
+                      {copiedThis
+                        ? <><Check size={14} strokeWidth={1.75} /><span>{lang === 'GEO' ? 'დაკოპირდა' : 'Copied'}</span></>
+                        : <><Copy size={14} strokeWidth={1.75} /><span>{lang === 'GEO' ? 'ბმულის კოპირება' : 'Copy Link'}</span></>}
+                    </span>
                   </button>
                   <button onClick={() => revokeInvite(inv.id)}
                     disabled={trialExpired}
@@ -268,7 +270,12 @@ function SchedulePanel({ lang }) {
                 <div key={r.id ?? i} className="flex items-center gap-2 text-[13px] py-1 border-b border-[#e5e7eb] last:border-0 hover:bg-[#fafafa] transition-colors duration-150">
                   <span className="text-[#6b7280] font-mono w-14 flex-shrink-0">{(r.lesson_time || '').slice(0, 5)}</span>
                   <span className="text-[#111827] flex-1 min-w-0 truncate">{r.class_name}</span>
-                  {r.room && <span className="text-[#6b7280] flex-shrink-0">📍 {r.room}</span>}
+                  {r.room && (
+                    <span className="inline-flex items-center gap-1 text-[#6b7280] flex-shrink-0">
+                      <MapPin size={14} strokeWidth={1.75} />
+                      <span>{r.room}</span>
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
@@ -426,12 +433,23 @@ function ScheduleEditorPanel({ lang }) {
                 <span className="text-[#6b7280] w-20 flex-shrink-0 truncate">{dayLabel(r.day_of_week, lang)}</span>
                 <span className="text-[#6b7280] font-mono w-12 flex-shrink-0">{(r.lesson_time || '').slice(0, 5)}</span>
                 <span className="text-[#111827] flex-1 min-w-0 truncate">{r.class_name}</span>
-                {r.room && <span className="text-[#6b7280] flex-shrink-0">📍 {r.room}</span>}
+                {r.room && (
+                  <span className="inline-flex items-center gap-1 text-[#6b7280] flex-shrink-0">
+                    <MapPin size={14} strokeWidth={1.75} />
+                    <span>{r.room}</span>
+                  </span>
+                )}
                 <button onClick={() => startEdit(r)}
                   disabled={trialExpired}
                   title={lang === 'GEO' ? 'რედაქტირება' : 'Edit'}
-                  className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed">✏️</button>
-                <button onClick={() => del(r.id)} disabled={trialExpired} className="rounded-[6px] border border-[#fecaca] bg-[#ffffff] text-[#dc2626] hover:bg-[#fef2f2] flex-shrink-0 px-1.5 leading-none transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed">✕</button>
+                  className="inline-flex items-center justify-center p-1 rounded-md text-[#64748b] hover:bg-[#f3f4f6] flex-shrink-0 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed">
+                  <SquarePen size={18} strokeWidth={1.75} />
+                </button>
+                <button onClick={() => del(r.id)} disabled={trialExpired}
+                  title={lang === 'GEO' ? 'წაშლა' : 'Delete'}
+                  className="inline-flex items-center justify-center p-1 rounded-md text-[#dc2626] hover:bg-[#fef2f2] flex-shrink-0 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed">
+                  <Trash2 size={18} strokeWidth={1.75} />
+                </button>
               </>
             )}
           </div>
