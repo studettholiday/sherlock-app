@@ -10,6 +10,7 @@ import ResetPassword from './pages/ResetPassword';
 import RecoveryScreen from './pages/RecoveryScreen';
 import VerifyEmail from './pages/VerifyEmail';
 import CheckYourEmail from './pages/CheckYourEmail';
+import { Bot, Calendar, Ticket, NotebookPen, Library, Bell } from 'lucide-react';
 
 const T = {
   EN: {
@@ -72,12 +73,12 @@ function groupSchedule(rows) {
 }
 
 const FEATURES = [
-  { id: 'chat',     icon: '🤖', EN: { title: 'AI Chat',           desc: 'Ask anything, get instant answers' }, GEO: { title: 'შერლოკის ჩატი',         desc: 'AI-ინტეგრირებული'          } },
-  { id: 'schedule', icon: '📅', EN: { title: 'Schedule',          desc: 'Weekly timetable for every group'  }, GEO: { title: 'ცხრილი',                 desc: 'მართე მარტივად'             } },
-  { id: 'events',   icon: '🎪', EN: { title: 'Events',            desc: 'Upcoming group and school activities'  }, GEO: { title: 'ღონისძიებები',           desc: 'დაგეგმე/გააზიარე'           } },
-  { id: 'notes',    icon: '📒', EN: { title: 'Notes',             desc: 'Lesson notes and practice diary'   }, GEO: { title: 'ჩანაწერები',             desc: 'ჩაინიშნე საგასაღებო სიტყვები'} },
-  { id: 'library',  icon: '📚', EN: { title: 'Library',           desc: 'Chords, scales, diagrams'          }, GEO: { title: 'ბიბლიოთეკა',            desc: 'ესაუბრე წიგნებს'            } },
-  { id: 'reminders',icon: '🔔', EN: { title: 'Reminders',         desc: 'Automatic lesson reminders'        }, GEO: { title: 'შეხსენებები',            desc: 'არ გამოგრჩეს გაკვეთილი'     } },
+  { id: 'chat',     Icon: Bot,         EN: { title: 'AI Chat',           desc: 'Ask anything, get instant answers' }, GEO: { title: 'შერლოკის ჩატი',         desc: 'AI-ინტეგრირებული'          } },
+  { id: 'schedule', Icon: Calendar,    EN: { title: 'Schedule',          desc: 'Weekly timetable for every group'  }, GEO: { title: 'ცხრილი',                 desc: 'მართე მარტივად'             } },
+  { id: 'events',   Icon: Ticket,      EN: { title: 'Events',            desc: 'Upcoming group and school activities'  }, GEO: { title: 'ღონისძიებები',           desc: 'დაგეგმე/გააზიარე'           } },
+  { id: 'notes',    Icon: NotebookPen, EN: { title: 'Notes',             desc: 'Lesson notes and practice diary'   }, GEO: { title: 'ჩანაწერები',             desc: 'ჩაინიშნე საგასაღებო სიტყვები'} },
+  { id: 'library',  Icon: Library,     EN: { title: 'Library',           desc: 'Chords, scales, diagrams'          }, GEO: { title: 'ბიბლიოთეკა',            desc: 'ესაუბრე წიგნებს'            } },
+  { id: 'reminders',Icon: Bell,        EN: { title: 'Reminders',         desc: 'Automatic lesson reminders'        }, GEO: { title: 'შეხსენებები',            desc: 'არ გამოგრჩეს გაკვეთილი'     } },
 ];
 
 function useIsMobile() {
@@ -119,7 +120,7 @@ function FeatureCarousel({ lang }) {
               alignItems: 'center',
               boxSizing: 'border-box',
             }}>
-              <div style={{ fontSize: '2rem', lineHeight: 1 }}>{f.icon}</div>
+              <f.Icon size={30} strokeWidth={2} color="#1e3a8a" />
               <p style={{ color: '#111827', fontWeight: 600, fontSize: '0.875rem', margin: '8px 0 0' }}>
                 {f[lang].title}
               </p>
@@ -201,7 +202,7 @@ function FeatureCarousel3D({ lang }) {
             textAlign:    'center',
             boxShadow:    '0 1px 3px rgba(0,0,0,0.05)',
           }}>
-            <div style={{ fontSize: '2rem', lineHeight: 1 }}>{item.icon}</div>
+            <item.Icon size={30} strokeWidth={2} color="#1e3a8a" />
             <p style={{ color: '#111827', fontWeight: 600, fontSize: '0.875rem', margin: '8px 0 0' }}>
               {item[lang].title}
             </p>
