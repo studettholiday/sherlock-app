@@ -5,6 +5,7 @@ import { t } from '../i18n';
 import { uploadToLibrary } from '../lib/uploadToLibrary';
 import { RolePanel, PANEL_ACTIVE_CLS } from '../components/RolePanels';
 import { registerServiceWorker, requestPermissionAndSubscribe, isPushSupported } from '../lib/push';
+import { Calendar, CalendarCog, UserPlus, Users, Folder } from 'lucide-react';
 
 // Chat is constrained to a centered column of this width (px).
 const CHAT_COLUMN_MAX_WIDTH = 760;
@@ -130,13 +131,13 @@ function MessageBubble({ message, theme }) {
 
 const BUTTON_GROUPS = {
   student: [
-    { id: 'schedule', label: '📅 Schedule' },
+    { id: 'schedule', icon: Calendar, label: 'Schedule' },
   ],
 };
 
 const GEO_BUTTON_GROUPS = {
   student: [
-    { id: 'schedule', label: '📅 განრიგი' },
+    { id: 'schedule', icon: Calendar, label: 'განრიგი' },
   ],
 };
 
@@ -620,8 +621,10 @@ export default function Chat() {
                     return (
                       <button key={item.id}
                         onClick={() => setOpenGroup(g => g === item.id ? null : item.id)}
-                        className={`px-4 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${openGroup === item.id ? GROUP_OPEN_CLS[role] : inactiveGroupCls}`}>
-                        {item.label} {openGroup === item.id ? '▲' : '▼'}
+                        className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${openGroup === item.id ? GROUP_OPEN_CLS[role] : inactiveGroupCls}`}>
+                        {item.icon && <item.icon size={16} strokeWidth={1.75} />}
+                        <span>{item.label}</span>
+                        <span>{openGroup === item.id ? '▲' : '▼'}</span>
                       </button>
                     );
                   }
@@ -629,8 +632,9 @@ export default function Chat() {
                   return (
                     <button key={item.id}
                       onClick={() => setActivePanel(activePanel === panelId ? null : panelId)}
-                      className={`px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${activePanel === panelId ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
-                      {item.label}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${activePanel === panelId ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
+                      {item.icon && <item.icon size={16} strokeWidth={1.75} />}
+                      <span>{item.label}</span>
                     </button>
                   );
                 })}
@@ -639,27 +643,31 @@ export default function Chat() {
                     <button
                       onClick={() => setActivePanel(activePanel === 'invite' ? null : 'invite')}
                       disabled={trialExpired}
-                      className={`px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed ${activePanel === 'invite' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
-                      {lang === 'GEO' ? '⚙️ მოწვევა' : '⚙️ Invite'}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed ${activePanel === 'invite' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
+                      <UserPlus size={16} strokeWidth={1.75} />
+                      <span>{lang === 'GEO' ? 'მოწვევა' : 'Invite'}</span>
                     </button>
                     <button
                       onClick={() => setActivePanel(activePanel === 'schedule-editor' ? null : 'schedule-editor')}
                       disabled={trialExpired}
-                      className={`px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed ${activePanel === 'schedule-editor' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
-                      {lang === 'GEO' ? '📅 განრიგის რედაქტირება' : '📅 Edit Schedule'}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed ${activePanel === 'schedule-editor' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
+                      <CalendarCog size={16} strokeWidth={1.75} />
+                      <span>{lang === 'GEO' ? 'განრიგის რედაქტირება' : 'Edit Schedule'}</span>
                     </button>
                     <button
                       onClick={() => setActivePanel(activePanel === 'students' ? null : 'students')}
-                      className={`px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${activePanel === 'students' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
-                      {lang === 'GEO' ? '👥 მოსწავლეები' : '👥 Students'}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${activePanel === 'students' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
+                      <Users size={16} strokeWidth={1.75} />
+                      <span>{lang === 'GEO' ? 'მოსწავლეები' : 'Students'}</span>
                     </button>
                   </>
                 )}
                 {/* Files — accessible to every signed-in user; panel content branches on role. */}
                 <button
                   onClick={() => setActivePanel(activePanel === 'library' ? null : 'library')}
-                  className={`px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${activePanel === 'library' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
-                  {lang === 'GEO' ? '📁 ფაილები' : '📁 Files'}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${activePanel === 'library' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
+                  <Folder size={16} strokeWidth={1.75} />
+                  <span>{lang === 'GEO' ? 'ფაილები' : 'Files'}</span>
                 </button>
               </div>
               {openGroupDef?.children && openGroupDef.children.length >= 2 && (
