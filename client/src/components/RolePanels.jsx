@@ -3,7 +3,7 @@ import { useAuth } from '../AuthContext';
 import { t } from '../i18n';
 import { uploadToLibrary } from '../lib/uploadToLibrary';
 import { initializePaddle } from '@paddle/paddle-js';
-import { Tag, Download, Trash2, MapPin, SquarePen, Copy, Check } from 'lucide-react';
+import { Tag, Download, Trash2, MapPin, SquarePen, Copy, Check, Lock, X } from 'lucide-react';
 
 // ─── Theme tokens ─────────────────────────────────────────────────────────────
 
@@ -237,7 +237,10 @@ function SchedulePanel({ lang }) {
   if (trialExpired) {
     return (
       <p className="text-[14px] italic text-[#6b7280] text-center py-6">
-        {t(lang === 'GEO' ? 'ka' : 'en', 'trialLockedSchedule')}
+        <span className="inline-flex items-center justify-center gap-1.5">
+          <Lock size={14} strokeWidth={1.75} />
+          <span>{t(lang === 'GEO' ? 'ka' : 'en', 'trialLockedSchedule')}</span>
+        </span>
       </p>
     );
   }
@@ -664,8 +667,9 @@ function LibraryOwnerPanel({ lang }) {
             </div>
             <span className="text-[#6b7280] font-mono flex-shrink-0">{formatSize(f.file_size)}</span>
             {trialExpired ? (
-              <span className="text-[12px] text-[#b91c1c] italic flex-shrink-0">
-                {t(lang === 'GEO' ? 'ka' : 'en', 'trialLockedFiles')}
+              <span className="inline-flex items-center gap-1 text-[12px] text-[#b91c1c] italic flex-shrink-0">
+                <Lock size={12} strokeWidth={1.75} />
+                <span>{t(lang === 'GEO' ? 'ka' : 'en', 'trialLockedFiles')}</span>
               </span>
             ) : (
               <>
@@ -1088,8 +1092,8 @@ function FileViewerModal({ file, onClose, viewUrl }) {
         <button
           onClick={onClose}
           aria-label={t(lang, 'close')}
-          className="absolute top-2 right-2 z-10 text-[#6b7280] hover:text-[#111827] text-xl leading-none px-2 py-0.5"
-        >✕</button>
+          className="absolute top-2 right-2 z-10 inline-flex items-center justify-center text-[#6b7280] hover:text-[#111827] transition-colors duration-150 px-2 py-0.5"
+        ><X size={20} strokeWidth={1.75} /></button>
 
         <div className="p-4 pt-8">
           {loading && (
@@ -1698,7 +1702,7 @@ export function RolePanel({ role, panel, onClose, lang = 'EN' }) {
     <div className="rounded-[12px] border border-[#e5e7eb] bg-[#ffffff] shadow-[0_4px_12px_rgba(0,0,0,0.08)] overflow-hidden flex flex-col">
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#e5e7eb] flex-shrink-0">
         <span className="text-[14px] font-semibold text-[#111827]">{panelTitle}</span>
-        <button onClick={onClose} className="text-[#6b7280] hover:text-[#111827] transition-colors duration-150 text-sm leading-none">✕</button>
+        <button onClick={onClose} className="inline-flex items-center justify-center text-[#6b7280] hover:text-[#111827] transition-colors duration-150"><X size={14} strokeWidth={1.75} /></button>
       </div>
       <div key={panel} className="p-4 overflow-y-auto flex-1">
         {panelContent(role, panel, lang)}

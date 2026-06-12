@@ -10,7 +10,7 @@ import ResetPassword from './pages/ResetPassword';
 import RecoveryScreen from './pages/RecoveryScreen';
 import VerifyEmail from './pages/VerifyEmail';
 import CheckYourEmail from './pages/CheckYourEmail';
-import { Bot, Calendar, Ticket, NotebookPen, Library, Bell } from 'lucide-react';
+import { Bot, Calendar, Ticket, NotebookPen, Library, Bell, X, PartyPopper } from 'lucide-react';
 
 const T = {
   EN: {
@@ -266,14 +266,14 @@ function SignupModal({ lang, onClose }) {
         <button
           onClick={onClose}
           aria-label="Close"
-          className="absolute right-4 top-4 text-[#9ca3af] hover:text-[#111827] transition-colors text-lg leading-none"
+          className="absolute right-4 top-4 inline-flex items-center justify-center text-[#9ca3af] hover:text-[#111827] transition-colors"
         >
-          ✕
+          <X size={18} strokeWidth={1.75} />
         </button>
 
         {done ? (
           <div className="py-8 text-center">
-            <p className="text-3xl mb-4">🎉</p>
+            <div className="flex justify-center mb-4"><PartyPopper size={40} strokeWidth={1.75} color="#2563eb" /></div>
             <p className="text-[#111827] font-medium">{t.thankYou}</p>
           </div>
         ) : (

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 import AuthShell from '../components/AuthShell';
+import { Hourglass } from 'lucide-react';
 
 export default function PendingApproval() {
   const { user, logout, updateUser } = useAuth();
@@ -36,7 +37,7 @@ export default function PendingApproval() {
 
   return (
     <AuthShell>
-        <div style={{ fontSize: '3rem', marginBottom: 16 }}>⏳</div>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><Hourglass size={48} strokeWidth={1.75} color="#6b7280" /></div>
         <h1 style={{ fontFamily: "'Arbutus Slab', serif", fontWeight: 400, fontSize: '32px', color: '#111827', margin: '0 0 12px' }}>
           {isStudentRegistrationPending ? 'Request Sent' : 'Pending Approval'}
         </h1>
