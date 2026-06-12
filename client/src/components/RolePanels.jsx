@@ -3,6 +3,7 @@ import { useAuth } from '../AuthContext';
 import { t } from '../i18n';
 import { uploadToLibrary } from '../lib/uploadToLibrary';
 import { initializePaddle } from '@paddle/paddle-js';
+import { Tag, Download, Trash2 } from 'lucide-react';
 
 // ─── Theme tokens ─────────────────────────────────────────────────────────────
 
@@ -652,11 +653,19 @@ function LibraryOwnerPanel({ lang }) {
               <>
                 <button onClick={() => editingId === f.id ? cancelEditAccess() : startEditAccess(f)}
                   title={lang === 'GEO' ? 'წვდომის რედაქტირება' : 'Edit access'}
-                  className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">🏷️</button>
+                  className="inline-flex items-center justify-center p-1 rounded-md text-[#64748b] hover:bg-[#f3f4f6] flex-shrink-0 transition-colors duration-150">
+                  <Tag size={18} strokeWidth={1.75} />
+                </button>
                 <button onClick={() => downloadFile(f)}
                   title={lang === 'GEO' ? 'ჩამოტვირთვა' : 'Download'}
-                  className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">⬇️</button>
-                <button onClick={() => del(f.id)} className="rounded-[6px] border border-[#fecaca] bg-[#ffffff] text-[#dc2626] hover:bg-[#fef2f2] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">✕</button>
+                  className="inline-flex items-center justify-center p-1 rounded-md text-[#2563eb] hover:bg-[#eff6ff] flex-shrink-0 transition-colors duration-150">
+                  <Download size={18} strokeWidth={1.75} />
+                </button>
+                <button onClick={() => del(f.id)}
+                  title={lang === 'GEO' ? 'წაშლა' : 'Delete'}
+                  className="inline-flex items-center justify-center p-1 rounded-md text-[#dc2626] hover:bg-[#fef2f2] flex-shrink-0 transition-colors duration-150">
+                  <Trash2 size={18} strokeWidth={1.75} />
+                </button>
               </>
             )}
           </div>
@@ -1232,7 +1241,9 @@ function LibraryStudentPanel({ lang }) {
             user?.student_downloads_enabled === true && (
               <button onClick={() => downloadFile(f)}
                 title={lang === 'GEO' ? 'ჩამოტვირთვა' : 'Download'}
-                className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] text-[#6b7280] hover:bg-[#f9fafb] flex-shrink-0 px-1.5 leading-none transition-colors duration-150">⬇️</button>
+                className="inline-flex items-center justify-center p-1 rounded-md text-[#2563eb] hover:bg-[#eff6ff] flex-shrink-0 transition-colors duration-150">
+                <Download size={18} strokeWidth={1.75} />
+              </button>
             )
           )}
         </div>
