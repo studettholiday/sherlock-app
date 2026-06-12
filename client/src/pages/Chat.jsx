@@ -408,7 +408,32 @@ export default function Chat() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ messages: apiMessages, context: buildContext(attachedFiles), language: lang === 'GEO' ? 'ka' : 'en' }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+
+      // Trial may expire mid-session (e.g. cancel-flip-to-trial via Paddle
+      // webhook) when the JWT-baked trial_expired flag was still false.
+      // Trust the server: surface the message inline and lock the input by
+      // flipping the local user flag so the existing banner shows.
+      if (res.status === 403 && data?.error === 'trial_expired') {
+        const msg = t(lang === 'GEO' ? 'ka' : 'en', 'trialExpiredBanner');
+        setMessages((prev) => [...prev, { role: 'assistant', content: msg }]);
+        if (user) updateUser({ ...user, trial_expired: true });
+        fetchQuota();
+        setTimeout(() => { messagesRef.current?.scrollTo({ top: messagesRef.current.scrollHeight, behavior: 'smooth' }); }, 50);
+        return;
+      }
+
+      // Any other non-OK response carries an error string from the server.
+      if (!res.ok) {
+        const errText = data?.error || (lang === 'GEO'
+          ? 'შეცდომა: სერვერთან კავშირი ვერ მოხდა.'
+          : 'Error: could not reach the server.');
+        setMessages((prev) => [...prev, { role: 'assistant', content: errText }]);
+        fetchQuota();
+        setTimeout(() => { messagesRef.current?.scrollTo({ top: messagesRef.current.scrollHeight, behavior: 'smooth' }); }, 50);
+        return;
+      }
+
       const aiText = data.message ?? 'No response.';
       setMessages((prev) => [...prev, { role: 'assistant', content: aiText }]);
       fetchQuota();
