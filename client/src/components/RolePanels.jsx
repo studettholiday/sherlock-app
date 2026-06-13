@@ -643,29 +643,43 @@ function LibraryOwnerPanel({ lang }) {
         )}
       {files.map(f => (
         <Fragment key={f.id}>
-          <div className="flex items-center gap-2 text-[13px] py-1.5 border-b border-[#e5e7eb] hover:bg-[#fafafa] transition-colors duration-150">
+          <div className="flex items-center gap-2 text-[13px] py-1.5 border-b border-[#e5e7eb] hover:bg-[#fafafa] transition-colors duration-150 min-w-0">
             {/* When the trial is expired, filenames stay visible (as a teaser
                 that data exists) but the click-to-view button is replaced with
                 plain text — never call the gated view endpoint. */}
             {!trialExpired && f.mime_type === 'application/pdf' ? (
               <button onClick={() => setViewingFile(f)}
-                title={lang === 'GEO' ? 'ნახვა' : 'View'}
-                className="text-[#111827] hover:text-[#2563eb] hover:underline cursor-pointer flex-shrink-0 truncate max-w-[35%] text-left bg-transparent border-0 p-0 transition-colors duration-150">
+                title={f.name || f.filename || 'Untitled'}
+                className="text-[#111827] hover:text-[#2563eb] hover:underline cursor-pointer flex-1 min-w-0 truncate text-left bg-transparent border-0 p-0 transition-colors duration-150">
                 {f.name || f.filename || 'Untitled'}
               </button>
             ) : (
-              <span className="text-[#111827] flex-shrink-0 truncate max-w-[35%]">{f.name || f.filename || 'Untitled'}</span>
+              <span title={f.name || f.filename || 'Untitled'} className="text-[#111827] flex-1 min-w-0 truncate">{f.name || f.filename || 'Untitled'}</span>
             )}
-            <div className="flex items-center gap-1 flex-1 min-w-0 flex-wrap">
-              {(f.classes || []).length === 0 ? (
-                <span className="text-[12px] italic text-[#9ca3af]">{lang === 'GEO' ? 'ხელმისაწვდომი ყველასთვის' : 'Visible to all'}</span>
-              ) : (
-                (f.classes || []).map(c => (
-                  <span key={c} className="text-[12px] rounded-full bg-[#eff6ff] text-[#2563eb] border border-[#bfdbfe] px-2 py-0.5">{c}</span>
-                ))
-              )}
-            </div>
-            <span className="text-[#6b7280] font-mono flex-shrink-0">{formatSize(f.file_size)}</span>
+            {/* Access label: single truncating span (no wrap). When public, show
+                the short "All" form so it fits next to the filename on mobile.
+                When tagged, join class names — CSS ellipsis trims overflow, and
+                if more than one class is tagged we fall back to "first +N" so
+                even with a long first name the count stays visible. */}
+            {(() => {
+              const classes = f.classes || [];
+              const isPublic = classes.length === 0;
+              const label = isPublic
+                ? (lang === 'GEO' ? 'ყველას' : 'All')
+                : (classes.length === 1
+                    ? classes[0]
+                    : `${classes[0]} +${classes.length - 1}`);
+              const fullTitle = isPublic
+                ? (lang === 'GEO' ? 'ხელმისაწვდომი ყველასთვის' : 'Available to everyone')
+                : classes.join(', ');
+              return (
+                <span title={fullTitle}
+                  className={`text-[12px] flex-shrink min-w-0 truncate ${isPublic ? 'italic text-[#9ca3af]' : 'rounded-full bg-[#eff6ff] text-[#2563eb] border border-[#bfdbfe] px-2 py-0.5'}`}>
+                  {label}
+                </span>
+              );
+            })()}
+            <span className="text-[#6b7280] font-mono flex-shrink-0 whitespace-nowrap">{formatSize(f.file_size)}</span>
             {trialExpired ? (
               <span className="inline-flex items-center gap-1 text-[12px] text-[#b91c1c] italic flex-shrink-0">
                 <Lock size={12} strokeWidth={1.75} />
