@@ -223,7 +223,16 @@ const translations = {
   }
 };
 
-export const t = (lang, key) => translations[lang]?.[key] || translations.en[key] || key;
+// App state uses the uppercase enum 'EN' / 'GEO' (Chat.jsx) while the
+// translation table is keyed by ISO codes 'en' / 'ka'. Normalize here so
+// callers can pass either — components that forget the conversion (or get
+// the prop direct from app state) still resolve to the right language
+// instead of silently falling back to English.
+const LANG_ALIAS = { GEO: 'ka', EN: 'en' };
+export const t = (lang, key) => {
+  const code = LANG_ALIAS[lang] || lang;
+  return translations[code]?.[key] || translations.en[key] || key;
+};
 export const languages = [
   { code: 'en', label: 'English' },
   { code: 'ka', label: 'ქართული' },
