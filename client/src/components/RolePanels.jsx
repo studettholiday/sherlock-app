@@ -1672,7 +1672,7 @@ function BillingPanel({ lang }) {
             <div key={tier.key} className="rounded-[8px] border border-[#e5e7eb] bg-white p-4 flex items-center justify-between gap-3">
               <div>
                 <div className="text-[14px] font-semibold text-[#111827]">{t(lang, tier.nameKey)}</div>
-                <div className="text-[13px] text-[#6b7280] mt-0.5">${tier.price}/mo · {tier.limit} {t(lang, 'chatsPerMonth')}</div>
+                <div className="text-[13px] text-[#6b7280] mt-0.5">${tier.price}{t(lang, 'perMonth')} · {tier.limit} {t(lang, 'chatsPerMonth')}</div>
               </div>
               <button
                 type="button"
