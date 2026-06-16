@@ -37,6 +37,9 @@ export default function CheckYourEmail() {
         <p style={{ color: '#6b7280', marginTop: '12px', fontSize: '14px', lineHeight: 1.5 }}>
           {t(lang, 'checkYourEmailBody')} <strong style={{ color: '#111827' }}>{email}</strong>
         </p>
+        <p style={{ color: '#9ca3af', marginTop: '8px', fontSize: '13px', lineHeight: 1.5 }}>
+          {t(lang, 'checkYourEmailSpam')}
+        </p>
       </div>
 
       <div style={{ textAlign: 'center' }}>
