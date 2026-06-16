@@ -31,9 +31,10 @@ export default function JoinWithCode() {
       // Use new invite-based signup if we have a UUID invite code
       const isUUID = /^[0-9a-f-]{36}$/.test(code);
       const endpoint = isUUID ? '/api/auth/signup' : '/api/auth/join';
+      // Pass lang so the verification email is localized, exactly as owner signup does.
       const body = isUUID
-        ? { invite_code: code, ...form }
-        : { code, ...form };
+        ? { invite_code: code, lang, ...form }
+        : { code, lang, ...form };
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -42,6 +43,14 @@ export default function JoinWithCode() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || t(lang, 'failedToJoin'));
+      // Invited students go through the same verify-then-activate flow as owners:
+      // the server has already sent the verification email and returned
+      // verification_required (no token). Route to CheckYourEmail, not the app —
+      // they cannot sign in until they verify.
+      if (data.verification_required) {
+        window.location.href = `/check-your-email?email=${encodeURIComponent(data.email)}`;
+        return;
+      }
       localStorage.setItem('sherlock_token', data.token);
       window.location.href = '/dashboard';
     } catch (err) {
