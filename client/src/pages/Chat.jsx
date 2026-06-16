@@ -450,6 +450,13 @@ export default function Chat() {
     }
   }
 
+  // The input form is hidden for trial-expired schools and for students whose
+  // owner disabled AI. When it's gone, the messages area is the bottom-most
+  // element, so it must carry the safe-area inset itself (otherwise its last
+  // line sits under the Android gesture bar). When the form is shown, the form
+  // owns that inset instead — see its paddingBottom below.
+  const inputVisible = !trialExpired && (user?.is_owner || user?.student_ai_enabled === true);
+
   return (
     <div className="flex flex-col font-sans overflow-hidden"
       style={{
@@ -474,7 +481,9 @@ export default function Chat() {
       <div className={`relative flex flex-col flex-1 overflow-hidden w-full mx-auto ${s.wrap}`} style={{ maxWidth: CHAT_COLUMN_MAX_WIDTH }}>
 
         {/* Header */}
-        <header className={`flex items-center gap-2 px-4 py-2 sm:py-3 border-b ${s.headerBorder} flex-shrink-0 bg-[#ffffff]`}>
+        <header
+          className={`flex items-center gap-2 px-4 py-2 sm:py-3 border-b ${s.headerBorder} flex-shrink-0 bg-[#ffffff]`}
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}>
           <button
             type="button"
             onClick={() => {
@@ -687,7 +696,7 @@ export default function Chat() {
         })()}
 
         {/* Messages — header panels now render as a modal overlay (below). */}
-        <div ref={messagesRef} className="flex-1 overflow-y-auto px-4 py-4" style={{ fontSize: 'clamp(13px, 3.5vw, 16px)', minHeight: 0 }}>
+        <div ref={messagesRef} className="flex-1 overflow-y-auto px-4 py-4" style={{ fontSize: 'clamp(13px, 3.5vw, 16px)', minHeight: 0, paddingBottom: inputVisible ? undefined : 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}>
           {messages.map((msg, i) => (
             <MessageBubble key={i} message={msg} theme={theme} />
           ))}
@@ -728,10 +737,11 @@ export default function Chat() {
 
         {/* Input — hidden for students when the owner has disabled student AI,
             and hidden for everyone in the school when the trial has expired. */}
-        {!trialExpired && (user?.is_owner || user?.student_ai_enabled === true) && (
+        {inputVisible && (
         <form
           onSubmit={sendMessage}
           className={`px-4 py-2 sm:py-3 border-t ${s.footerBorder} flex-shrink-0`}
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.5rem)' }}
         >
           <input
             ref={fileInputRef}
