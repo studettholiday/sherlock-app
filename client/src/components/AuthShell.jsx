@@ -1,4 +1,5 @@
 import { t } from '../i18n';
+import InstallPrompt from './InstallPrompt';
 
 // Shared shell for every auth-flow page: warm off-white background, a faint
 // hand-drawn decorative lines layer, the Sherlock logo centered above, and the
@@ -114,6 +115,9 @@ export default function AuthShell({ children }) {
           {' · '}
           <a href="/refund" style={{ color: '#6b7280', textDecoration: 'none' }}>{t(lang, 'refund')}</a>
         </p>
+
+        {/* Install-app affordance — self-hides when already installed or not installable. */}
+        <InstallPrompt />
       </div>
     </div>
   );
