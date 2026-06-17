@@ -119,11 +119,11 @@ async function main() {
       );
       const schoolId = schoolRes.rows[0].id;
 
-      // role='student' is the only value allowed by the post-012 check
+      // role='member' is the only value allowed by the post-029 check
       // constraint; is_owner=true distinguishes ownership.
       await client.query(
         `INSERT INTO users (school_id, email, password_hash, role, name, is_owner)
-         VALUES ($1, $2, $3, 'student', $4, true)`,
+         VALUES ($1, $2, $3, 'member', $4, true)`,
         [schoolId, OWNER_EMAIL, hash, 'library']
       );
       await client.query('COMMIT');

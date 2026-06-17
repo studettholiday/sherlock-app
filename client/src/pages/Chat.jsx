@@ -11,7 +11,7 @@ import { Calendar, CalendarCog, UserPlus, Users, Folder, CreditCard, FileText, X
 const CHAT_COLUMN_MAX_WIDTH = 760;
 
 const THEMES = {
-  student: {
+  member: {
     avatar:     'bg-[#eff6ff] text-[#2563eb]',
     userBubble: 'bg-[#eff6ff] text-[#111827]',
     sendBtn:    'bg-[#2563eb] hover:bg-[#1d4ed8]',
@@ -20,12 +20,12 @@ const THEMES = {
   },
 };
 
-const BASE_IDENTITY = 'You are Sherlock Is Smart, an AI assistant for school management. You help staff and students with schedules, events, notes, and any information uploaded to the school library. You do not assume what type of school you are — that is defined by the admin through uploaded documents and context. Be concise, helpful, and professional. You have the wit and dry humor of Sherlock Holmes from Arthur Conan Doyle\'s stories. Use occasional clever quips, deadpan observations, and self-aware humor — especially when you cannot find information, when asked something obvious, or when completing a task successfully. In Georgian, use the same wit naturally. Use this quote when it fits naturally: \'ელემენტარულია, ვატსონ.\' — use this when answering something logical or complex that you solved easily. Use it exactly as written, do not modify or translate it. In Georgian keep the same Holmesian personality but sound natural, not translated. You are never rude or dismissive — the humor is always warm and helpful. Never overdo it — use humor sparingly, only when it fits naturally. Be direct and precise. Never ask the user to clarify whether you have access to documents — you either have context or you don\'t, and you know which. If no library documents are provided in context, simply say you don\'t have that information, with Holmesian wit. Never say things like \'do you have access to...\' or \'please upload documents\' — that is not your concern. Your Georgian must be grammatically perfect — never use awkward phrasing or overly formal bureaucratic language. Speak naturally, like an intelligent Georgian speaker would. When uncertain, admit it directly and briefly, with dry humor if appropriate.';
+const BASE_IDENTITY = 'You are Sherlock Is Smart, an AI assistant for school management. You help everyone at the school with schedules, events, notes, and any information uploaded to the school library. You do not assume what type of school you are — that is defined by the admin through uploaded documents and context. Be concise, helpful, and professional. You have the wit and dry humor of Sherlock Holmes from Arthur Conan Doyle\'s stories. Use occasional clever quips, deadpan observations, and self-aware humor — especially when you cannot find information, when asked something obvious, or when completing a task successfully. In Georgian, use the same wit naturally. Use this quote when it fits naturally: \'ელემენტარულია, ვატსონ.\' — use this when answering something logical or complex that you solved easily. Use it exactly as written, do not modify or translate it. In Georgian keep the same Holmesian personality but sound natural, not translated. You are never rude or dismissive — the humor is always warm and helpful. Never overdo it — use humor sparingly, only when it fits naturally. Be direct and precise. Never ask the user to clarify whether you have access to documents — you either have context or you don\'t, and you know which. If no library documents are provided in context, simply say you don\'t have that information, with Holmesian wit. Never say things like \'do you have access to...\' or \'please upload documents\' — that is not your concern. Your Georgian must be grammatically perfect — never use awkward phrasing or overly formal bureaucratic language. Speak naturally, like an intelligent Georgian speaker would. When uncertain, admit it directly and briefly, with dry humor if appropriate.';
 
 const NO_INFO_INSTRUCTION = `When you cannot find information in the school library or context, respond with one of these naturally, matching the user's language: English: 'Sorry, I couldn\'t find anything on that.' or 'My deductive methods failed me on this one, haha. No information found.' Georgian: 'სამწუხაროდ, ინფორმაცია ვერ მოიძებნა.' or 'ინფორმაცია ვერ ვიპოვე ამ თემაზე.' or 'ჩემი დედუქციის მეთოდი უსარგებლო აღმოჩნდა, ჰაჰაჰა. ინფორმაცია ვერ ვიპოვე.' Vary the response naturally, don't always use the same one.`;
 
 const SYSTEM_PROMPTS = {
-  student:   `${BASE_IDENTITY} You are assisting a student. Answer questions directly and helpfully. When responding to a greeting or first message, do not list your capabilities. Simply ask how you can help, using variations like: 'How can I help you?', 'How may I assist you?', 'რით შემიძლია დაგეხმაროთ?', 'დღეს რით შემიძლია გემსახუროთ?' — match the language of the user's message. ${NO_INFO_INSTRUCTION}`,
+  member:   `${BASE_IDENTITY} You are assisting a member of the school. Answer questions directly and helpfully. When responding to a greeting or first message, do not list your capabilities. Simply ask how you can help, using variations like: 'How can I help you?', 'How may I assist you?', 'რით შემიძლია დაგეხმაროთ?', 'დღეს რით შემიძლია გემსახუროთ?' — match the language of the user's message. ${NO_INFO_INSTRUCTION}`,
 };
 
 // Unified greeting — no role variants. Interpolates the school name when present.
@@ -146,10 +146,13 @@ function getButtonGroups(lang) {
 }
 
 const GROUP_OPEN_CLS = {
+  member:    'bg-[#eff6ff] text-[#2563eb] border border-[#3b82f6]',
+  // Legacy alias: unexpired pre-rename JWTs still carry role='student' (≤7d).
   student:   'bg-[#eff6ff] text-[#2563eb] border border-[#3b82f6]',
 };
 
 const ACCENT_COLORS = {
+  member:  '#2563eb',
   student: '#2563eb',
 };
 
@@ -157,11 +160,11 @@ export default function Chat() {
   const { user, logout, updateUser, selfDelete } = useAuth();
   const [lang, setLang] = useState(localStorage.getItem('sherlock_lang') === 'ka' ? 'GEO' : 'EN');
 
-  const role = user?.role || 'student';
+  const role = user?.role || 'member';
   const trialExpired = !!user?.trial_expired;
   const [activePanel, setActivePanel] = useState(null);
   const [openGroup, setOpenGroup] = useState(null);
-  const theme = THEMES[role] || THEMES.student;
+  const theme = THEMES[role] || THEMES.member;
 
   const [messages, setMessages] = useState([
     { role: 'assistant', content: getGreeting(role, lang, user?.schoolName || '', '') },
@@ -397,7 +400,7 @@ export default function Chat() {
       .filter((m) => !m.type);
 
     const apiMessages = [
-      { role: 'user',      content: `[System context] ${SYSTEM_PROMPTS[role]}` },
+      { role: 'user',      content: `[System context] ${SYSTEM_PROMPTS[role] || SYSTEM_PROMPTS.member}` },
       { role: 'assistant', content: 'Understood.' },
       ...conversation,
     ];
@@ -521,7 +524,7 @@ export default function Chat() {
                   {user?.is_owner && (
                     <>
                       <div className="flex items-center justify-between px-4 py-3 gap-3">
-                        <span className="text-[14px] text-[#111827]">{lang === 'GEO' ? 'AI ჩატი მოსწავლეებისთვის' : 'AI chat for students'}</span>
+                        <span className="text-[14px] text-[#111827]">{lang === 'GEO' ? 'AI ჩატი წევრებისთვის' : 'AI chat for members'}</span>
                         <button
                           role="switch"
                           aria-checked={!!user.student_ai_enabled}
@@ -538,7 +541,7 @@ export default function Chat() {
                         </button>
                       </div>
                       <div className="flex items-center justify-between px-4 py-3 gap-3 border-t border-[#e5e7eb]">
-                        <span className="text-[14px] text-[#111827]">{lang === 'GEO' ? 'მოსწავლეებს ფაილების გადმოწერის უფლება' : 'Allow students to download files'}</span>
+                        <span className="text-[14px] text-[#111827]">{lang === 'GEO' ? 'წევრებს ფაილების გადმოწერის უფლება' : 'Allow members to download files'}</span>
                         <button
                           role="switch"
                           aria-checked={!!user.student_downloads_enabled}
@@ -668,7 +671,7 @@ export default function Chat() {
                       onClick={() => setActivePanel(activePanel === 'students' ? null : 'students')}
                       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium whitespace-nowrap flex-shrink-0 transition-colors duration-150 ${activePanel === 'students' ? PANEL_ACTIVE_CLS[role] : inactiveCls}`}>
                       <Users size={16} strokeWidth={1.75} />
-                      <span>{lang === 'GEO' ? 'მოსწავლეები' : 'Students'}</span>
+                      <span>{lang === 'GEO' ? 'წევრები' : 'Members'}</span>
                     </button>
                   </>
                 )}
@@ -848,12 +851,12 @@ export default function Chat() {
             onClick={(e) => e.stopPropagation()}>
             <div className="p-6">
               <h2 className="text-[24px] text-[#111827] mb-3" style={{ fontFamily: '"Arbutus Slab", serif' }}>
-                {lang === 'GEO' ? 'ჩართოთ AI ჩატი მოსწავლეებისთვის?' : 'Enable AI chat for students?'}
+                {lang === 'GEO' ? 'ჩართოთ AI ჩატი წევრებისთვის?' : 'Enable AI chat for members?'}
               </h2>
               <p className="text-[14px] text-[#6b7280] mb-6 leading-relaxed">
                 {lang === 'GEO'
-                  ? 'AI შეიძლება დაეხმაროს სწავლაში, მაგრამ მასზე გადაჭარბებულმა დამოკიდებულებამ შეიძლება გავლენა იქონიოს მოსწავლეების დამოუკიდებელ აზროვნებასა და პრობლემების გადაჭრის უნარებზე. იფიქრეთ, როგორ ჯდება ეს თქვენს სასწავლო ფილოსოფიაში.'
-                  : 'AI can support learning, but over-reliance may affect students\' independent reasoning and problem-solving skills. Consider how it fits your teaching philosophy.'}
+                  ? 'AI შეიძლება დაეხმაროს სწავლაში, მაგრამ მასზე გადაჭარბებულმა დამოკიდებულებამ შეიძლება გავლენა იქონიოს წევრების დამოუკიდებელ აზროვნებასა და პრობლემების გადაჭრის უნარებზე. იფიქრეთ, როგორ ჯდება ეს თქვენს სასწავლო ფილოსოფიაში.'
+                  : 'AI can support learning, but over-reliance may affect members\' independent reasoning and problem-solving skills. Consider how it fits your teaching philosophy.'}
               </p>
               <div className="flex justify-end gap-2">
                 <button
@@ -883,12 +886,12 @@ export default function Chat() {
             onClick={(e) => e.stopPropagation()}>
             <div className="p-6">
               <h2 className="text-[24px] text-[#111827] mb-3" style={{ fontFamily: '"Arbutus Slab", serif' }}>
-                {lang === 'GEO' ? 'ფაილების გადმოწერა მოსწავლეებისთვის?' : 'Allow students to download files?'}
+                {lang === 'GEO' ? 'ფაილების გადმოწერა წევრებისთვის?' : 'Allow members to download files?'}
               </h2>
               <p className="text-[14px] text-[#6b7280] mb-6 leading-relaxed">
                 {lang === 'GEO'
-                  ? 'გადმოწერის ჩართვა ნიშნავს, რომ მოსწავლეები მიიღებენ თქვენი ფაილების სუფთა ასლებს (წყლის ნიშნის გარეშე), რომელთა შენახვა და გაზიარება შესაძლებელია. ჩართეთ მხოლოდ იმ შემთხვევაში, თუ თქვენი მასალები არ უნდა დარჩეს დაცული სკოლის ფარგლებში.'
-                  : 'Enabling downloads means students get clean copies of your files (no watermark) that can be saved and shared. Only enable this if your materials don\'t need to stay private to the school.'}
+                  ? 'გადმოწერის ჩართვა ნიშნავს, რომ წევრები მიიღებენ თქვენი ფაილების სუფთა ასლებს (წყლის ნიშნის გარეშე), რომელთა შენახვა და გაზიარება შესაძლებელია. ჩართეთ მხოლოდ იმ შემთხვევაში, თუ თქვენი მასალები არ უნდა დარჩეს დაცული სკოლის ფარგლებში.'
+                  : 'Enabling downloads means members get clean copies of your files (no watermark) that can be saved and shared. Only enable this if your materials don\'t need to stay private to the school.'}
               </p>
               <div className="flex justify-end gap-2">
                 <button
@@ -924,8 +927,8 @@ export default function Chat() {
               <p className="text-[14px] text-[#6b7280] mb-3 leading-relaxed">
                 {user?.is_owner
                   ? (lang === 'GEO'
-                      ? 'თქვენი სკოლა, ბიბლიოთეკა, ცხრილი და ყველა მოსწავლის ანგარიში წაიშლება 21 დღის შემდეგ. ამ ვადაში შეგიძლიათ აღდგენა ხელახალი შესვლით.'
-                      : 'Your school, library, schedule, and all student accounts will be deleted after 21 days. You can recover by signing back in within that window.')
+                      ? 'თქვენი სკოლა, ბიბლიოთეკა, ცხრილი და ყველა წევრის ანგარიში წაიშლება 21 დღის შემდეგ. ამ ვადაში შეგიძლიათ აღდგენა ხელახალი შესვლით.'
+                      : 'Your school, library, schedule, and all member accounts will be deleted after 21 days. You can recover by signing back in within that window.')
                   : (lang === 'GEO'
                       ? 'თქვენი ანგარიში წაიშლება 21 დღის შემდეგ. სკოლის მონაცემები არ შეიცვლება. ამ ვადაში შეგიძლიათ აღდგენა ხელახალი შესვლით.'
                       : 'Your account will be deleted after 21 days. The school\'s data is not affected. You can recover by signing back in within that window.')}

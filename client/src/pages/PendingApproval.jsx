@@ -6,7 +6,7 @@ import { Hourglass } from 'lucide-react';
 export default function PendingApproval() {
   const { user, logout, updateUser } = useAuth();
 
-  const isStudentRegistrationPending = user?.role === 'student' && user?.schoolStatus === 'approved';
+  const isStudentRegistrationPending = user?.role === 'member' && user?.schoolStatus === 'approved';
 
   useEffect(() => {
     const checkApproval = async () => {
@@ -18,7 +18,7 @@ export default function PendingApproval() {
         });
         const data = await res.json();
         updateUser(data);
-        if (data.role === 'student' && data.schoolStatus === 'approved') {
+        if (data.role === 'member' && data.schoolStatus === 'approved') {
           if (data.registrationStatus === 'approved') {
             window.location.replace('/dashboard');
           }

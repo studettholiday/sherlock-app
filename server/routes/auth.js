@@ -221,7 +221,10 @@ router.post('/signup', async (req, res) => {
       const userResult = await pool.query(
         `INSERT INTO users (school_id, email, password_hash, role, name, verification_token, verification_token_expires)
          VALUES ($1, $2, $3, $4, $5, $6, NOW() + INTERVAL '24 hours') RETURNING id`,
-        [invite.school_id, email, hash, invite.target_role, name || email.split('@')[0], verificationToken]
+        // Invitees are always non-owner members. Write the role literal rather
+        // than echoing invite.target_role so users.role integrity does not
+        // depend on the invites CHECK staying in sync (post-029 both pin to 'member').
+        [invite.school_id, email, hash, 'member', name || email.split('@')[0], verificationToken]
       );
       await pool.query('UPDATE invites SET used_by = $1, used_at = NOW() WHERE code = $2', [userResult.rows[0].id, invite_code]);
       try {
@@ -268,7 +271,7 @@ router.post('/signup', async (req, res) => {
     await pool.query(
       `INSERT INTO users (school_id, email, password_hash, role, name, is_owner, verification_token, verification_token_expires)
        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW() + INTERVAL '24 hours')`,
-      [schoolId, email, hash, 'student', name || email.split('@')[0], true, verificationToken]
+      [schoolId, email, hash, 'member', name || email.split('@')[0], true, verificationToken]
     );
     try {
       await sendVerificationEmail(email, verificationToken, lang);
@@ -431,7 +434,8 @@ router.post('/invite/accept', async (req, res) => {
     const userResult = await pool.query(
       `INSERT INTO users (school_id, email, password_hash, role, name, verification_token, verification_token_expires)
        VALUES ($1, $2, $3, $4, $5, $6, NOW() + INTERVAL '24 hours') RETURNING id`,
-      [invite.school_id, email, hash, invite.target_role, name, verificationToken]
+      // Invitees are always non-owner members — see note in the /signup branch.
+      [invite.school_id, email, hash, 'member', name, verificationToken]
     );
     await pool.query('UPDATE invites SET used_by = $1, used_at = NOW() WHERE code = $2', [userResult.rows[0].id, token]);
     try {

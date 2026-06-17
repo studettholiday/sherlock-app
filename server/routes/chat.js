@@ -57,11 +57,11 @@ function buildSystemPrompt(user, mode, libraryFiles, language, context) {
 
   const roleContext = user.is_owner === true
     ? (name
-        ? `You are assisting ${name}, the owner and teacher of ${schoolName}, who runs the school. Treat them as the administrator and educator — never as a student.`
-        : `You are assisting the owner and teacher of ${schoolName}, who runs the school and teaches students. Treat them as the administrator and educator — never address them as a student.`)
+        ? `You are assisting ${name}, the owner of ${schoolName}, who runs it. Treat them as the administrator.`
+        : `You are assisting the owner of ${schoolName}, who runs it. Treat them as the administrator.`)
     : (name
-        ? `You are assisting ${name}, a student at ${schoolName}.`
-        : `You are assisting a student at ${schoolName}.`);
+        ? `You are assisting ${name}, a member of ${schoolName}.`
+        : `You are assisting a member of ${schoolName}.`);
 
   let prompt = `You are Sherlock, an AI assistant for ${schoolName}. ${roleContext} Be concise, helpful, and professional. You only know what is in the school library documents below. Do not invent features, capabilities, or information about the school that are not explicitly stated in those documents. If the library is empty, say you don't have school-specific information yet and ask the owner to upload documents to the library.`;
 
@@ -132,7 +132,7 @@ router.post('/', authMiddleware, trialGate, async (req, res) => {
     try {
       const r = await pool.query('SELECT student_ai_enabled FROM schools WHERE id = $1', [user.schoolId]);
       if (!r.rows[0] || r.rows[0].student_ai_enabled !== true) {
-        return res.status(403).json({ error: 'AI chat is disabled for students at this school.' });
+        return res.status(403).json({ error: 'AI chat is disabled for members at this school.' });
       }
     } catch (err) {
       console.error('[chat] student AI gate check error:', err.message);

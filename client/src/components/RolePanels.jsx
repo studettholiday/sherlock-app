@@ -50,7 +50,7 @@ const PANEL_TITLES = {
   'invite':            'Invite',
   'schedule':          'Schedule',
   'schedule-editor':   'Edit Schedule',
-  'students':          'Students',
+  'students':          'Members',
   'library':           'Files',
   'public-library':    'Public Library',
   'billing':           'Billing',
@@ -60,7 +60,7 @@ const GEO_PANEL_TITLES = {
   'invite':            'მოწვევა',
   'schedule':          'განრიგი',
   'schedule-editor':   'განრიგის რედაქტირება',
-  'students':          'მოსწავლეები',
+  'students':          'წევრები',
   'library':           'ფაილები',
   'public-library':    'საჯარო ბიბლიოთეკა',
   'billing':           'გამოწერა',
@@ -113,7 +113,7 @@ function InvitePanel({ lang }) {
       const res  = await fetch('/api/invites/generate', {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ target_role: 'student' }),
+        body: JSON.stringify({ target_role: 'member' }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to generate link');
@@ -1479,8 +1479,8 @@ function StudentsPanel({ lang }) {
   }
 
   const noClassesMsg = lang === 'GEO'
-    ? 'ჯერ დაამატე კლასები განრიგში, შემდეგ დაბრუნდი აქ მოსწავლეების მისამაგრებლად.'
-    : 'Add classes to the schedule first, then come back here to assign students.';
+    ? 'ჯერ დაამატე კლასები განრიგში, შემდეგ დაბრუნდი აქ წევრების მისამაგრებლად.'
+    : 'Add classes to the schedule first, then come back here to assign members.';
 
   if (loading) return <p className="text-[14px] italic text-[#6b7280] text-center py-4">{lang === 'GEO' ? 'იტვირთება...' : 'Loading…'}</p>;
 
@@ -1529,7 +1529,7 @@ function StudentsPanel({ lang }) {
       )}
       {students.length === 0 ? (
         <p className="text-[14px] italic text-[#6b7280] text-center py-2">
-          {lang === 'GEO' ? 'მოსწავლეები ჯერ არ არიან.' : 'No students yet.'}
+          {lang === 'GEO' ? 'წევრები ჯერ არ არიან.' : 'No members yet.'}
         </p>
       ) : (
         students.map(s => (
@@ -1707,6 +1707,8 @@ function panelContent(role, panel, lang) {
 // ─── Exports ──────────────────────────────────────────────────────────────────
 
 export const PANEL_ACTIVE_CLS = {
+  member:  'bg-[#eff6ff] text-[#2563eb] border border-[#3b82f6]',
+  // Legacy alias: unexpired pre-rename JWTs still carry role='student' (≤7d).
   student: 'bg-[#eff6ff] text-[#2563eb] border border-[#3b82f6]',
 };
 

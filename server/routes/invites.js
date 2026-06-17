@@ -13,7 +13,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 router.post('/generate', authMiddleware, trialGate, async (req, res) => {
   if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
   const { target_role, email } = req.body;
-  if (target_role !== 'student') return res.status(400).json({ error: 'Invalid target_role' });
+  if (target_role !== 'member') return res.status(400).json({ error: 'Invalid target_role' });
   try {
     const schoolResult = await pool.query('SELECT name FROM schools WHERE id = $1', [req.user.schoolId]);
     const schoolName = schoolResult.rows[0]?.name ?? 'your school';

@@ -151,7 +151,7 @@ router.get('/students', authMiddleware, async (req, res) => {
               ) AS classes
        FROM users u
        LEFT JOIN student_classes sc ON sc.user_id = u.id
-       WHERE u.school_id = $1 AND u.role = 'student' AND u.is_owner = false
+       WHERE u.school_id = $1 AND u.role = 'member' AND u.is_owner = false
        GROUP BY u.id, u.name, u.email
        ORDER BY u.name`,
       [req.user.schoolId]

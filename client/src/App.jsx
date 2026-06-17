@@ -415,7 +415,7 @@ function AppInner() {
   const isPending = user && (
     user.schoolStatus === 'pending' ||
     user.status === 'pending' ||
-    (user.role === 'student' && user.registrationStatus === 'pending')
+    (user.role === 'member' && user.registrationStatus === 'pending')
   );
 
   if (inviteToken) return (
