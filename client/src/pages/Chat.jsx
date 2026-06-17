@@ -130,13 +130,13 @@ function MessageBubble({ message, theme }) {
 }
 
 const BUTTON_GROUPS = {
-  student: [
+  member: [
     { id: 'schedule', icon: Calendar, label: 'Schedule' },
   ],
 };
 
 const GEO_BUTTON_GROUPS = {
-  student: [
+  member: [
     { id: 'schedule', icon: Calendar, label: 'განრიგი' },
   ],
 };
@@ -623,12 +623,16 @@ export default function Chat() {
         {(() => {
           const inactiveCls = 'bg-[#ffffff] border border-[#e5e7eb] text-[#111827] hover:bg-[#f9fafb]';
           const inactiveGroupCls = 'bg-[#ffffff] border border-[#e5e7eb] text-[#111827] hover:bg-[#f9fafb]';
-          const openGroupDef = openGroup ? getButtonGroups(lang)[role].find(g => g.id === openGroup) : null;
+          // Fall back to the canonical 'member' set so no role value — the owner's
+          // 'member', a legacy 'student' JWT, or anything unexpected — can index to
+          // undefined and crash the .find()/.map() below.
+          const buttonGroups = getButtonGroups(lang)[role] ?? getButtonGroups(lang).member ?? [];
+          const openGroupDef = openGroup ? buttonGroups.find(g => g.id === openGroup) : null;
           return (
             <div className={`flex flex-col border-b ${s.headerBorder} flex-shrink-0`}>
               <div className={`flex items-center gap-1.5 px-4 py-1.5 sm:py-2 overflow-x-auto`}
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                {getButtonGroups(lang)[role].map(item => {
+                {buttonGroups.map(item => {
                   const isMulti = item.children && item.children.length >= 2;
                   if (isMulti) {
                     return (
