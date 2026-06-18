@@ -62,10 +62,12 @@ export default function AuthShell({ children }) {
           }}
         />
 
-        {/* When installed (standalone), show the logo normally. When running in a
-            browser, the install prompt takes the top slot instead — covering the
-            logo so it's visible without scrolling. */}
-        {standalone ? (
+        {/* When installed (standalone) — or running inside the native app, where
+            the webview may not report display-mode: standalone — show the logo
+            normally and never offer to install (it's already installed). In a
+            plain browser, the install prompt takes the top slot instead,
+            covering the logo so it's visible without scrolling. */}
+        {(standalone || isNativeApp) ? (
           /* Sherlock logo — clickable, returns to sign-in */
           <a
             href="/"
@@ -136,8 +138,13 @@ export default function AuthShell({ children }) {
               <a href="/pricing" style={{ color: '#6b7280', textDecoration: 'none' }}>{t(lang, 'pricing')}</a>
             </>
           )}
-          {' · '}
-          <a href="/refund" style={{ color: '#6b7280', textDecoration: 'none' }}>{t(lang, 'refund')}</a>
+          {/* Refund Policy link hidden inside the native app; Privacy and Terms stay. */}
+          {!isNativeApp && (
+            <>
+              {' · '}
+              <a href="/refund" style={{ color: '#6b7280', textDecoration: 'none' }}>{t(lang, 'refund')}</a>
+            </>
+          )}
         </p>
       </div>
     </div>
