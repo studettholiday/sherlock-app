@@ -18,6 +18,14 @@ if (!process.env.JWT_SECRET) {
 const JWT_SECRET = process.env.JWT_SECRET;
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// Email is treated case-insensitively so "Foo@x.com" and "foo@x.com" can never
+// become two accounts. Normalize at every entry/lookup point; storage is the
+// lowercased form (backfilled by migration 032). Non-strings pass through
+// untouched so the existing `if (!email)` missing-field checks still fire.
+function normalizeEmail(email) {
+  return typeof email === 'string' ? email.trim().toLowerCase() : email;
+}
+
 // Reads the "Last updated" date from a legal HTML file. The "Last updated"
 // line in terms.html / privacy.html is the single source of truth for the
 // consent version we record at signup. Tries the built copy in server/public
@@ -196,8 +204,9 @@ async function sendVerificationEmail(email, token, lang = 'en') {
 
 // School signup (standard) or invite-based signup
 router.post('/signup', async (req, res) => {
-  const { schoolName, email, password, apiKey, invite_code, name, directorName, website,
+  const { schoolName, password, apiKey, invite_code, name, directorName, website,
           tos_accepted, minor_consent_attested, lang = 'en' } = req.body;
+  const email = normalizeEmail(req.body.email);
 
   if (invite_code) {
     try {
@@ -287,7 +296,8 @@ router.post('/signup', async (req, res) => {
 
 // Login
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { password } = req.body;
+  const email = normalizeEmail(req.body.email);
   if (!email || !password) return res.status(400).json({ error: 'Missing fields' });
   try {
     const result = await pool.query(
@@ -354,7 +364,8 @@ router.get('/me', async (req, res) => {
 
 // Forgot password
 router.post('/forgot-password', async (req, res) => {
-  const { email, lang = 'en' } = req.body;
+  const { lang = 'en' } = req.body;
+  const email = normalizeEmail(req.body.email);
   if (!email) return res.status(400).json({ error: 'Missing email' });
   try {
     await pool.query(`
@@ -425,7 +436,8 @@ router.post('/reset-password', async (req, res) => {
 
 // Accept invite
 router.post('/invite/accept', async (req, res) => {
-  const { token, name, email, password, lang = 'en' } = req.body;
+  const { token, name, password, lang = 'en' } = req.body;
+  const email = normalizeEmail(req.body.email);
   if (!token || !name || !email || !password) return res.status(400).json({ error: 'Missing fields' });
   try {
     const inviteRes = await pool.query(
@@ -541,7 +553,8 @@ router.get('/verify-email', async (req, res) => {
 
 // Resend verification email. Always returns 200 to prevent email enumeration.
 router.post('/resend-verification', async (req, res) => {
-  const { email, lang = 'en' } = req.body;
+  const { lang = 'en' } = req.body;
+  const email = normalizeEmail(req.body.email);
   if (!email) return res.status(400).json({ error: 'Missing email' });
   try {
     const result = await pool.query(
