@@ -99,7 +99,7 @@ function buildSystemPrompt(user, mode, libraryFiles, language, context) {
 router.get('/quota', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT tier, conversation_count, month_reset_at, created_at, paddle_subscription_id
+      `SELECT tier, conversation_count, month_reset_at, created_at, paddle_subscription_id, billing_exempt
          FROM schools WHERE id = $1`,
       [req.user.schoolId]
     );
@@ -113,8 +113,9 @@ router.get('/quota', authMiddleware, async (req, res) => {
       tier: s.tier ?? 'trial',
       count,
       limit,
-      trial_expired: isTrialExpired(s.tier, s.created_at),
+      trial_expired: isTrialExpired(s.tier, s.created_at, s.billing_exempt),
       has_subscription: !!s.paddle_subscription_id,
+      billing_exempt: !!s.billing_exempt,
     });
   } catch (err) {
     console.error('[quota] error:', err.message);
@@ -153,7 +154,7 @@ router.post('/', authMiddleware, trialGate, async (req, res) => {
   try {
     const schoolResult = await pool.query(
       `SELECT id, api_key_encrypted, name,
-              tier, conversation_count, month_reset_at
+              tier, conversation_count, month_reset_at, billing_exempt
        FROM schools WHERE id = $1`,
       [user.schoolId]
     );
@@ -163,11 +164,13 @@ router.post('/', authMiddleware, trialGate, async (req, res) => {
     const school = schoolResult.rows[0];
 
     // --- metering: quota check ---
+    // Billing-exempt schools (e.g. the public library — DB-only flag, migration
+    // 031) have no AI conversation cap. Usage is still recorded below.
     const _tierLimit = TIER_LIMITS[school.tier] ?? TIER_LIMITS.trial;
     const _resetPassed = !school.month_reset_at ||
       (Date.now() - new Date(school.month_reset_at).getTime()) > 30 * 24 * 60 * 60 * 1000;
     const _effectiveCount = _resetPassed ? 0 : (school.conversation_count ?? 0);
-    if (_effectiveCount >= _tierLimit) {
+    if (!school.billing_exempt && _effectiveCount >= _tierLimit) {
       const _limitMsg = req.body.language === 'ka'
         ? 'AI ჩატის ყოველთვიური ლიმიტი ამოწურულია. ყველა სხვა ფუნქცია ხელმისაწვდომია. ლიმიტი განახლდება ~30 დღეში.'
         : 'Monthly AI conversation limit reached. All other features remain available. Resets in ~30 days.';

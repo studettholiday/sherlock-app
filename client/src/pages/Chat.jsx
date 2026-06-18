@@ -504,9 +504,13 @@ export default function Chat() {
             <h1 className="text-[18px] font-semibold text-[#111827]">Sherlock</h1>
             {user?.is_owner && quota && (
               <span className="text-xs opacity-60 mt-0.5 block">
-                {lang === 'GEO'
-                  ? `${quota.count} / ${quota.limit} AI ჩატი თვეში`
-                  : `${quota.count} / ${quota.limit} AI chats this month`}
+                {quota.billing_exempt
+                  ? (lang === 'GEO'
+                      ? `${quota.count} AI ჩატი თვეში`
+                      : `${quota.count} AI chats this month`)
+                  : (lang === 'GEO'
+                      ? `${quota.count} / ${quota.limit} AI ჩატი თვეში`
+                      : `${quota.count} / ${quota.limit} AI chats this month`)}
               </span>
             )}
           </button>

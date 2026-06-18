@@ -13,7 +13,11 @@ const TRIAL_MS = TRIAL_DAYS * 24 * 60 * 60 * 1000;
 
 const pool = new Pool({ connectionString: process.env.DATABASE_PUBLIC_URL });
 
-function isTrialExpired(tier, createdAt) {
+// billingExempt short-circuits to "never expired" — infrastructure schools
+// (e.g. the public library) sit outside billing entirely. The flag is DB-only
+// (see migration 031); no API/UI path can set it.
+function isTrialExpired(tier, createdAt, billingExempt) {
+  if (billingExempt) return false;
   if (!tier || tier !== 'trial') return false;
   if (!createdAt) return false;
   return (Date.now() - new Date(createdAt).getTime()) >= TRIAL_MS;
@@ -24,12 +28,12 @@ async function trialGate(req, res, next) {
     const schoolId = req.user && req.user.schoolId;
     if (!schoolId) return res.status(401).json({ error: 'No school context' });
     const r = await pool.query(
-      'SELECT tier, created_at FROM schools WHERE id = $1',
+      'SELECT tier, created_at, billing_exempt FROM schools WHERE id = $1',
       [schoolId]
     );
     if (r.rows.length === 0) return res.status(404).json({ error: 'School not found' });
-    const { tier, created_at } = r.rows[0];
-    if (isTrialExpired(tier, created_at)) {
+    const { tier, created_at, billing_exempt } = r.rows[0];
+    if (isTrialExpired(tier, created_at, billing_exempt)) {
       return res.status(403).json({ error: 'trial_expired', read_only: true });
     }
     next();
