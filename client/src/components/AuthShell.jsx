@@ -7,8 +7,18 @@ import InstallPrompt from './InstallPrompt';
 //
 // The brand assets (sherlock-logo.png, lines.webp) have white backgrounds;
 // `mix-blend-mode: multiply` drops the white so they sit cleanly on the page.
+// Launched from the home screen (installed PWA)? Then there's no install to
+// offer, so we show the logo normally instead of the install prompt.
+function isStandalone() {
+  return (
+    window.matchMedia?.('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true // iOS Safari, when launched from home screen
+  );
+}
+
 export default function AuthShell({ children }) {
   const lang = localStorage.getItem('sherlock_lang') || 'en';
+  const standalone = isStandalone();
   return (
     <div
       style={{
@@ -51,33 +61,41 @@ export default function AuthShell({ children }) {
           }}
         />
 
-        {/* Sherlock logo — clickable, returns to sign-in */}
-        <a
-          href="/"
-          onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
-          onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
-          onFocus={e => { e.currentTarget.style.opacity = '0.85'; }}
-          onBlur={e => { e.currentTarget.style.opacity = '1'; }}
-          style={{
-            position: 'relative',
-            zIndex: 1,
-            marginBottom: 24,
-            display: 'block',
-            cursor: 'pointer',
-            outline: 'none',
-            transition: 'opacity 0.15s ease',
-          }}
-        >
-          <img
-            src="/brand/sherlock-logo.png"
-            alt="Sherlock"
+        {/* When installed (standalone), show the logo normally. When running in a
+            browser, the install prompt takes the top slot instead — covering the
+            logo so it's visible without scrolling. */}
+        {standalone ? (
+          /* Sherlock logo — clickable, returns to sign-in */
+          <a
+            href="/"
+            onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+            onFocus={e => { e.currentTarget.style.opacity = '0.85'; }}
+            onBlur={e => { e.currentTarget.style.opacity = '1'; }}
             style={{
-              height: 120,
-              width: 'auto',
+              position: 'relative',
+              zIndex: 1,
+              marginBottom: 24,
               display: 'block',
+              cursor: 'pointer',
+              outline: 'none',
+              transition: 'opacity 0.15s ease',
             }}
-          />
-        </a>
+          >
+            <img
+              src="/brand/sherlock-logo.png"
+              alt="Sherlock"
+              style={{
+                height: 120,
+                width: 'auto',
+                display: 'block',
+              }}
+            />
+          </a>
+        ) : (
+          /* Install-app affordance — self-hides when not installable. */
+          <InstallPrompt />
+        )}
 
         {/* Card */}
         <div
@@ -115,9 +133,6 @@ export default function AuthShell({ children }) {
           {' · '}
           <a href="/refund" style={{ color: '#6b7280', textDecoration: 'none' }}>{t(lang, 'refund')}</a>
         </p>
-
-        {/* Install-app affordance — self-hides when already installed or not installable. */}
-        <InstallPrompt />
       </div>
     </div>
   );
