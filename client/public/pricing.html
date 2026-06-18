@@ -2,6 +2,9 @@
 <html lang="en">
 <head><link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%2316a34a'/><text x='50' y='72' font-family='Georgia,serif' font-size='62' font-weight='bold' text-anchor='middle' fill='white'>S</text></svg>">
   <meta charset="utf-8">
+  <!-- Native app (Capacitor wrapper) only: pricing is off-limits (Play Billing).
+       Redirect away before render so it can't be reached by deep-link or history. -->
+  <script>(function(){try{var C=window.Capacitor;if(C&&C.isNativePlatform&&C.isNativePlatform()){window.location.replace('/');}}catch(e){}})();</script>
   <title>Sherlock Is Smart — Pricing</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>

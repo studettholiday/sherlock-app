@@ -147,7 +147,7 @@ export default function Login({ onSwitch, onSuccess }) {
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ color: '#6b7280', fontSize: '14px', fontWeight: 500, display: 'block', marginBottom: '6px' }}>{t(lang, 'email')}</label>
                 <input
-                  type="email" value={email} onChange={e => setEmail(e.target.value)} required
+                  type="email" name="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} required
                   onFocus={e => { e.target.style.border = '1px solid #3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)'; }}
                   onBlur={e => { e.target.style.border = '1px solid #e5e7eb'; e.target.style.boxShadow = 'none'; }}
                   style={{ width: '100%', padding: '10px 14px', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '6px', color: '#111827', fontSize: '16px', boxSizing: 'border-box', outline: 'none', transition: 'border 0.15s ease, box-shadow 0.15s ease' }}
@@ -156,7 +156,7 @@ export default function Login({ onSwitch, onSuccess }) {
               <div style={{ marginBottom: '8px' }}>
                 <label style={{ color: '#6b7280', fontSize: '14px', fontWeight: 500, display: 'block', marginBottom: '6px' }}>{t(lang, 'password')}</label>
                 <input
-                  type="password" value={password} onChange={e => setPassword(e.target.value)} required
+                  type="password" name="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required
                   onFocus={e => { e.target.style.border = '1px solid #3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.1)'; }}
                   onBlur={e => { e.target.style.border = '1px solid #e5e7eb'; e.target.style.boxShadow = 'none'; }}
                   style={{ width: '100%', padding: '10px 14px', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '6px', color: '#111827', fontSize: '16px', boxSizing: 'border-box', outline: 'none', transition: 'border 0.15s ease, box-shadow 0.15s ease' }}

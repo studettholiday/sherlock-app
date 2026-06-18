@@ -2,6 +2,11 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
+import { setupNativeBackButton } from './lib/nativeBack';
+
+// Native app only: route the Android back button through history instead of
+// closing the app (no-op in a browser).
+setupNativeBackButton();
 
 // Register the service worker on app load for every visitor so the browser
 // can offer "Install app" / "Add to Home Screen" without requiring sign-in or

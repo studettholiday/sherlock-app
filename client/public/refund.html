@@ -5,6 +5,25 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Refund Policy — Sherlock</title>
 <style>body{font-family:Arial,sans-serif;max-width:900px;margin:40px auto;padding:0 20px;color:#000;background:#fff;line-height:1.5;}</style>
+<!-- Native app (Capacitor wrapper) only: hide Pricing/Refund footer links (Play
+     Billing) and route the hardware back button through history. No-op in a browser. -->
+<style>html.native-app a[href="/pricing"],html.native-app a[href="/refund"]{display:none!important;}</style>
+<script>
+(function(){try{
+  var C=window.Capacitor;
+  if(!(C&&C.isNativePlatform&&C.isNativePlatform()))return;
+  document.documentElement.className+=' native-app';
+  var A=C.Plugins&&C.Plugins.App;
+  if(A&&A.addListener){A.addListener('backButton',function(e){if((e&&e.canGoBack)||window.history.length>1){window.history.back();}else if(A.exitApp){A.exitApp();}});}
+  function clean(){
+    var bad=document.querySelectorAll('a[href="/pricing"],a[href="/refund"]'),conts=[];
+    bad.forEach(function(a){if(a.parentNode&&conts.indexOf(a.parentNode)<0)conts.push(a.parentNode);});
+    bad.forEach(function(a){a.parentNode&&a.parentNode.removeChild(a);});
+    conts.forEach(function(div){var links=div.querySelectorAll('a'),h=[];links.forEach(function(l){h.push(l.outerHTML);});div.innerHTML=h.join(' · ');});
+  }
+  if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',clean);}else{clean();}
+}catch(e){}})();
+</script>
 </head>
 <body>
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:760px;margin:16px auto 0;padding:0 20px;"><a href="/" style="color:#2563eb;text-decoration:none;font-size:0.95em;">← Back</a></div>
