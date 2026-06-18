@@ -5,6 +5,7 @@ import { t } from '../i18n';
 import { uploadToLibrary } from '../lib/uploadToLibrary';
 import { RolePanel, PANEL_ACTIVE_CLS } from '../components/RolePanels';
 import { registerServiceWorker, requestPermissionAndSubscribe, isPushSupported } from '../lib/push';
+import { isNativeApp } from '../lib/platform';
 import { Calendar, CalendarCog, UserPlus, Users, Folder, CreditCard, FileText, X } from 'lucide-react';
 
 // Chat is constrained to a centered column of this width (px).
@@ -419,7 +420,9 @@ export default function Chat() {
       // Trust the server: surface the message inline and lock the input by
       // flipping the local user flag so the existing banner shows.
       if (res.status === 403 && data?.error === 'trial_expired') {
-        const msg = t(lang === 'GEO' ? 'ka' : 'en', 'trialExpiredBanner');
+        // Native app: never reference subscriptions/payment (Play Billing). Show
+        // a neutral "unavailable" line instead of the activate-subscription copy.
+        const msg = t(lang === 'GEO' ? 'ka' : 'en', isNativeApp ? 'aiUnavailableNative' : 'trialExpiredBanner');
         setMessages((prev) => [...prev, { role: 'assistant', content: msg }]);
         if (user) updateUser({ ...user, trial_expired: true });
         fetchQuota();
@@ -428,10 +431,14 @@ export default function Chat() {
       }
 
       // Any other non-OK response carries an error string from the server.
+      // Native app: the monthly-limit message ties to paid tiers, so replace it
+      // with a neutral "unavailable" line — no payment reference (Play Billing).
       if (!res.ok) {
-        const errText = data?.error || (lang === 'GEO'
-          ? 'შეცდომა: სერვერთან კავშირი ვერ მოხდა.'
-          : 'Error: could not reach the server.');
+        const errText = (isNativeApp && data?.quota_exceeded)
+          ? t(lang === 'GEO' ? 'ka' : 'en', 'aiUnavailableNative')
+          : (data?.error || (lang === 'GEO'
+            ? 'შეცდომა: სერვერთან კავშირი ვერ მოხდა.'
+            : 'Error: could not reach the server.'));
         setMessages((prev) => [...prev, { role: 'assistant', content: errText }]);
         fetchQuota();
         setTimeout(() => { messagesRef.current?.scrollTo({ top: messagesRef.current.scrollHeight, behavior: 'smooth' }); }, 50);
@@ -502,7 +509,7 @@ export default function Chat() {
               S
             </div>
             <h1 className="text-[18px] font-semibold text-[#111827]">Sherlock</h1>
-            {user?.is_owner && quota && (
+            {user?.is_owner && quota && !isNativeApp && (
               <span className="text-xs opacity-60 mt-0.5 block">
                 {quota.billing_exempt
                   ? (lang === 'GEO'
@@ -566,12 +573,15 @@ export default function Chat() {
                         className="w-full text-left px-4 py-3 border-t border-[#e5e7eb] text-[14px] text-[#111827] hover:bg-[#f9fafb] transition-colors duration-150">
                         {lang === 'GEO' ? 'საჯარო ბიბლიოთეკის დათვალიერება' : 'Browse Public Library'}
                       </button>
-                      <button
-                        onClick={() => { setSettingsOpen(false); setActivePanel('billing'); }}
-                        className="w-full flex items-center gap-2 px-4 py-3 border-t border-[#e5e7eb] text-[14px] text-[#111827] hover:bg-[#f9fafb] transition-colors duration-150">
-                        <CreditCard size={16} strokeWidth={1.75} />
-                        <span>{t(lang === 'GEO' ? 'ka' : 'en', 'billing')}</span>
-                      </button>
+                      {/* Billing entry hidden inside the native app (Play Billing). */}
+                      {!isNativeApp && (
+                        <button
+                          onClick={() => { setSettingsOpen(false); setActivePanel('billing'); }}
+                          className="w-full flex items-center gap-2 px-4 py-3 border-t border-[#e5e7eb] text-[14px] text-[#111827] hover:bg-[#f9fafb] transition-colors duration-150">
+                          <CreditCard size={16} strokeWidth={1.75} />
+                          <span>{t(lang === 'GEO' ? 'ka' : 'en', 'billing')}</span>
+                        </button>
+                      )}
                     </>
                   )}
                   <div className={`flex items-center justify-between px-4 py-3 gap-3 ${user?.is_owner ? 'border-t border-[#e5e7eb]' : ''}`}>
@@ -607,20 +617,29 @@ export default function Chat() {
         </header>
 
         {/* Trial-expired banner — shown only when the server flags trial_expired.
-            Clicking the CTA opens the BillingPanel in the same modal stack as
-            the other header panels, so users don't leave the chat surface. */}
+            Browser: payment CTA opens the BillingPanel in the same modal stack.
+            Native app (Play Billing): show a neutral "unavailable" notice with
+            no subscription/payment reference and no CTA. */}
         {trialExpired && (
-          <div className="flex items-center justify-between gap-3 px-4 py-2 bg-[#fef2f2] border-b border-[#fecaca] flex-shrink-0">
-            <span className="text-[13px] text-[#b91c1c] leading-snug">
-              {t(lang === 'GEO' ? 'ka' : 'en', 'trialExpiredBanner')}
-            </span>
-            <button
-              type="button"
-              onClick={() => setActivePanel('billing')}
-              className="text-[13px] font-medium text-white bg-[#dc2626] hover:bg-[#b91c1c] rounded-[6px] px-3 py-1 whitespace-nowrap transition-colors duration-150">
-              {t(lang === 'GEO' ? 'ka' : 'en', 'trialExpiredCta')}
-            </button>
-          </div>
+          isNativeApp ? (
+            <div className="flex items-center px-4 py-2 bg-[#f9fafb] border-b border-[#e5e7eb] flex-shrink-0">
+              <span className="text-[13px] text-[#6b7280] leading-snug">
+                {t(lang === 'GEO' ? 'ka' : 'en', 'aiUnavailableNative')}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-3 px-4 py-2 bg-[#fef2f2] border-b border-[#fecaca] flex-shrink-0">
+              <span className="text-[13px] text-[#b91c1c] leading-snug">
+                {t(lang === 'GEO' ? 'ka' : 'en', 'trialExpiredBanner')}
+              </span>
+              <button
+                type="button"
+                onClick={() => setActivePanel('billing')}
+                className="text-[13px] font-medium text-white bg-[#dc2626] hover:bg-[#b91c1c] rounded-[6px] px-3 py-1 whitespace-nowrap transition-colors duration-150">
+                {t(lang === 'GEO' ? 'ka' : 'en', 'trialExpiredCta')}
+              </button>
+            </div>
+          )
         )}
 
         {/* Handler buttons */}

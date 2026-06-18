@@ -1,5 +1,6 @@
 import { t } from '../i18n';
 import InstallPrompt from './InstallPrompt';
+import { isNativeApp } from '../lib/platform';
 
 // Shared shell for every auth-flow page: warm off-white background, a faint
 // hand-drawn decorative lines layer, the Sherlock logo centered above, and the
@@ -128,8 +129,13 @@ export default function AuthShell({ children }) {
           <a href="/privacy" style={{ color: '#6b7280', textDecoration: 'none' }}>{t(lang, 'privacy')}</a>
           {' · '}
           <a href="/terms" style={{ color: '#6b7280', textDecoration: 'none' }}>{t(lang, 'terms')}</a>
-          {' · '}
-          <a href="/pricing" style={{ color: '#6b7280', textDecoration: 'none' }}>{t(lang, 'pricing')}</a>
+          {/* Pricing link hidden inside the native app (Play Billing — no steering to external payment). */}
+          {!isNativeApp && (
+            <>
+              {' · '}
+              <a href="/pricing" style={{ color: '#6b7280', textDecoration: 'none' }}>{t(lang, 'pricing')}</a>
+            </>
+          )}
           {' · '}
           <a href="/refund" style={{ color: '#6b7280', textDecoration: 'none' }}>{t(lang, 'refund')}</a>
         </p>

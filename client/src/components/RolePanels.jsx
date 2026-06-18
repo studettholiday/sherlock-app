@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, Fragment } from 'react';
 import { useAuth } from '../AuthContext';
 import { t } from '../i18n';
 import { uploadToLibrary } from '../lib/uploadToLibrary';
+import { isNativeApp } from '../lib/platform';
 import { initializePaddle } from '@paddle/paddle-js';
 import { Tag, Download, Trash2, MapPin, SquarePen, Copy, Check, Lock, X } from 'lucide-react';
 
@@ -239,7 +240,7 @@ function SchedulePanel({ lang }) {
       <p className="text-[14px] italic text-[#6b7280] text-center py-6">
         <span className="inline-flex items-center justify-center gap-1.5">
           <Lock size={14} strokeWidth={1.75} />
-          <span>{t(lang === 'GEO' ? 'ka' : 'en', 'trialLockedSchedule')}</span>
+          <span>{t(lang === 'GEO' ? 'ka' : 'en', isNativeApp ? 'featureLockedNative' : 'trialLockedSchedule')}</span>
         </span>
       </p>
     );
@@ -683,7 +684,7 @@ function LibraryOwnerPanel({ lang }) {
             {trialExpired ? (
               <span className="inline-flex items-center gap-1 text-[12px] text-[#b91c1c] italic flex-shrink-0">
                 <Lock size={12} strokeWidth={1.75} />
-                <span>{t(lang === 'GEO' ? 'ka' : 'en', 'trialLockedFiles')}</span>
+                <span>{t(lang === 'GEO' ? 'ka' : 'en', isNativeApp ? 'featureLockedNative' : 'trialLockedFiles')}</span>
               </span>
             ) : (
               <>
@@ -1271,7 +1272,7 @@ function LibraryStudentPanel({ lang }) {
           <span className="text-[#9ca3af] flex-shrink-0">{formatDate(f.created_at)}</span>
           {trialExpired ? (
             <span className="text-[12px] text-[#b91c1c] italic flex-shrink-0">
-              {t(lang === 'GEO' ? 'ka' : 'en', 'trialLockedFiles')}
+              {t(lang === 'GEO' ? 'ka' : 'en', isNativeApp ? 'featureLockedNative' : 'trialLockedFiles')}
             </span>
           ) : (
             user?.student_downloads_enabled === true && (
@@ -1763,7 +1764,9 @@ function panelContent(role, panel, lang) {
     case 'students':          return <StudentsPanel lang={lang} />;
     case 'library':           return <LibraryPanelDispatch lang={lang} />;
     case 'public-library':    return <PublicLibraryPanel lang={lang} />;
-    case 'billing':           return <BillingPanel lang={lang} />;
+    // Billing surface (pricing/checkout/manage) is fully suppressed inside the
+    // native app for Play Billing compliance. Its entry points are gated too.
+    case 'billing':           return isNativeApp ? null : <BillingPanel lang={lang} />;
     default:                  return null;
   }
 }

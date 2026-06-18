@@ -90,6 +90,10 @@ const translations = {
     trialExpiredCta: 'Upgrade now',
     trialLockedFiles: 'Activate a subscription to open files',
     trialLockedSchedule: 'Activate a subscription to view the schedule',
+    // Neutral, payment-free copy shown inside the native app (Play Billing
+    // compliance — no reference to paying or where to pay).
+    aiUnavailableNative: 'AI is currently unavailable.',
+    featureLockedNative: 'Currently unavailable',
     manageSubscription: 'Manage subscription',
     portalOpening: 'Opening…',
     removeFromSchool: 'Remove from school',
@@ -193,6 +197,10 @@ const translations = {
     trialExpiredCta: 'გამოწერის გააქტიურება',
     trialLockedFiles: 'გააქტიურეთ გამოწერა ფაილების გასახსნელად',
     trialLockedSchedule: 'გააქტიურეთ გამოწერა განრიგის სანახავად',
+    // Neutral, payment-free copy shown inside the native app (Play Billing
+    // compliance — no reference to paying or where to pay).
+    aiUnavailableNative: 'AI ამჟამად მიუწვდომელია.',
+    featureLockedNative: 'ამჟამად მიუწვდომელია',
     manageSubscription: 'გამოწერის მართვა',
     portalOpening: 'იხსნება…',
     removeFromSchool: 'სკოლიდან ამოშლა',
