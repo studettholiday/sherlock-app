@@ -311,6 +311,18 @@ router.post('/login', async (req, res) => {
       );
       return res.json({ token: recoveryToken, recovery_required: true, scope, deleted_at });
     }
+    if (user.removed_at) {
+      // Removed from their school. Still issue a token so the blocked screen can
+      // reach the one thing they're allowed to do (self-delete); the central
+      // auth gate blocks everything else. Signal removal so the client routes
+      // straight to the blocked screen instead of into the app.
+      const removedToken = jwt.sign(
+        { userId: user.id, schoolId: user.school_id, role: user.role, is_owner: user.is_owner },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+      return res.json({ token: removedToken, removed_required: true });
+    }
     const token = jwt.sign({ userId: user.id, schoolId: user.school_id, role: user.role, is_owner: user.is_owner }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user: { id: user.id, email: user.email, role: user.role, name: user.name, is_owner: user.is_owner, schoolId: user.school_id, schoolName: user.school_name, schoolStatus: user.school_status, tier: user.tier ?? 'trial', trial_expired: isTrialExpired(user.tier, user.school_created_at) } });
   } catch (err) {
@@ -326,13 +338,14 @@ router.get('/me', async (req, res) => {
   try {
     const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
     const result = await pool.query(
-      'SELECT u.id, u.email, u.role, u.name, u.is_owner, u.school_id, u.deleted_at, s.name as school_name, s.api_key_encrypted, s.status as school_status, s.student_ai_enabled, s.student_downloads_enabled, s.deleted_at AS school_deleted_at, s.tier, s.created_at AS school_created_at FROM users u JOIN schools s ON u.school_id = s.id WHERE u.id = $1',
+      'SELECT u.id, u.email, u.role, u.name, u.is_owner, u.school_id, u.deleted_at, u.removed_at, s.name as school_name, s.api_key_encrypted, s.status as school_status, s.student_ai_enabled, s.student_downloads_enabled, s.deleted_at AS school_deleted_at, s.tier, s.created_at AS school_created_at FROM users u JOIN schools s ON u.school_id = s.id WHERE u.id = $1',
       [decoded.userId]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     const user = result.rows[0];
     if (user.school_deleted_at) return res.status(423).json({ deleted: true, deleted_at: user.school_deleted_at, scope: 'school' });
     if (user.deleted_at)        return res.status(423).json({ deleted: true, deleted_at: user.deleted_at,        scope: 'user'   });
+    if (user.removed_at)        return res.status(403).json({ removed: true });
     res.json({ id: user.id, email: user.email, role: user.role, name: user.name, is_owner: user.is_owner, schoolId: user.school_id, schoolName: user.school_name, schoolStatus: user.school_status, hasApiKey: !!user.api_key_encrypted, student_ai_enabled: user.student_ai_enabled, student_downloads_enabled: user.student_downloads_enabled, tier: user.tier ?? 'trial', trial_expired: isTrialExpired(user.tier, user.school_created_at) });
   } catch (err) {
     res.status(401).json({ error: 'Invalid token' });

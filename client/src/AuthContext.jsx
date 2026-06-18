@@ -45,6 +45,8 @@ export function AuthProvider({ children }) {
         .then(({ status, data }) => {
           if (status === 423 && data?.deleted) {
             setUser({ recovery_required: true, scope: data.scope, deleted_at: data.deleted_at });
+          } else if (status === 403 && data?.removed) {
+            setUser({ removed_required: true });
           } else if (data.id) {
             setUser(data);
             if (data.status === 'pending') startPolling();
@@ -80,6 +82,11 @@ export function AuthProvider({ children }) {
       const recoveryUser = { recovery_required: true, scope: data.scope, deleted_at: data.deleted_at };
       setUser(recoveryUser);
       return recoveryUser;
+    }
+    if (data.removed_required) {
+      const removedUser = { removed_required: true };
+      setUser(removedUser);
+      return removedUser;
     }
     setUser(data.user);
     if (data.user?.status === 'pending') startPolling();

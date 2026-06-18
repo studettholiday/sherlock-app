@@ -151,13 +151,46 @@ router.get('/students', authMiddleware, async (req, res) => {
               ) AS classes
        FROM users u
        LEFT JOIN student_classes sc ON sc.user_id = u.id
-       WHERE u.school_id = $1 AND u.role = 'member' AND u.is_owner = false
+       WHERE u.school_id = $1 AND u.role = 'member' AND u.is_owner = false AND u.removed_at IS NULL
        GROUP BY u.id, u.name, u.email
        ORDER BY u.name`,
       [req.user.schoolId]
     );
     res.json({ students: result.rows });
   } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/school/students/:userId/remove — owner-only soft, reversible
+// removal of a member from the school. Sets users.removed_at = NOW(); the
+// central auth gate then locks the member out of every school feature. No
+// hard-delete: removal is undone by clearing removed_at.
+//
+// Refuses to remove an owner, user_id = 1, or the requester themselves. The
+// target must belong to the requester's school (cross-school guard).
+router.post('/students/:userId/remove', authMiddleware, trialGate, async (req, res) => {
+  if (!req.user.is_owner) return res.status(403).json({ error: 'Forbidden' });
+  const userId = parseInt(req.params.userId, 10);
+  if (!Number.isInteger(userId)) return res.status(400).json({ error: 'Invalid user id' });
+  if (userId === 1) return res.status(403).json({ error: 'This member cannot be removed' });
+  if (userId === req.user.userId) return res.status(403).json({ error: 'You cannot remove yourself' });
+  try {
+    const target = await pool.query(
+      'SELECT id, is_owner, removed_at FROM users WHERE id = $1 AND school_id = $2',
+      [userId, req.user.schoolId]
+    );
+    if (target.rows.length === 0) return res.status(404).json({ error: 'Member not found' });
+    if (target.rows[0].is_owner) return res.status(403).json({ error: 'An owner cannot be removed' });
+    // Idempotent: only stamp removed_at if it isn't already set, so re-issuing
+    // the call never resets the original removal time.
+    await pool.query(
+      'UPDATE users SET removed_at = NOW() WHERE id = $1 AND school_id = $2 AND removed_at IS NULL',
+      [userId, req.user.schoolId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[students] POST remove error:', err.message);
     res.status(500).json({ error: 'Server error' });
   }
 });

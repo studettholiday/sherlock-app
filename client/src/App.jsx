@@ -8,6 +8,7 @@ import Chat from './pages/Chat';
 import PendingApproval from './pages/PendingApproval';
 import ResetPassword from './pages/ResetPassword';
 import RecoveryScreen from './pages/RecoveryScreen';
+import BlockedScreen from './pages/BlockedScreen';
 import VerifyEmail from './pages/VerifyEmail';
 import CheckYourEmail from './pages/CheckYourEmail';
 import { Bot, Calendar, Ticket, NotebookPen, Library, Bell, X, PartyPopper } from 'lucide-react';
@@ -411,6 +412,10 @@ function AppInner() {
   // Soft-delete recovery takes precedence over all other routing — including
   // invite tokens, /chat, /pending — until the user accepts or cancels.
   if (user?.recovery_required) return <RecoveryScreen />;
+
+  // A member removed from their school is locked out of everything but the
+  // blocked screen, whose only action is the existing account-deletion flow.
+  if (user?.removed_required) return <BlockedScreen />;
 
   const isPending = user && (
     user.schoolStatus === 'pending' ||

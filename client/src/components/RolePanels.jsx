@@ -1417,10 +1417,37 @@ function StudentsPanel({ lang }) {
   const [editing, setEditing]   = useState(null);   // student under edit, or null
   const [picked, setPicked]     = useState([]);     // class_names checked in edit view
   const [saving, setSaving]     = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(null); // student pending removal, or null
+  const [removeBusy, setRemoveBusy]       = useState(false);
+  const [removeError, setRemoveError]     = useState('');
+
+  const code = lang === 'GEO' ? 'ka' : 'en';
 
   function authHeaders() {
     const token = localStorage.getItem('sherlock_token');
     return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  }
+
+  async function doRemove() {
+    if (!confirmRemove) return;
+    setRemoveBusy(true);
+    setRemoveError('');
+    try {
+      const res = await fetch(`/api/school/students/${confirmRemove.id}/remove`, {
+        method: 'POST',
+        headers: authHeaders(),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || t(code, 'removeMemberFailed'));
+      }
+      setConfirmRemove(null);
+      // Refresh so the removed member disappears from the roster.
+      await load();
+    } catch (e) {
+      setRemoveError(e.message || t(code, 'removeMemberFailed'));
+    }
+    setRemoveBusy(false);
   }
 
   async function load() {
@@ -1533,24 +1560,61 @@ function StudentsPanel({ lang }) {
         </p>
       ) : (
         students.map(s => (
-          <button key={s.id} onClick={() => startEdit(s)}
-            className="w-full text-left rounded-[8px] border border-[#e5e7eb] bg-[#ffffff] hover:bg-[#fafafa] px-3 py-2 transition-colors duration-150">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[14px] font-medium text-[#111827] truncate">{s.name || s.email}</span>
-              <span className="text-[13px] text-[#9ca3af] flex-shrink-0">{lang === 'GEO' ? 'რედაქტირება' : 'Edit'}</span>
-            </div>
-            <p className="text-[13px] text-[#6b7280] truncate">{s.email}</p>
-            <div className="flex flex-wrap gap-1 mt-1">
-              {(s.classes || []).length === 0 ? (
-                <span className="text-[12px] italic text-[#9ca3af]">{lang === 'GEO' ? 'კლასები მიუმაგრებელია' : 'No classes assigned'}</span>
-              ) : (
-                s.classes.map(c => (
-                  <span key={c} className="text-[12px] rounded-full bg-[#eff6ff] text-[#2563eb] border border-[#bfdbfe] px-2 py-0.5">{c}</span>
-                ))
-              )}
-            </div>
-          </button>
+          // Relative wrapper so the remove "X" can overlay the full-card edit
+          // button without nesting one <button> inside another.
+          <div key={s.id} className="relative">
+            <button onClick={() => startEdit(s)}
+              className="w-full text-left rounded-[8px] border border-[#e5e7eb] bg-[#ffffff] hover:bg-[#fafafa] px-3 py-2 pr-10 transition-colors duration-150">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[14px] font-medium text-[#111827] truncate">{s.name || s.email}</span>
+                <span className="text-[13px] text-[#9ca3af] flex-shrink-0">{lang === 'GEO' ? 'რედაქტირება' : 'Edit'}</span>
+              </div>
+              <p className="text-[13px] text-[#6b7280] truncate">{s.email}</p>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {(s.classes || []).length === 0 ? (
+                  <span className="text-[12px] italic text-[#9ca3af]">{lang === 'GEO' ? 'კლასები მიუმაგრებელია' : 'No classes assigned'}</span>
+                ) : (
+                  s.classes.map(c => (
+                    <span key={c} className="text-[12px] rounded-full bg-[#eff6ff] text-[#2563eb] border border-[#bfdbfe] px-2 py-0.5">{c}</span>
+                  ))
+                )}
+              </div>
+            </button>
+            {/* The roster never includes the owner (backend-filtered); user 1 is
+                also never removable, so it shows no X. */}
+            {s.id !== 1 && (
+              <button onClick={(e) => { e.stopPropagation(); setRemoveError(''); setConfirmRemove(s); }}
+                disabled={trialExpired}
+                title={t(code, 'removeFromSchool')}
+                aria-label={t(code, 'removeFromSchool')}
+                className="absolute top-2 right-2 inline-flex items-center justify-center p-1 rounded-md text-[#dc2626] hover:bg-[#fef2f2] transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed">
+                <X size={16} strokeWidth={2} />
+              </button>
+            )}
+          </div>
         ))
+      )}
+
+      {confirmRemove && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }}
+          onClick={() => { if (!removeBusy) setConfirmRemove(null); }}>
+          <div className="relative w-full max-w-sm rounded-[12px] border border-[#e5e7eb] bg-[#ffffff] p-6 shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
+            onClick={(e) => e.stopPropagation()}>
+            <p className="text-[15px] text-[#111827] leading-relaxed">{t(code, 'removeMemberConfirm')}</p>
+            <p className="text-[13px] text-[#6b7280] mt-1 truncate">{confirmRemove.name || confirmRemove.email}</p>
+            {removeError && <p className="text-[13px] text-[#dc2626] mt-3">{removeError}</p>}
+            <div className="flex justify-end gap-2 mt-5">
+              <button onClick={() => setConfirmRemove(null)} disabled={removeBusy}
+                className="rounded-[6px] border border-[#e5e7eb] bg-[#ffffff] hover:bg-[#f9fafb] px-4 py-2 text-[14px] text-[#6b7280] transition-colors duration-150 disabled:opacity-50">
+                {t(code, 'cancel')}
+              </button>
+              <button onClick={doRemove} disabled={removeBusy}
+                className="rounded-[6px] bg-[#dc2626] hover:bg-[#b91c1c] px-4 py-2 text-[14px] text-white font-medium transition-colors duration-150 disabled:opacity-50">
+                {removeBusy ? t(code, 'removing') : t(code, 'removeFromSchool')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
