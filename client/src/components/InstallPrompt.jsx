@@ -20,6 +20,34 @@ function isIos() {
   );
 }
 
+// Add-to-Home-Screen only works in real Safari on iOS. Chrome (CriOS), Firefox
+// (FxiOS), Edge (EdgiOS), Opera (OPiOS) and in-app browsers (Instagram, Facebook,
+// etc.) all run WebKit but can't install — those users must open the page in
+// Safari first. In-app WKWebViews typically lack the "Safari" UA token, so anything
+// that isn't a recognised non-Safari browser and is missing the token is treated
+// as non-Safari.
+function isIosSafari() {
+  const ua = window.navigator.userAgent || '';
+  if (/CriOS|FxiOS|EdgiOS|OPiOS|OPT\/|mercury/i.test(ua)) return false; // other browsers
+  if (/FBAN|FBAV|FBIOS|Instagram|Line\/|Twitter|Snapchat|GSA\//i.test(ua)) return false; // in-app
+  return /Safari/i.test(ua);
+}
+
+// The iOS system Share glyph: an up-arrow rising out of an open-topped box.
+function ShareIcon({ size = 18 }) {
+  return (
+    <svg
+      width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke="#007AFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden="true" style={{ flexShrink: 0, verticalAlign: 'middle' }}
+    >
+      <path d="M12 15V3" />
+      <path d="M8 7l4-4 4 4" />
+      <path d="M8 9H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-2" />
+    </svg>
+  );
+}
+
 // Shared "Install app" affordance for the public auth pages. Self-contained:
 //   - Android/desktop Chrome & Edge: captures beforeinstallprompt and fires the
 //     native prompt on tap.
@@ -55,6 +83,7 @@ export default function InstallPrompt() {
   if (installed || dismissed) return null;
 
   const ios = isIos();
+  const iosSafari = ios && isIosSafari();
   const canPrompt = !!deferredPrompt;
   // Nothing to show: not iOS, and no native prompt captured (page isn't
   // installable here, or the event hasn't fired). Avoid a dead button.
@@ -134,9 +163,42 @@ export default function InstallPrompt() {
         </button>
       </div>
       {ios && showIosSteps && (
-        <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.5 }}>
-          {t(lang, 'iosInstallSteps')}
-        </p>
+        iosSafari ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 2 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>
+              {t(lang, 'iosGuideTitle')}
+            </div>
+            {[
+              { n: 1, text: t(lang, 'iosStep1'), icon: true },
+              { n: 2, text: t(lang, 'iosStep2'), icon: false },
+              { n: 3, text: t(lang, 'iosStep3'), icon: false },
+            ].map((step) => (
+              <div key={step.n} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span
+                  style={{
+                    flexShrink: 0,
+                    width: 20, height: 20,
+                    borderRadius: '50%',
+                    background: '#1b2a4a',
+                    color: '#ffffff',
+                    fontSize: 12, fontWeight: 700,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  {step.n}
+                </span>
+                <span style={{ fontSize: 13, color: '#374151', lineHeight: 1.4 }}>
+                  {step.text}
+                </span>
+                {step.icon && <ShareIcon />}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.5 }}>
+            {t(lang, 'iosOpenInSafari')}
+          </p>
+        )
       )}
     </div>
   );
