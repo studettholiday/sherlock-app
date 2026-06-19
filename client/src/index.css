@@ -25,6 +25,7 @@ html, body, #root {
 }
 
 body, #root {
-  min-height: 100vh;
+  min-height: 100vh;  /* fallback for browsers without dvh support */
+  min-height: 100dvh; /* dynamic viewport height — excludes mobile system bars */
 }
 

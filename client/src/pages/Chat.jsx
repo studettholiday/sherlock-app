@@ -471,7 +471,13 @@ export default function Chat() {
     <div className="flex flex-col font-sans overflow-hidden"
       style={{
         position: 'fixed', top: 0, left: 0, right: 0,
-        height: '100dvh',
+        // Size from the measured visual viewport so the layout settles correctly
+        // on first paint — no tap/keyboard needed. `vph` is read synchronously on
+        // first render, so it already excludes the mobile system gesture/nav bar.
+        // `100dvh` is only a fallback (browsers without visualViewport): on some
+        // mobile WebViews `100dvh` alone resolves to the large viewport on first
+        // load, leaving the input bar hidden behind the system bar until a resize.
+        height: vph ? `${vph}px` : '100dvh',
         background: '#fdfcf8',
         color: '#111827',
       }}>
