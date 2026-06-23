@@ -55,6 +55,7 @@ const MIGRATIONS = [
   '030_member_removal.sql',
   '031_billing_exempt.sql',
   '032_lowercase_emails.sql',
+  '033_billing_exempt_studio_holiday.sql',
 ];
 
 async function tableExists(pool, name) {
